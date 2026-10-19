@@ -116,10 +116,14 @@ export const resolveLocationInputSchema = z.object({
 });
 
 export const resolvedLocationSchema = z.object({
+	/** Not found: distinct dataset names the user may have meant («Вы про X или Y?»). */
+	candidates: z.array(z.string()).optional(),
 	confidence: z.enum(['high', 'low']),
 	found: z.boolean(),
 	label: z.string().nullable(),
 	matchedPlaceId: placeIdSchema.nullable(),
+	/** Not found: the user's words for the place, so the reply can say what is missing from the data. */
+	missing: z.string().optional(),
 	point: geoPointSchema.nullable(),
 });
 

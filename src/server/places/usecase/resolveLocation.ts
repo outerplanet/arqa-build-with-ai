@@ -12,8 +12,10 @@ import { dependencies, type PlacesContext } from './context';
 import {
 	ALEM_AI_ALIASES,
 	BAYTEREK_ALIASES,
+	datasetNameStrength,
 	EXPO_ALIASES,
 	LANDMARKS,
+	locationPhrase,
 	MEGA_ALIASES,
 	mentions,
 	mentionsExact,
@@ -101,6 +103,68 @@ function mentionsAnotherPlace(
 	);
 }
 
+const NOTABLE = new Set<Place['category']>([
+	'artwork',
+	'attraction',
+	'mall',
+	'monument',
+	'museum',
+	'park',
+	'place_of_worship',
+	'theatre',
+	'viewpoint',
+]);
+const SAME_PLACE_M = 300;
+
+function candidatesOf(places: readonly Place[]): Pick<ResolvedLocation, 'candidates'> {
+	const names = [...new Set(places.map((item) => item.name))].slice(0, 3);
+	return names.length >= 2 ? { candidates: names } : {};
+}
+
+/** Not in the data: say which words were not found instead of a vague question. */
+function missing(text: string): ResolvedLocation {
+	const phrase = locationPhrase(text);
+	return phrase === null ? UNRESOLVED : { ...UNRESOLVED, missing: phrase };
+}
+
+/**
+ * A dataset name the user named by a prefix, an inflection or its significant words. Exact names
+ * keep their old rule (exactly one, or we ask); fuzzy matches prefer notable categories, the
+ * strongest match and Wikidata/popularity, and ask «X или Y?» when the remaining places are apart.
+ */
+function datasetMatch(text: string, places: readonly Place[]): Place | ResolvedLocation {
+	const exact = places.filter((item) =>
+		[item.name, item.nameEn ?? ''].filter(Boolean).some((name) => mentionsExact(text, name)),
+	);
+	// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
+	if (exact.length === 1) return exact[0]!;
+	if (exact.length > 1) return { ...UNRESOLVED, ...candidatesOf(exact) };
+
+	const phrase = locationPhrase(text) ?? text;
+	const scored = places
+		.map((item) => ({
+			item,
+			strength: Math.max(...[item.name, item.nameEn ?? ''].map((name) => datasetNameStrength(phrase, name))),
+		}))
+		.filter(({ strength }) => strength > 0);
+	if (scored.length === 0) return missing(text);
+	const notable = scored.filter(({ item }) => NOTABLE.has(item.category));
+	const pool = notable.length > 0 ? notable : scored;
+	const top = Math.max(...pool.map(({ strength }) => strength));
+	const ranked = pool
+		.filter(({ strength }) => strength === top)
+		.map(({ item }) => item)
+		.sort(
+			(left, right) =>
+				Number(right.descriptionSource === 'wikidata') - Number(left.descriptionSource === 'wikidata') ||
+				(right.popularity ?? 0) - (left.popularity ?? 0) ||
+				left.id.localeCompare(right.id),
+		);
+	const best = ranked[0]!;
+	if (ranked.every((item) => distanceM(item, best) <= SAME_PLACE_M)) return best;
+	return { ...UNRESOLVED, ...candidatesOf(ranked) };
+}
+
 export function resolveLocation(
 	ctx: PlacesContext,
 	input: z.input<typeof resolveLocationInputSchema>,
@@ -113,17 +177,18 @@ export function resolveLocation(
 	const groups = LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
 	let place: Place | undefined;
 
+	// A station or stop named after a landmark is a different place from the landmark.
+	if (groups.length > 0 && /(?:^| )(?:станци|остановк)/u.test(normalizeLocation(text))) return UNRESOLVED;
+	const perGroup = groups.map((aliases) => landmarkMatches(places, aliases));
+	if (groups.length > 0 && perGroup.every((matches) => matches.length === 0)) {
+		// A known landmark absent from the data (Ак Орда) is never swapped for a namesake outline.
+		return missing(text);
+	}
 	if (groups.length === 0) {
-		const matches = places.filter((item) =>
-			[item.name, item.nameEn ?? ''].filter(Boolean).some((name) => mentionsExact(text, name)),
-		);
-		// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
-		if (matches.length !== 1) return UNRESOLVED;
-		[place] = matches;
+		const match = datasetMatch(text, places);
+		if ('found' in match) return match;
+		place = match;
 	} else {
-		// A station or stop named after a landmark is a different place from the landmark.
-		if (/(?:^| )(?:станци|остановк)/u.test(normalizeLocation(text))) return UNRESOLVED;
-		const perGroup = groups.map((aliases) => landmarkMatches(places, aliases));
 		const ids = new Set(perGroup.flat().map((item) => item.id));
 		// Every named landmark must be the same single verified object, or we ask.
 		if (perGroup.some((matches) => matches.length !== 1) || ids.size !== 1) return UNRESOLVED;
@@ -134,8 +199,8 @@ export function resolveLocation(
 	return resolvedLocationSchema.parse({
 		confidence: 'high',
 		found: true,
-		label: groups.some((aliases) => EXPO_AREA.includes(aliases)) ? EXPO_AREA_LABEL : place!.name,
-		matchedPlaceId: place!.id,
-		point: roundLocation(place!),
+		label: groups.some((aliases) => EXPO_AREA.includes(aliases)) ? EXPO_AREA_LABEL : place.name,
+		matchedPlaceId: place.id,
+		point: roundLocation(place),
 	});
 }

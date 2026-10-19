@@ -177,6 +177,37 @@ describe('landmark resolution against the committed collection', () => {
 		);
 		expect(resolveLocation(context([place('osm:way/1547354202')]), { text: 'Байтерек' }).found).toBe(false);
 	});
+	it.each([
+		['Я у Байтэрека, хочу погулять', 'osm:way/230401645'],
+		['Я у Триумфальной арки, хочу погулять', 'osm:way/549307755'],
+		['Я у Хан Шатыра', 'osm:way/460703779'],
+		['Я возле Astana Opera', 'osm:way/917478479'],
+		['Я у Астана Оперы', 'osm:way/917478479'],
+		['Я у мечети Хазрет Султан', 'osm:way/240860325'],
+		['Я у Национального музея', 'osm:node/4894937300'],
+		['Я у Ботанического сада', 'osm:way/1196402246'],
+	])('matches dataset names by prefix, inflection and spelling variants: %s', (text, id) => {
+		expect(resolveLocation(context(), { text })).toMatchObject({ found: true, matchedPlaceId: id });
+	});
+	it.each([
+		['Я на набережной, хочу кофе', 'набережной'],
+		['Я у Ак Орды, хочу погулять', 'Ак Орды'],
+		['Я у Дворца мира и согласия', 'Дворца мира и согласия'],
+	])('reports what was not found in the data: %s', (text, missing) => {
+		expect(resolveLocation(context(), { text })).toMatchObject({ found: false, missing, point: null });
+	});
+	it('asks between distinct far-apart places instead of choosing one', () => {
+		const arch = place('osm:way/549307755');
+		const far = { ...arch, id: 'osm:way/2', lat: arch.lat + 0.02, name: 'Триумфальная арка Восток' };
+		const result = resolveLocation(context([arch, far]), { text: 'Я у Триумфальной арки' });
+		expect(result).toMatchObject({ found: false, point: null });
+		expect(result.candidates).toEqual(expect.arrayContaining([arch.name, far.name]));
+	});
+	it('does not match generic-only prefixes or unrelated words', () => {
+		for (const text of ['Я у детской площадки', 'Я у музыкальной школы', 'Я на улице']) {
+			expect(resolveLocation(context(), { text }).found).toBe(false);
+		}
+	});
 	it('still requires the model location excerpt to have been stated by the user', () => {
 		const ctx = context();
 		ctx.userMessages = ['Хочу кофе'];

@@ -45,10 +45,26 @@ export const LANDMARKS: readonly (readonly string[])[] = [
 	['aitu', 'astana it university', 'астана ит университет'],
 ];
 
+/** Spelling variants users type for the same name: «Байтэрек», «Бәйтерек», «Мечеть»/«Мечет». */
+const FOLD: Readonly<Record<string, string>> = {
+	ә: 'а',
+	ғ: 'г',
+	ё: 'е',
+	і: 'и',
+	қ: 'к',
+	ң: 'н',
+	ө: 'о',
+	ү: 'у',
+	ұ: 'у',
+	һ: 'х',
+	э: 'е',
+};
+
 export function normalizeLocation(text: string): string {
 	return text
 		.toLocaleLowerCase('ru')
-		.replaceAll('ё', 'е')
+		.replaceAll(/[ёғқңүұһіәөэ]/gu, (letter) => FOLD[letter] ?? letter)
+		.replaceAll(/[ъь]/gu, '')
 		.replaceAll(/[^\p{L}\p{N}]+/gu, ' ')
 		.trim();
 }
@@ -93,4 +109,104 @@ export function mentions(text: string, name: string): boolean {
 export function mentionsExact(text: string, name: string): boolean {
 	const normalized = normalizeLocation(name);
 	return normalized !== '' && ` ${normalizeLocation(text)} `.includes(` ${normalized} `);
+}
+
+/** Words that name a kind of place, not a place: «у детской площадки» is not a landmark. */
+const GENERIC_WORDS = new Set(
+	[
+		'детская',
+		'площадка',
+		'улица',
+		'проспект',
+		'парк',
+		'сквер',
+		'кафе',
+		'ресторан',
+		'магазин',
+		'центр',
+		'торговый',
+		'astana',
+		'астана',
+		'казахстан',
+		'республика',
+		'республики',
+		'kazakhstan',
+	].map(normalizeLocation),
+);
+
+function significant(word: string): boolean {
+	return word.length >= 4 && !GENERIC_WORDS.has(word);
+}
+
+/**
+ * Russian adjective and noun case endings for dataset names: «Триумфальной арки», «Национального
+ * музея», «Ботанического сада». A Cyrillic word drops one final vowel (two in words of 6+ letters,
+ * keeping a 3-letter stem) and accepts up to three Cyrillic letters. Latin, digits and words of
+ * one or two letters are exact.
+ */
+function datasetWordPattern(word: string): string {
+	if (!CYRILLIC_WORD.test(word) || word.length < 3) return escape(word);
+	let stem = word;
+	const maxStrip = word.length >= 6 ? 2 : 1;
+	while (word.length - stem.length < maxStrip && stem.length > 3 && /[аяоеиыйу]$/u.test(stem)) {
+		stem = stem.slice(0, -1);
+	}
+	return `${escape(stem)}\\p{Script=Cyrillic}{0,3}`;
+}
+
+function containsWords(normalizedText: string, words: readonly string[]): boolean {
+	return new RegExp(`(?<= )${words.map(datasetWordPattern).join(' ')}(?= )`, 'u').test(` ${normalizedText} `);
+}
+
+/**
+ * How strongly the user's words name a dataset POI: 3 — the whole name (inflection tolerated),
+ * 2 — a contiguous prefix of at least two words with a significant word, 1 — every significant
+ * word of a name that has at least two of them, 0 — no match. Single-word names only match exactly:
+ * «Мост», «Вечер» and similar venues are ordinary words too.
+ */
+export function datasetNameStrength(text: string, name: string): number {
+	const words = normalizeLocation(name).split(' ').filter(Boolean);
+	if (words.length === 0) return 0;
+	const normalizedText = normalizeLocation(text);
+	if (mentionsExact(normalizedText, name)) return 3;
+	if (words.length === 1) return 0;
+	for (let { length } = words; length >= 2; length--) {
+		const prefix = words.slice(0, length);
+		if (prefix.some(significant) && containsWords(normalizedText, prefix)) return length === words.length ? 3 : 2;
+	}
+	const keys = words.filter(significant);
+	return keys.length >= 2 && keys.every((word) => containsWords(normalizedText, [word])) ? 1 : 0;
+}
+
+const PREPOSITION = String.raw`(?:возле|около|рядом\s+со?|недалеко\s+от|напротив|у|на|в|во|near|at)`;
+const STOP_WORDS = new Set(
+	['хочу', 'хотим', 'хотел', 'хотела', 'ищу', 'ищем', 'подскажи', 'подскажите', 'посоветуй', 'посоветуйте'].concat([
+		'где',
+		'что',
+		'куда',
+		'можно',
+		'есть',
+		'сейчас',
+		'уже',
+		'пешком',
+		'буду',
+		'будем',
+	]),
+);
+/** «Дворец мира и согласия» keeps its «и»; only a dangling conjunction is dropped. */
+const TRAILING = new Set(['а', 'и', 'но']);
+
+/** The words the user used for the place («набережной», «Ак Орды»), kept as typed for the reply. */
+export function locationPhrase(text: string): string | null {
+	const place = String.raw`${PREPOSITION}\s+([^,.!?;:()\n—–…]+)`;
+	const subject = String.raw`(?:я|мы|нахожусь|находимся|стою|сейчас)(?:\s+(?:сейчас|прямо|тут))*\s+`;
+	const found =
+		new RegExp(String.raw`(?:^|[^\p{L}])${subject}${place}`, 'iu').exec(text) ??
+		new RegExp(String.raw`(?:^|[^\p{L}])${place}`, 'iu').exec(text);
+	const words = (found?.[1] ?? text).trim().split(/\s+/u);
+	const end = words.findIndex((word, index) => index > 0 && STOP_WORDS.has(word.toLocaleLowerCase('ru')));
+	const phrase = words.slice(0, end === -1 ? 5 : Math.min(end, 5));
+	while (phrase.length > 1 && TRAILING.has(phrase.at(-1)!.toLocaleLowerCase('ru'))) phrase.pop();
+	const result = phrase.join(' ').trim();
+	return result === '' ? null : result;
 }
