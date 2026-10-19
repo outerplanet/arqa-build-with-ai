@@ -1,11 +1,17 @@
 import 'server-only';
 
 /** Aliases, not a second POI database: coordinates and sources always come from the dataset. */
+export const EXPO_ALIASES = ['экспо', 'expo'] as const;
+export const NUR_ALEM_ALIASES = ['нур алем', 'нұр әлем', 'нұр алем', 'нур әлем', 'nur alem'] as const;
+export const BAYTEREK_ALIASES = ['байтерек', 'бәйтерек', 'baiterek', 'bayterek'] as const;
+export const MEGA_ALIASES = ['mega silk way', 'mega silkway astana', 'мега силк вей', 'мега шелковый путь'] as const;
+
 export const LANDMARKS: readonly (readonly string[])[] = [
-	['экспо', 'expo', 'нур алем', 'нұр әлем', 'nur alem'],
-	['байтерек', 'бәйтерек', 'baiterek', 'bayterek'],
+	EXPO_ALIASES,
+	NUR_ALEM_ALIASES,
+	BAYTEREK_ALIASES,
 	['хан шатыр', 'khan shatyr'],
-	['mega silk way', 'мега силк вей', 'мега шелковый путь'],
+	MEGA_ALIASES,
 	['нурлы жол', 'нұрлы жол', 'nurly zhol'],
 	['астана 1', 'astana 1'],
 	['аэропорт', 'airport', 'нурсултан назарбаев', 'nursultan nazarbayev international airport'],
