@@ -134,6 +134,18 @@
 	--color-info: #175cd3;
 	--color-info-bg: #eff4ff;
 
+	/* Place category groups (src/entities/place/model/category.ts): one colour per group, shared by
+	   chat cards and map markers. Always paired with an icon and a text label, never colour alone. */
+	--color-cat-food: #c2410c;
+	--color-cat-culture: #7c3aed;
+	--color-cat-sights: #1d4ed8;
+	--color-cat-nature: #15803d;
+	--color-cat-kids: #db2777;
+	--color-cat-night: #4338ca;
+	--color-cat-shopping: #0f766e;
+	--color-cat-sport: #0369a1;
+	--color-cat-other: #475569;
+
 	/* Identity — the avatar palette. Eight slots, picked by a hash of a row's id and never by a
      name: a woman who marries changes her surname and must not change colour in the list.
      Deliberately not the accent. docs/design-system.md §14 allows one accent hue and this is not one — it
@@ -202,6 +214,16 @@
 		--color-info: #84adff;
 		--color-info-bg: #111c33;
 
+		--color-cat-food: #fb923c;
+		--color-cat-culture: #c4b5fd;
+		--color-cat-sights: #93c5fd;
+		--color-cat-nature: #86efac;
+		--color-cat-kids: #f9a8d4;
+		--color-cat-night: #a5b4fc;
+		--color-cat-shopping: #5eead4;
+		--color-cat-sport: #7dd3fc;
+		--color-cat-other: #cbd5e1;
+
 		--color-identity-1: #93c5fd;
 		--color-identity-1-bg: #17294d;
 		--color-identity-2: #a5b4fc;
@@ -265,6 +287,16 @@
 	--color-danger-bg: #2e1311;
 	--color-info: #84adff;
 	--color-info-bg: #111c33;
+
+	--color-cat-food: #fb923c;
+	--color-cat-culture: #c4b5fd;
+	--color-cat-sights: #93c5fd;
+	--color-cat-nature: #86efac;
+	--color-cat-kids: #f9a8d4;
+	--color-cat-night: #a5b4fc;
+	--color-cat-shopping: #5eead4;
+	--color-cat-sport: #7dd3fc;
+	--color-cat-other: #cbd5e1;
 
 	--color-identity-1: #93c5fd;
 	--color-identity-1-bg: #17294d;
@@ -345,6 +377,16 @@
 	--color-warning-subtle: var(--color-warning-bg);
 	--color-danger-subtle: var(--color-danger-bg);
 	--color-info-subtle: var(--color-info-bg);
+
+	--color-cat-food: var(--color-cat-food);
+	--color-cat-culture: var(--color-cat-culture);
+	--color-cat-sights: var(--color-cat-sights);
+	--color-cat-nature: var(--color-cat-nature);
+	--color-cat-kids: var(--color-cat-kids);
+	--color-cat-night: var(--color-cat-night);
+	--color-cat-shopping: var(--color-cat-shopping);
+	--color-cat-sport: var(--color-cat-sport);
+	--color-cat-other: var(--color-cat-other);
 
 	--color-identity-1: var(--color-identity-1);
 	--color-identity-1-subtle: var(--color-identity-1-bg);
