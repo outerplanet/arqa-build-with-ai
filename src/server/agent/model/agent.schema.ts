@@ -40,9 +40,26 @@ export const chatRequestSchema = z.object({
 	messages: z.array(chatMessageSchema).min(1),
 });
 
+/** One recommended place, in the order of the text reply, with the same server-built wording. */
+export const recommendationSchema = z.object({
+	/** What to do there, without the «(сгенерированная идея)» marker; always a generated idea. */
+	action: z.string(),
+	distanceM: z.number().nonnegative(),
+	/** One Russian sentence; «открыто» only when the tool's open.status is 'open'. */
+	hours: z.string(),
+	order: z.number().int().positive(),
+	placeId: z.string(),
+	visitMinutes: z.number().int().nonnegative(),
+	walkMinutes: z.number().nonnegative(),
+	/** The «Почему» line, built only from tool-result data. */
+	why: z.string(),
+});
+
 export const chatResponseSchema = z.object({
 	/** Server selection shared with the text reply; every id still needs a validated tool result. */
 	recommendedPlaceIds: z.array(z.string()).optional(),
+	/** Structured form of the same recommendations for the cards; absent when nothing is recommended. */
+	recommendations: z.array(recommendationSchema).optional(),
 	reply: z.string(),
 	toolCalls: z.array(toolCallSchema),
 });
