@@ -1,7 +1,9 @@
 'use client';
 
 import { type ChatMessage, chatResponseSchema, type ToolCall } from '@server/agent/model/agent.schema';
-import { useCallback, useState } from 'react';
+import { type GeoPoint } from '@server/places/model/places.schema';
+import { useCallback, useRef, useState } from 'react';
+import { buildChatRequest } from './results';
 
 /**
  * The transcript, and the one call that advances it: POST /api/chat with the whole history.
@@ -19,7 +21,7 @@ export interface UseChat {
 	error: string | null;
 	messages: readonly ChatMessage[];
 	retry: () => void;
-	send: (content: string) => void;
+	send: (content: string, location?: GeoPoint) => void;
 	status: ChatStatus;
 	toolCalls: readonly ToolCall[];
 }
@@ -29,14 +31,20 @@ export function useChat(): UseChat {
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
+	const inFlight = useRef(false);
+	const lastRequest = useRef<ReturnType<typeof buildChatRequest> | null>(null);
 
-	const exchange = useCallback(async (history: readonly ChatMessage[]) => {
+	const exchange = useCallback(async (history: readonly ChatMessage[], location?: GeoPoint) => {
+		if (inFlight.current) return;
+		inFlight.current = true;
+		const request = buildChatRequest(history, location);
+		lastRequest.current = request;
 		setStatus('sending');
 		setError(null);
 
 		try {
 			const response = await fetch('/api/chat', {
-				body: JSON.stringify({ messages: history }),
+				body: JSON.stringify(request),
 				headers: { 'Content-Type': 'application/json' },
 				method: 'POST',
 			});
@@ -67,22 +75,26 @@ export function useChat(): UseChat {
 			// somebody retype what they already said.
 			setError(cause instanceof Error ? cause.message : 'Не удалось связаться с ассистентом.');
 			setStatus('error');
+		} finally {
+			inFlight.current = false;
 		}
 	}, []);
 
 	const send = useCallback(
-		(content: string) => {
+		(content: string, location?: GeoPoint) => {
+			if (inFlight.current || content.trim().length === 0) return;
 			const history = [...messages, { content, role: 'user' as const }];
 
 			setMessages(history);
-			void exchange(history);
+			void exchange(history, location);
 		},
 		[exchange, messages],
 	);
 
 	const retry = useCallback(() => {
-		void exchange(messages);
-	}, [exchange, messages]);
+		const request = lastRequest.current;
+		if (request !== null) void exchange(request.messages, request.location);
+	}, [exchange]);
 
 	return { error, messages, retry, send, status, toolCalls };
 }

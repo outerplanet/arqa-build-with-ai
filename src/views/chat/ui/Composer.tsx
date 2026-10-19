@@ -36,10 +36,10 @@ export function Composer({ disabled, onSend, placeholder }: ComposerProps) {
 	};
 
 	return (
-		<form className="border-border flex items-end gap-2 border-t pt-3" onSubmit={submit}>
+		<form className="border-border flex flex-wrap items-end gap-2 border-t pt-3" onSubmit={submit}>
 			<Textarea
 				aria-label="Сообщение"
-				className="min-h-[2.75rem] flex-1 resize-none"
+				className="min-h-[2.75rem] min-w-40 flex-1 resize-none"
 				disabled={disabled}
 				onChange={(event) => {
 					setDraft(event.target.value);
@@ -50,7 +50,7 @@ export function Composer({ disabled, onSend, placeholder }: ComposerProps) {
 				value={draft}
 			/>
 
-			<Button aria-label="Отправить" disabled={disabled || empty} type="submit">
+			<Button aria-label="Отправить" className="min-h-10" disabled={disabled || empty} type="submit">
 				<PaperAirplaneIcon aria-hidden className="size-4" />
 				Отправить
 			</Button>

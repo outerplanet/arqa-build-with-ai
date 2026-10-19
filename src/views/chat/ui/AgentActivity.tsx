@@ -23,11 +23,7 @@ function summarise(result: unknown): string {
 		return result.length === 0 ? 'нет результатов' : `результатов: ${String(result.length)}`;
 	}
 
-	if (typeof result === 'object') {
-		return Object.entries(result)
-			.map(([key, value]) => `${key}: ${typeof value === 'object' ? '…' : String(value)}`)
-			.join(' · ');
-	}
+	if (typeof result === 'object') return 'Ответ инструмента получен. Подробности ниже.';
 
 	return JSON.stringify(result);
 }
@@ -61,17 +57,17 @@ function ActivityRow({ call }: { call: ToolCall }) {
 
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-2">
-					<code className="text-fg text-xs font-medium">{call.name}</code>
+					<span className="text-fg text-xs font-medium">{call.label}</span>
 					{/* Status is never colour alone: the icon and this word carry it too. */}
-					<Badge tone={ok ? 'success' : 'danger'}>{ok ? 'ok' : 'ошибка'}</Badge>
+					<Badge tone={ok ? 'success' : 'danger'}>{ok ? 'готово' : 'ошибка'}</Badge>
 					<span className="text-fg-subtle ml-auto text-xs tabular-nums">{call.durationMs} мс</span>
 				</div>
 
-				<p className="text-fg-muted mt-0.5 text-xs">{call.label}</p>
 				<p className="text-fg-subtle mt-1 truncate text-xs">{summarise(call.result)}</p>
 
 				<details className="mt-1">
 					<summary className="text-fg-muted hover:text-fg cursor-pointer text-xs">Подробнее</summary>
+					<code className="text-fg-subtle text-xs">{call.name}</code>
 					<Detail title="Аргументы" value={call.arguments} />
 					<Detail title="Результат" value={call.result} />
 				</details>
