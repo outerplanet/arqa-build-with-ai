@@ -108,9 +108,17 @@ python3 -m venv .venv-vectors
 .venv-vectors/bin/python scripts/embed.py
 ```
 
-Либо активируйте окружение и выполните `pnpm embed:local`.
-В Windows интерпретатор находится в `.venv-vectors/Scripts/python.exe`.
-Укажите соответствующий путь в `.env`:
+На macOS/Linux можно активировать окружение и выполнить `pnpm embed:local`.
+В Windows используйте явный интерпретатор (наличие команды `python3` не требуется):
+
+```powershell
+py -3 -m venv .venv-vectors
+.venv-vectors\Scripts\python.exe -m pip install -r scripts\vector-requirements.txt
+.venv-vectors\Scripts\python.exe scripts\embed.py
+```
+
+В Windows задайте в `.env` `EMBEDDING_PYTHON=.venv-vectors/Scripts/python.exe`.
+Настройки macOS/Linux:
 
 ```dotenv
 EMBEDDING_PROVIDER=local
@@ -125,6 +133,7 @@ EMBEDDING_INDEX_PATH=data/poi.vectors.json
 в том числе при `LLM_PROVIDER=mock`; ключ OpenAI не требуется. Запрос передаётся Python через
 stdin, не сохраняется и не логируется. При обновлении POI пересоберите индекс и перезапустите
 сервер. `EMBEDDING_PROVIDER=lexical` явно отключает семантический поиск.
+Кодировка канала Python принудительно UTF-8, включая кириллицу и казахские буквы.
 
 Python API `vector_search(query: str, top_k: int = 5)` в `scripts/vector_search.py` возвращает
 тексты, метаданные и косинусное сходство от −1 до 1. Пример вызова из корня проекта:
@@ -262,7 +271,19 @@ python3 -m venv .venv-pdf
 .venv-pdf/bin/python scripts/export_pdf.py
 ```
 
-При активном окружении доступны `pnpm pdf` и `pnpm pdf:test`.
+На macOS/Linux при активном окружении доступны `pnpm pdf` и `pnpm pdf:test`.
+Для Windows:
+
+```powershell
+py -3 -m venv .venv-pdf
+.venv-pdf\Scripts\python.exe -m pip install -r scripts\pdf-requirements.txt
+.venv-pdf\Scripts\python.exe scripts\export_pdf.py
+.venv-pdf\Scripts\python.exe -m unittest discover -s scripts -p export_pdf_test.py
+```
+
+Скрипты не требуют shell-обёртки для запуска Python и поддерживают пути с пробелами.
+Фактический прогон этой версии выполнен на macOS ARM64; Windows/Linux проверены
+на уровне путей, кодировки и анализа кода, но не запускались на отдельных ОС.
 Pandoc разбирает фактические `docs/presentation.md` и `docs/scenarios.md`, ReportLab формирует
 слайды и документ A4. Каждый заголовок первого уровня презентации начинает слайд; HTML-комментарии
 служат заметками докладчика и не печатаются. Копии текста в Python нет.

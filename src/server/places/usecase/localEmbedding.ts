@@ -13,6 +13,8 @@ export async function localEmbedding(query: string): Promise<unknown> {
 				EMBEDDING_CACHE: config.cache,
 				EMBEDDING_MODEL: config.model || LOCAL_EMBEDDING_MODEL,
 				HF_HUB_OFFLINE: '1',
+				PYTHONIOENCODING: 'utf-8',
+				PYTHONUTF8: '1',
 				TOKENIZERS_PARALLELISM: 'false',
 				TRANSFORMERS_OFFLINE: '1',
 			},
