@@ -37,6 +37,7 @@ export function scenarioFor(text: string): Scenario {
 	else if (/прогул|парк|набережн|свеж[а-я]*\s+воздух/u.test(lower))
 		categories = ['park', 'garden', 'viewpoint', 'artwork'];
 	else if (/музе|галере|выставк/u.test(lower)) categories = ['museum', 'gallery'];
+	else if (night) categories = ['bar', 'nightclub', 'viewpoint', 'artwork', 'attraction'];
 	else if (/достопримеч|турист|необыч|экспо|expo/u.test(lower))
 		categories = ['attraction', 'museum', 'viewpoint', 'artwork', 'monument'];
 	else if (/поесть|ресторан|обед|ужин/u.test(lower)) categories = ['restaurant', 'cafe', 'fast_food'];

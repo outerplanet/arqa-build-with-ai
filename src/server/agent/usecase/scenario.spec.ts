@@ -2,6 +2,13 @@ import { scenarioFor } from '@server/agent/usecase/scenario';
 import { describe, expect, it } from 'vitest';
 
 describe('scenarioFor', () => {
+	it('searches nightlife categories for an unusual night request instead of daytime museums', () => {
+		const scenario = scenarioFor('Ищу необычную ночную активность на последние пару часов');
+
+		expect(scenario.categories).toContain('bar');
+		expect(scenario.categories).not.toContain('museum');
+	});
+
 	it.each([
 		['Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.', 120],
 		['Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.', 60],

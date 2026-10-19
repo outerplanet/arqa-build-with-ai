@@ -41,8 +41,39 @@ function hours(candidate: Candidate): string {
 	return `${status}${open.confidence === 'low' ? '; уверенность низкая' : ''}${open.note ? `. ${open.note}` : ''}`;
 }
 
-function placeDetails(candidate: Candidate): string {
+function requestedFacts(candidate: Candidate, query: string): string[] {
+	const text = query.toLowerCase();
+	const checks = [
+		{ label: 'Розетки', requested: text.includes('розетк'), tag: 'power_sockets' },
+		{ label: 'Wi-Fi', requested: /wi[ -]?fi|вай[ -]?фай|интернет/u.test(text), tag: 'wifi' },
+		{ label: 'Интерактивы', requested: text.includes('интерактив'), tag: 'interactive' },
+	];
+	return [
+		...checks
+			.filter((check) => check.requested)
+			.map(
+				(check) =>
+					`${check.label}: ${candidate.place.tags.includes(check.tag) ? 'отмечены в OpenStreetMap' : 'данных нет — уточните перед выходом'}.`,
+			),
+		...(/тих|тишин/u.test(text) ? ['Уровень шума не проверен — уточните у места.'] : []),
+	];
+}
+
+function placeDetails(candidate: Candidate, query = ''): string {
 	const { place } = candidate;
+	const actions: Partial<Record<Category, string>> = {
+		artwork: 'осмотреть арт-объект и сделать фото',
+		attraction: 'осмотреть достопримечательность и сделать короткую остановку',
+		cafe: 'выпить кофе и отдохнуть перед следующей остановкой',
+		gallery: 'осмотреть выставку',
+		garden: 'прогуляться по саду и сделать паузу',
+		library: 'почитать или спокойно поработать, предварительно уточнив правила посещения',
+		monument: 'осмотреть памятник и сделать фото',
+		museum: 'посмотреть экспозицию, предварительно уточнив условия входа',
+		park: 'пройтись по парку и отдохнуть',
+		playground: 'сделать остановку для игры с ребёнком, проверив состояние площадки на месте',
+		viewpoint: 'посмотреть на город и сделать фото',
+	};
 	const descriptionSource =
 		place.descriptionSource === 'generated'
 			? 'сгенерированная идея'
@@ -54,8 +85,9 @@ function placeDetails(candidate: Candidate): string {
 	return [
 		`Почему: ${categoryNames[place.category]} в ${Math.round(candidate.distanceM)} м от отправной точки.`,
 		`На посещение: ${candidate.visitMinutes} мин (оценка).`,
+		...requestedFacts(candidate, query),
 		place.description ? `${place.description} (${descriptionSource}).` : '',
-		'Что делать: познакомиться с местом и осмотреться (сгенерированная идея).',
+		`Что делать: ${actions[place.category] ?? 'познакомиться с местом и осмотреться'} (сгенерированная идея).`,
 		`Часы: ${hours(candidate)}.`,
 		`Источник места: [OpenStreetMap](${place.sourceUrl}).`,
 	]
@@ -65,7 +97,7 @@ function placeDetails(candidate: Candidate): string {
 
 export function formatRecommendations(
 	result: FindPlacesResult,
-	options: { durationMinutes?: number; flight?: boolean; night?: boolean } = {},
+	options: { durationMinutes?: number; flight?: boolean; night?: boolean; query?: string } = {},
 ): string {
 	const { origin } = result;
 	const location = origin.label ?? `${origin.point.lat}, ${origin.point.lon}`;
@@ -93,7 +125,7 @@ export function formatRecommendations(
 		parts.push('Подходящих мест с этими условиями не найдено. Попробуйте изменить фильтры.');
 	for (const [index, candidate] of candidates.entries())
 		parts.push(
-			`${index + 1}. ${candidate.place.name} — ${Math.round(candidate.distanceM)} м, ${candidate.walkMinutes} мин пешком (оценка).\n${placeDetails(candidate)}`,
+			`${index + 1}. ${candidate.place.name} — ${Math.round(candidate.distanceM)} м, ${candidate.walkMinutes} мин пешком (оценка).\n${placeDetails(candidate, options.query)}`,
 		);
 	if (result.note) parts.push(result.note);
 	return parts.join('\n\n');

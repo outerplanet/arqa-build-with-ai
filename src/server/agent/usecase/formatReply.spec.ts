@@ -41,6 +41,25 @@ function result(candidates: Candidate[]): FindPlacesResult {
 }
 
 describe('formatRecommendations', () => {
+	it('discloses missing requested facilities instead of inferring sockets or quietness', () => {
+		const reply = formatRecommendations(result([candidate('unknown')]), {
+			query: 'Хочу тихое место с розеткой и Wi-Fi',
+		});
+
+		expect(reply).toContain('Розетки: данных нет');
+		expect(reply).toContain('Wi-Fi: данных нет');
+		expect(reply).toContain('Уровень шума не проверен');
+	});
+
+	it('only confirms a requested facility when the source has its explicit tag', () => {
+		const tagged = candidate('open');
+		tagged.place.tags = ['power_sockets'];
+		const reply = formatRecommendations(result([tagged]), { query: 'кофе с розеткой' });
+
+		expect(reply).toContain('Розетки: отмечены в OpenStreetMap');
+		expect(reply).not.toContain('Розетки: данных нет');
+	});
+
 	it('does not recommend a visit that exceeds the explicit walking and visit budget', () => {
 		const reply = formatRecommendations(result([candidate('open', 'Слишком длинное посещение')]), {
 			durationMinutes: 10,

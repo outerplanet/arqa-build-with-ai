@@ -1,7 +1,6 @@
 import { runAgent } from '@server/agent/usecase/agent';
 import { executeTool } from '@server/agent/usecase/tools';
 import { resetEnvCache } from '@server/kernel/env';
-import { DomainError } from '@server/kernel/errors';
 import { type Candidate, type Place } from '@server/places/model/places.schema';
 import 'server-only';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -165,14 +164,15 @@ describe('places usecases', () => {
 			constraint: 'invalid_walk_plan',
 		});
 	});
-	it('returns a visible error rather than fake recommendations when data is unavailable', async () => {
+	it('returns a visible error without leaking file details when data cannot load', async () => {
 		const { ctx, deps } = fixture();
 		vi.mocked(deps.readPlaces).mockImplementation(() => {
-			throw new DomainError('conflict', { constraint: 'places_unavailable' });
+			throw new Error('Private file path: /private/data');
 		});
 		const result = await executeTool(ctx, { args: { query: 'музей' }, name: 'find_places' });
 		expect(result.status).toBe('error');
-		expect(result.result).toContain('ещё не подключены');
+		expect(result.result).toContain('Не удалось');
+		expect(result.result).not.toContain('/private/data');
 	});
 });
 
