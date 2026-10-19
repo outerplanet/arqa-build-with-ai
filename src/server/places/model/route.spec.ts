@@ -391,3 +391,19 @@ describe('planWalk', () => {
 		});
 	});
 });
+
+describe('route variety', () => {
+	it('never puts a gallery right after a gallery', () => {
+		const pool = [
+			candidate('g1', START.lon + 0.004, 0.9, 10, 'gallery'),
+			candidate('g2', START.lon + 0.008, 0.9, 10, 'gallery'),
+			candidate('m1', START.lon + 0.012, 0.3, 10, 'monument'),
+		];
+		const walk = planWalk({ candidates: pool, durationMinutes: 90, maxStops: 3, requestedStops: 3, start: START });
+		const categories = walk.stops.map((stop) => stop.candidate.place.category);
+
+		expect(categories).toHaveLength(3);
+		for (let index = 1; index < categories.length; index += 1)
+			expect(categories[index] === 'gallery' && categories[index - 1] === 'gallery').toBe(false);
+	});
+});

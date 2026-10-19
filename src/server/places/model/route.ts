@@ -1,6 +1,7 @@
 import 'server-only';
 import { distanceM, walkMinutes } from './geo';
 import { type Candidate, type Category, type GeoPoint, geoPointSchema, type WalkPlan } from './places.schema';
+import { hasNotabilitySignal } from './rank';
 
 // Reordering the same scores can change their sum by a floating-point rounding error.
 const SCORE_EPSILON = 1e-12;
@@ -12,6 +13,11 @@ const LEG_CAP_SHARE = 0.25;
 const CLUSTER_M = 100;
 // A walk has at most one food stop; the rest should be things to see.
 const FOOD = new Set<Category>(['bar', 'cafe', 'fast_food', 'restaurant']);
+// Two exhibitions back to back are one long indoor stop, not a walk: never gallery after gallery.
+const NO_REPEAT_IN_A_ROW = new Set<Category>(['gallery', 'museum']);
+// A stop with a Wikidata description, a photo or popularity is worth this much more on a route:
+// a walk past places the data can tell about beats one past places it cannot.
+const NOTABLE_STOP_BONUS = 0.05;
 // When the user asked for a number of stops that full visits cannot fit, a stop may become a short
 // one: half its estimate, never under ten minutes. A show, a film or a zoo cannot be halved.
 const SHORT_VISIT_SHARE = 0.5;
@@ -35,11 +41,18 @@ export function shortVisitMinutes(candidate: Candidate): number {
 	);
 }
 
+/** A route's worth of a stop: its search score, plus a little when the data vouches for the place. */
+function stopValue(candidate: Candidate): number {
+	return candidate.score + NOTABLE_STOP_BONUS * Number(hasNotabilitySignal(candidate.place));
+}
+
 function byId(a: Candidate, b: Candidate): number {
 	return a.place.id < b.place.id ? -1 : a.place.id > b.place.id ? 1 : 0;
 }
 
 function compatible(stops: readonly Candidate[], next: Candidate): boolean {
+	const last = stops.at(-1);
+	if (last && NO_REPEAT_IN_A_ROW.has(next.place.category) && last.place.category === next.place.category) return false;
 	return stops.every(
 		(stop) =>
 			stop.place.id !== next.place.id &&
@@ -82,7 +95,7 @@ function bestStops(
 			leg !== null &&
 			leg.walkMinutes <= legCap &&
 			leg.walkMinutes + candidate.visitMinutes <= durationMinutes &&
-			(anchor === null || candidate.score > anchor.score)
+			(anchor === null || stopValue(candidate) > stopValue(anchor))
 		)
 			anchor = candidate;
 	}
@@ -116,7 +129,7 @@ function bestStops(
 					search({
 						current: candidate.place,
 						minutes: nextMinutes,
-						score: score + candidate.score,
+						score: score + stopValue(candidate),
 						stops: [...stops, candidate],
 					});
 				}

@@ -2,6 +2,7 @@ import { runAgent } from '@server/agent/usecase/agent';
 import { recommendedPlaceIdsForTools } from '@server/agent/usecase/reply';
 import { resetEnvCache } from '@server/kernel/env';
 import { findPlacesResultSchema, resolvedLocationSchema, walkPlanSchema } from '@server/places/model/places.schema';
+import { hasNotabilitySignal, isGenericName } from '@server/places/model/rank';
 import 'server-only';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const ctx = { now: new Date('2026-10-19T07:00:00Z') };
 const NEAR_EXPO = { lat: 51.089, lon: 71.416 };
 const NEAR_BAYTEREK = { lat: 51.128, lon: 71.43 };
+const NEAR_KHAN_SHATYR = { lat: 51.13251, lon: 71.40387 };
 const ALEM_AI = 'osm:way/454857501';
 const BAYTEREK = 'osm:way/230401645';
 
@@ -260,6 +262,54 @@ describe('real scenarios through the mock agent and the committed dataset', () =
 
 		expect(chosen.some((place) => place.tags.includes('kids') || place.category === 'museum')).toBe(true);
 		expect(chosen.some((place) => place.name !== 'Gymboree')).toBe(true);
+	});
+
+	// QA on real data: «Корме» and «Астана-Экспо КС» (no description, photo, Wikidata or popularity)
+	// were the whole answer at Baiterek, while the Wikidata-described mosque and Astana Musical are
+	// a few minutes further. A sightseeing answer must lead with places the data can vouch for.
+	it.each([
+		['Я у Байтерека, что посмотреть рядом за час?', undefined],
+		['Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.', undefined],
+		['Что посмотреть рядом?', NEAR_KHAN_SHATYR],
+	])('vouches for at least one sight with a data signal: %s', async (text, location) => {
+		const answer = await ask(text, location);
+		const { search } = expectRecommendations(answer, location ? 'browser' : 'text');
+		const chosen = answer.recommendedPlaceIds.map(
+			(id) => search.candidates.find((candidate) => candidate.place.id === id)!.place,
+		);
+
+		expect(chosen.some(hasNotabilitySignal)).toBe(true);
+		expect(
+			chosen.filter((place) => place.category === 'gallery' && !hasNotabilitySignal(place)).length,
+		).toBeLessThanOrEqual(1);
+	});
+
+	it('gives a child near Baiterek at most one generic «Детская площадка»', async () => {
+		const answer = await ask(
+			'Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?',
+			NEAR_BAYTEREK,
+		);
+		const { search } = expectRecommendations(answer, 'browser');
+		const names = answer.recommendedPlaceIds.map(
+			(id) => search.candidates.find((candidate) => candidate.place.id === id)!.place.name,
+		);
+
+		expect(names.filter((name) => /^детская площадка(?:,|$)/iu.test(name.trim())).length).toBeLessThanOrEqual(1);
+	});
+
+	// Within the route's reach the only vouched-for places are a theatre (a 120-minute show), the
+	// mosque (not a route category) and Парк Жетысу (no third stop fits after it), so the route is
+	// held to named sights: no «Сквер», no unvouched gallery, never gallery after gallery.
+	it('routes 90 minutes from Baiterek through named sights, never «Сквер» or two galleries in a row', async () => {
+		const answer = await ask('Я у Байтерека, составь маршрут из трёх мест на 90 минут.');
+		const plan = walkPlanSchema.parse(answer.toolCalls.find((call) => call.name === 'plan_walk')?.result);
+		const places = plan.stops.map((stop) => stop.candidate.place);
+
+		expect(places).toHaveLength(3);
+		expect(places.filter((place) => isGenericName(place.name))).toEqual([]);
+		expect(places.filter((place) => place.category === 'gallery' && !hasNotabilitySignal(place))).toEqual([]);
+		for (const [index, place] of places.entries())
+			if (index > 0) expect(place.category === 'gallery' && places[index - 1]!.category === 'gallery').toBe(false);
 	});
 
 	it('builds the mini route with a sourced location line', async () => {
