@@ -9,6 +9,7 @@ import { isGenericName, isNotable } from '@server/places/model/rank';
 import { legCapMinutes } from '@server/places/model/route';
 import { categoryNames } from '@server/places/usecase/categoryNames';
 import 'server-only';
+import { type Refinement, type RefinementKind } from './scenario';
 
 /** One card: the same selection and the same words as the numbered item in the text reply. */
 export type Recommendation = NonNullable<ChatResponse['recommendations']>[number];
@@ -30,10 +31,14 @@ export interface ReplyOptions {
 	night?: boolean;
 	now?: Date;
 	query?: string;
+	/** Follow-up refinements («мало денег», «поближе»…), acknowledged and applied where data allows. */
+	refinements?: readonly Refinement[];
 	/** «Необычное», «что посмотреть», a tourist: a generic-named park is not a sight. */
 	sights?: boolean;
 	/** The number of stops the user asked for, if any. */
 	stops?: { max: number; min: number } | undefined;
+	/** A follow-up the parser did not understand, quoted back honestly. */
+	unrecognized?: string | undefined;
 	walk?: boolean;
 	/** The pedestrian-network caveat from plan_walk's walkingRoute, said once. */
 	walkingNote?: string | undefined;
@@ -59,8 +64,12 @@ function hours(candidate: Candidate): string {
 	return 'часы работы неизвестны — уточните перед выходом';
 }
 
-/** A route stop's reason names its leg from the plan, not the straight distance from the start. */
-type DetailOptions = ReplyOptions & { legMinutes?: number | undefined };
+/**
+ * A route stop's reason names its leg from the plan, not the straight distance from the start.
+ * `repeat` counts earlier items of the same category in this answer, so three cafes do not read as
+ * one sentence pasted three times; `nearest` marks the closest of several.
+ */
+type DetailOptions = ReplyOptions & { legMinutes?: number | undefined; nearest?: boolean; repeat?: number };
 
 const TAG_LABELS: Record<string, string> = {
 	free: 'бесплатный вход',
@@ -74,12 +83,77 @@ const TAG_LABELS: Record<string, string> = {
 	wifi: 'есть Wi-Fi',
 };
 
-/** For a sightseer only a named, notable place «совпадает»; a park nearby is said to be a park. */
-function matchesInterest(candidate: Candidate, options: DetailOptions): boolean {
-	const { place, why } = candidate;
-	// «Кофейня» does match «кофе»; only a sight has to be more than its category word.
-	if (options.sights) return isNotable(place) && !['garden', 'park'].includes(place.category);
-	return options.categories?.includes(place.category) === true || why.semantic >= 0.5;
+const SIGHT = (candidate: Candidate) =>
+	isNotable(candidate.place) && !['garden', 'park'].includes(candidate.place.category);
+const inCategory =
+	(...categories: Category[]) =>
+	(candidate: Candidate) =>
+		categories.includes(candidate.place.category);
+const tagged = (tag: string) => (candidate: Candidate) => candidate.place.tags.includes(tag);
+
+/**
+ * What in the data shows that a place answers each parsed interest. An interest with no evidence
+ * here — «тихое место», or «розетка» without the OSM tag — is never claimed as matched; its own
+ * honest line («Розетки: данных нет») says so instead.
+ */
+const INTEREST_EVIDENCE: Record<string, (candidate: Candidate, options: DetailOptions) => boolean> = {
+	библиотека: inCategory('library'),
+	выставки: inCategory('gallery', 'museum'),
+	достопримечательности: SIGHT,
+	интерактивы: tagged('interactive'),
+	интересное: SIGHT,
+	кафе: inCategory('cafe'),
+	кофе: inCategory('cafe'),
+	музей: inCategory('museum'),
+	необычное: SIGHT,
+	ночью: (candidate, options) =>
+		tagged('night')(candidate) || (options.night === true && candidate.open.status === 'open'),
+	'парк и свежий воздух': inCategory('park', 'garden'),
+	поесть: inCategory('restaurant', 'cafe', 'fast_food'),
+	прогулка: inCategory('park', 'garden', 'viewpoint', 'artwork', 'monument', 'attraction'),
+	розетка: tagged('power_sockets'),
+	'с ребёнком': (candidate) => inCategory('playground', 'zoo', 'theme_park')(candidate) || tagged('kids')(candidate),
+};
+
+/** Only the interests the data confirms for this place, in the user's order. */
+function matchedInterests(candidate: Candidate, options: DetailOptions): string[] {
+	return (options.interests ?? []).filter((label) => INTEREST_EVIDENCE[label]?.(candidate, options) === true);
+}
+
+/** The first clause of «почему», worded differently for a second and third place of one kind. */
+function matchedClause(candidate: Candidate, options: DetailOptions): string {
+	const { place } = candidate;
+	const category = categoryNames[place.category];
+	const repeat = options.repeat ?? 0;
+	// A walk with no stated interest matched a category set, not the user's words: say that instead.
+	if (options.walk) {
+		if (place.category === 'cafe') return 'кафе — остановка на кофе';
+		return [`${category} — подходит для прогулки`, `ещё ${category} для прогулки`, `${category} — тоже для прогулки`][
+			repeat % 3
+		]!;
+	}
+	const matched = matchedInterests(candidate, options);
+	if (matched.length) {
+		const interest = `«${matched.join(', ')}»`;
+		return [
+			`${category} — совпадает с запросом ${interest}`,
+			`ещё ${category} по запросу ${interest}`,
+			`${category}, тоже по запросу ${interest}`,
+		][repeat % 3]!;
+	}
+	if (options.sights && ['garden', 'park'].includes(place.category))
+		return `${category} рядом — для прогулки, не достопримечательность`;
+	if (place.category === 'playground') return 'детская площадка рядом';
+	return category;
+}
+
+/** A Wikidata or OSM description, short enough for one clause. Generated text is never a reason. */
+function descriptionClause(candidate: Candidate): string | null {
+	const { description, descriptionSource } = candidate.place;
+	// A long description keeps its own line rather than being cut mid-thought.
+	if (!description || description.length > 160 || (descriptionSource !== 'wikidata' && descriptionSource !== 'osm'))
+		return null;
+	return `описание ${descriptionSource === 'wikidata' ? 'Wikidata' : 'OpenStreetMap'}: «${description}»`;
 }
 
 /**
@@ -89,33 +163,17 @@ function matchesInterest(candidate: Candidate, options: DetailOptions): boolean 
 function reason(candidate: Candidate, options: DetailOptions): string {
 	const { open, place, why } = candidate;
 	const { legMinutes } = options;
-	const category = categoryNames[place.category];
-	const interest = options.interests?.length ? `«${options.interests.join(', ')}»` : null;
-	// A walk with no stated interest matched a category set, not the user's words: say that instead.
-	const matched = options.walk
-		? place.category === 'cafe'
-			? 'кафе — остановка на кофе'
-			: `${category} — подходит для прогулки`
-		: interest !== null && matchesInterest(candidate, options)
-			? `${category} — совпадает с запросом ${interest}`
-			: options.sights && ['garden', 'park'].includes(place.category)
-				? `${category} рядом — для прогулки, не достопримечательность`
-				: category;
 	const tags = why.tags.map((tag) => TAG_LABELS[tag]).filter(Boolean);
-	const known =
-		place.popularity !== null && place.popularity >= 0.5
-			? 'заметное место по данным Wikidata/OSM'
-			: place.descriptionSource === 'wikidata'
-				? 'есть описание в Wikidata'
-				: null;
 	return [
-		matched,
+		matchedClause(candidate, options),
 		tags.length ? `по данным OSM ${tags.slice(0, 2).join(', ')}` : null,
-		known,
+		descriptionClause(candidate),
+		place.popularity !== null && place.popularity >= 0.5 ? 'заметное место по данным Wikidata/OSM' : null,
 		open.status === 'open' && open.confidence === 'high'
 			? `открыто${open.until ? ` до ${open.until}` : ' сейчас'}`
 			: null,
 		legMinutes === undefined ? `${candidate.walkMinutes} мин пешком` : `переход ${legMinutes} мин`,
+		options.nearest ? 'ближе всех из предложенных' : null,
 	]
 		.filter(Boolean)
 		.join(', ');
@@ -139,19 +197,60 @@ function requestedFacts(candidate: Candidate, query: string): string[] {
 	];
 }
 
-const ACTIONS: Partial<Record<Category, string>> = {
-	artwork: 'осмотреть арт-объект и сделать фото',
-	attraction: 'осмотреть достопримечательность и сделать короткую остановку',
-	cafe: 'выпить кофе и отдохнуть перед следующей остановкой',
-	gallery: 'осмотреть выставку',
-	garden: 'прогуляться по саду и сделать паузу',
-	library: 'почитать или спокойно поработать, предварительно уточнив правила посещения',
-	monument: 'осмотреть памятник и сделать фото',
-	museum: 'посмотреть экспозицию, предварительно уточнив условия входа',
-	park: 'пройтись по парку и отдохнуть',
-	playground: 'сделать остановку для игры с ребёнком, проверив состояние площадки на месте',
-	viewpoint: 'посмотреть на город и сделать фото',
+/** Generated ideas, several per category: the second gallery in one answer gets a different one. */
+const ACTIONS: Partial<Record<Category, readonly string[]>> = {
+	artwork: [
+		'осмотреть арт-объект и сделать фото',
+		'найти удачный ракурс для снимка',
+		'остановиться на пару минут рядом',
+	],
+	attraction: [
+		'осмотреть достопримечательность и сделать короткую остановку',
+		'обойти вокруг и сделать пару снимков',
+		'заглянуть ненадолго по пути',
+	],
+	cafe: [
+		'выпить кофе и отдохнуть перед следующей остановкой',
+		'взять кофе с собой и пройтись дальше',
+		'сделать короткую паузу на кофе',
+	],
+	gallery: [
+		'осмотреть выставку',
+		'пройтись по залам и посмотреть, что выставлено сейчас',
+		'заглянуть на текущую экспозицию, уточнив её заранее',
+	],
+	garden: ['прогуляться по саду и сделать паузу', 'пройтись по дорожкам сада не спеша'],
+	library: [
+		'почитать или спокойно поработать, предварительно уточнив правила посещения',
+		'спокойно посидеть с книгой, уточнив правила посещения',
+	],
+	monument: [
+		'осмотреть памятник и сделать фото',
+		'остановиться у памятника на пару минут',
+		'сделать снимок на память',
+	],
+	museum: [
+		'посмотреть экспозицию, предварительно уточнив условия входа',
+		'выбрать один-два зала и не торопиться, уточнив часы',
+		'заглянуть на экспозицию, проверив условия входа заранее',
+	],
+	park: ['пройтись по парку и отдохнуть', 'сделать неспешный круг и передохнуть', 'прогуляться и подышать воздухом'],
+	playground: [
+		'сделать остановку для игры с ребёнком, проверив состояние площадки на месте',
+		'дать ребёнку поиграть, пока вы отдыхаете рядом',
+	],
+	viewpoint: ['посмотреть на город и сделать фото', 'задержаться ради вида на город'],
 };
+const DEFAULT_ACTIONS = ['познакомиться с местом и осмотреться', 'заглянуть и осмотреться на месте'];
+
+function actionFor(candidate: Candidate, repeat: number): string {
+	const { category, tags } = candidate.place;
+	// Only an explicit OSM tag lets the idea mention it.
+	if (category === 'cafe' && repeat === 0 && tags.includes('outdoor_seating'))
+		return 'выпить кофе на веранде (веранда отмечена в OSM)';
+	const ideas = ACTIONS[category] ?? DEFAULT_ACTIONS;
+	return ideas[repeat % ideas.length]!;
+}
 
 /** The structured item. Every text line about a place is rendered from this object. */
 function recommendationFor(
@@ -162,7 +261,7 @@ function recommendationFor(
 	}: { options: DetailOptions; position: { distanceM: number; order: number; walkMinutes: number } },
 ): Recommendation {
 	return {
-		action: ACTIONS[candidate.place.category] ?? 'познакомиться с местом и осмотреться',
+		action: actionFor(candidate, options.repeat ?? 0),
 		distanceM: position.distanceM,
 		hours: hours(candidate),
 		order: position.order,
@@ -187,7 +286,8 @@ function placeDetails(candidate: Candidate, { item, query }: { item: Recommendat
 		`Почему: ${item.why}.`,
 		`На посещение: ${item.visitMinutes} мин (оценка).`,
 		...requestedFacts(candidate, query ?? ''),
-		place.description ? `${place.description} (${descriptionSource}).` : '',
+		// A Wikidata or OSM description is already quoted in «почему»; only a generated one stands alone.
+		place.description && descriptionClause(candidate) === null ? `${place.description} (${descriptionSource}).` : '',
 		`Что делать: ${item.action} (сгенерированная идея).`,
 		`Часы: ${item.hours}.`,
 		`Источник места: [OpenStreetMap](${place.sourceUrl}).`,
@@ -196,11 +296,17 @@ function placeDetails(candidate: Candidate, { item, query }: { item: Recommendat
 		.join('\n');
 }
 
+const has = (options: ReplyOptions, kind: RefinementKind) =>
+	options.refinements?.some((item) => item.kind === kind) === true;
+const pricey = (options: ReplyOptions) => has(options, 'budget') || has(options, 'free');
+const byDistance = (options: ReplyOptions) => options.night === true || has(options, 'closer');
+
 export function selectRecommendations(result: FindPlacesResult, options: ReplyOptions = {}): Candidate[] {
 	let cafes = 0;
-	const eligible = result.candidates
+	const filtered = result.candidates
 		.filter((candidate) => !options.excludeIds?.includes(candidate.place.id))
-		.filter((candidate) => !options.night || candidate.open.status === 'open')
+		// «Открыто сейчас» needs positive evidence, exactly as night does.
+		.filter((candidate) => !(options.night || has(options, 'openNow')) || candidate.open.status === 'open')
 		.filter(
 			(candidate) =>
 				options.durationMinutes === undefined ||
@@ -212,36 +318,138 @@ export function selectRecommendations(result: FindPlacesResult, options: ReplyOp
 			cafes += 1;
 			return cafes <= 1;
 		});
+	// Prices are not in the data; only an explicit `fee=no` is, so those places go first. Stable sort.
+	const eligible = pricey(options)
+		? filtered.toSorted(
+				(left, right) => Number(right.place.tags.includes('free')) - Number(left.place.tags.includes('free')),
+			)
+		: filtered;
 	// A «Сквер» is no answer to «что посмотреть» while anything named is within reach.
 	const named = options.sights ? eligible.filter((candidate) => !isGenericName(candidate.place.name)) : eligible;
 	const chosen = (named.length ? named : eligible).slice(0, options.flight ? 2 : 3);
-	// At night the nearest open place is the useful one: list by distance, and the reply says so.
-	return options.night ? chosen.toSorted((left, right) => left.distanceM - right.distanceM) : chosen;
+	// At night or «поближе» the nearest place is the useful one: list by distance, and the reply says so.
+	return byDistance(options) ? chosen.toSorted((left, right) => left.distanceM - right.distanceM) : chosen;
 }
 
 const checkedAt = (at: Date) => `Часы проверены на ${astanaClock(at).text} по Астане`;
 
+/** The refinements as filter chips; a route applies neither «поближе» nor «открыто сейчас». */
+function refinementFilters(options: ReplyOptions, { route = false } = {}): string[] {
+	const chips: Record<RefinementKind, string | null> = {
+		budget: 'Бюджет: цены не проверены',
+		closer: route ? null : 'Поближе: по расстоянию',
+		free: 'Бесплатно: только по отметке fee=no в OSM',
+		noFood: 'Без еды',
+		openNow: route ? null : 'Только открытые сейчас',
+		quiet: 'Тихо: шум не проверен',
+	};
+	return (options.refinements ?? []).flatMap((item) => chips[item.kind] ?? []);
+}
+
 /** The tool's filters, minus the raw conversation it echoes as «Запрос». */
 function filtersLine(usedFilters: readonly string[], options: ReplyOptions): string {
-	const filters = usedFilters.flatMap((filter) => {
-		if (filter.startsWith('Запрос: '))
-			return options.interests?.length ? [`Интерес: ${options.interests.join(', ')}`] : [];
-		if (filter.startsWith('Время проверки: ')) {
-			const at = new Date(filter.slice('Время проверки: '.length));
-			return Number.isFinite(at.getTime()) ? [checkedAt(at)] : [];
-		}
-		return [filter];
-	});
+	const filters = [
+		...usedFilters.flatMap((filter) => {
+			if (filter.startsWith('Запрос: '))
+				return options.interests?.length ? [`Интерес: ${options.interests.join(', ')}`] : [];
+			if (filter.startsWith('Время проверки: ')) {
+				const at = new Date(filter.slice('Время проверки: '.length));
+				return Number.isFinite(at.getTime()) ? [checkedAt(at)] : [];
+			}
+			return [filter];
+		}),
+		...refinementFilters(options),
+	];
 	return `Фильтры: ${filters.length ? filters.join('; ') : 'дополнительные не заданы'}.`;
+}
+
+const TWO_GIS = 'по ссылке «Открыть в 2ГИС»';
+
+function priceNote(kind: 'budget' | 'free', { free, route }: { free: readonly Candidate[]; route: boolean }): string {
+	if (free.length) {
+		const names = free.map((candidate) => candidate.place.name).join(', ');
+		return `Бесплатный вход отмечен в OpenStreetMap (fee=no) у: ${names}${route ? '' : free.length === 1 ? ' — это место в списке первым' : ' — эти места в списке первыми'}. Других цен в данных OpenStreetMap нет — стоимость остальных уточните ${TWO_GIS}.`;
+	}
+	return kind === 'free'
+		? `Бесплатный вход ни у одного из предложенных мест в OpenStreetMap не отмечен, а цен в данных нет — проверить стоимость не могу; уточните ${TWO_GIS}.`
+		: `Цен в данных OpenStreetMap нет — проверить стоимость не могу; цены уточните ${TWO_GIS}.`;
+}
+
+/**
+ * «Учёл: …» — every refinement is said back, with what was applied and what the data cannot check.
+ * `pool` is everything the search returned, so excluded places can be counted honestly.
+ */
+export function refinementNote(
+	options: ReplyOptions,
+	{
+		chosen,
+		pool = chosen,
+		route = false,
+	}: { chosen: readonly Candidate[]; pool?: readonly Candidate[]; route?: boolean },
+): string | null {
+	const refinements = options.refinements ?? [];
+	if (!refinements.length) return null;
+	const skipped = route ? refinements.filter((item) => item.kind === 'closer' || item.kind === 'openNow') : [];
+	const applied = refinements.filter((item) => !skipped.includes(item));
+	const sentences = applied.length ? [`Учёл: ${applied.map((item) => item.label).join(', ')}.`] : [];
+	for (const item of applied) {
+		if (item.kind === 'budget' || item.kind === 'free')
+			sentences.push(
+				priceNote(item.kind, { free: chosen.filter((candidate) => candidate.place.tags.includes('free')), route }),
+			);
+		if (item.kind === 'closer') sentences.push('Радиус поиска сокращён, места перечислены от ближнего к дальнему.');
+		if (item.kind === 'openNow')
+			sentences.push(
+				`Показываю только места, открытые сейчас по часам OpenStreetMap${pool.some((candidate) => candidate.open.status === 'unknown') ? '; места с неизвестными часами исключены — их часы стоит уточнить' : ''}.`,
+			);
+		if (item.kind === 'quiet') sentences.push('Уровня шума в данных нет — тишину проверить не могу.');
+		if (item.kind === 'noFood') {
+			const food: Category[] = ['restaurant', 'fast_food', 'cafe'];
+			sentences.push(
+				options.categories?.length && options.categories.every((category) => food.includes(category))
+					? 'Без еды не получится: ваш запрос сам про еду, поэтому категории не менял.'
+					: !options.walk && options.categories?.includes('cafe') && !options.categories.includes('restaurant')
+						? 'Рестораны, фастфуд и бары исключены из поиска; кафе оставлены — кофе в вашем запросе.'
+						: 'Рестораны, кафе, фастфуд и бары исключены из поиска.',
+			);
+		}
+	}
+	if (skipped.length)
+		sentences.push(
+			`Для маршрута не применял: ${skipped.map((item) => item.label).join(', ')} — переходы и часы указаны у каждой остановки.`,
+		);
+	return sentences.join(' ');
+}
+
+/** A follow-up that changed nothing: say so, and say what was kept and what can be asked. */
+export function unrecognizedLine(options: ReplyOptions, where: string | null): string | null {
+	if (options.unrecognized === undefined) return null;
+	const what = options.interests?.length ? options.interests.join(', ') : 'места';
+	return `Не понял уточнение «${options.unrecognized}» — учёл прежний запрос: ${what} рядом с ${where === null ? 'вами' : `«${where}»`}. Могу учесть: расстояние, время, часы работы, категорию, доступность.`;
+}
+
+/** How many earlier items share each item's category, and which one is the nearest of several. */
+function positionsOf(candidates: readonly Candidate[], { sorted }: { sorted: boolean }) {
+	const closest = Math.min(...candidates.map((candidate) => candidate.distanceM));
+	const nearest = candidates.findIndex((candidate) => candidate.distanceM === closest);
+	return candidates.map((candidate, index) => ({
+		// Already listed from the nearest: saying it again would be noise.
+		nearest: !sorted && candidates.length > 1 && index === nearest,
+		repeat: candidates.slice(0, index).filter((other) => other.place.category === candidate.place.category).length,
+	}));
 }
 
 function stopsLabel(stops: { max: number; min: number }): string {
 	return stops.min === stops.max ? String(stops.min) : `${stops.min}–${stops.max}`;
 }
 
-/** For a route the plan's legs are the walking limit; a search radius would contradict them. */
-export function routeFiltersLine(options: ReplyOptions): string {
+/**
+ * For a route the plan's legs are the walking limit; a search radius would contradict them.
+ * `start` names the confirmed origin, so a route planned without a separate search still shows it.
+ */
+export function routeFiltersLine(options: ReplyOptions, { start }: { start?: string } = {}): string {
 	const filters = [
+		...(start === undefined ? [] : [`Старт: ${start}`]),
 		...(options.interests?.length ? [`Интерес: ${options.interests.join(', ')}`] : []),
 		...(options.durationMinutes === undefined
 			? []
@@ -254,6 +462,7 @@ export function routeFiltersLine(options: ReplyOptions): string {
 			? [`Категории: ${options.categories.map((category) => categoryNames[category]).join(', ')}`]
 			: []),
 		...(options.now ? [checkedAt(options.now)] : []),
+		...refinementFilters(options, { route: true }),
 	];
 	return `Фильтры: ${filters.length ? filters.join('; ') : 'дополнительные не заданы'}.`;
 }
@@ -265,15 +474,20 @@ export function renderRecommendations(result: FindPlacesResult, options: ReplyOp
 	const { origin } = result;
 	const location = origin.label ?? `${origin.point.lat}, ${origin.point.lon}`;
 	const candidates = selectRecommendations(result, options);
+	const positions = positionsOf(candidates, { sorted: byDistance(options) });
 	const recommendations = candidates.map((candidate, index) =>
 		recommendationFor(candidate, {
-			options,
+			options: { ...options, ...positions[index] },
 			position: { distanceM: candidate.distanceM, order: index + 1, walkMinutes: candidate.walkMinutes },
 		}),
 	);
+	const unrecognized = unrecognizedLine(options, origin.label);
+	const refined = refinementNote(options, { chosen: candidates, pool: result.candidates });
 	const parts = [
+		...(unrecognized === null ? [] : [unrecognized]),
 		`Локация: ${location} (${origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).`,
 		filtersLine(result.usedFilters, options),
+		...(refined === null ? [] : [refined]),
 	];
 	if (options.flight)
 		parts.push(
@@ -289,7 +503,9 @@ export function renderRecommendations(result: FindPlacesResult, options: ReplyOp
 		parts.push(
 			'У части найденных мест часы работы неизвестны — уточните перед выходом; они исключены из ночных рекомендаций.',
 		);
-	if (options.night && candidates.length > 1) parts.push('Места перечислены от ближнего к дальнему.');
+	// «Поближе» already says it in its own note.
+	if (options.night && !has(options, 'closer') && candidates.length > 1)
+		parts.push('Места перечислены от ближнего к дальнему.');
 	if (options.sights && candidates.some((candidate) => !isNotable(candidate.place)))
 		parts.push(
 			'Поблизости в данных мало музеев, галерей и арт-объектов, поэтому в списке есть места просто для прогулки.',
@@ -321,10 +537,14 @@ export function renderWalk(plan: WalkPlan, options: ReplyOptions = {}): Rendered
 			recommendations: [],
 			text: [short ?? 'Подходящий маршрут не найден.', plan.note].filter(Boolean).join(' '),
 		};
+	const positions = positionsOf(
+		plan.stops.map((stop) => stop.candidate),
+		{ sorted: true },
+	);
 	const recommendations = plan.stops.map((stop, index) => {
 		const leg = plan.legs[index];
 		return recommendationFor(stop.candidate, {
-			options: { ...options, legMinutes: leg?.walkMinutes },
+			options: { ...options, ...positions[index], legMinutes: leg?.walkMinutes },
 			position: {
 				distanceM: leg?.distanceM ?? stop.candidate.distanceM,
 				order: stop.order,

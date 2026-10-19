@@ -269,6 +269,19 @@ describe('formatRecommendations', () => {
 		expect(ids).toEqual(['osm:node/2']);
 	});
 
+	it('quotes a short Wikidata description in «почему» once, instead of a separate line', () => {
+		const museum = candidate('unknown', 'Национальный музей');
+		museum.place.category = 'museum';
+		museum.place.description = 'крупнейший музей страны';
+		museum.place.descriptionSource = 'wikidata';
+		const reply = formatRecommendations(result([museum]), { categories: ['museum'], interests: ['музей'] });
+
+		expect(reply).toContain(
+			'Почему: музей — совпадает с запросом «музей», описание Wikidata: «крупнейший музей страны»',
+		);
+		expect(reply.split('крупнейший музей страны')).toHaveLength(2);
+	});
+
 	it('labels a generated description separately from the place source', () => {
 		const place = candidate('unknown');
 		place.place.description = 'Описание для теста';

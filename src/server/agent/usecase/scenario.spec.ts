@@ -169,4 +169,46 @@ describe('scenarioFor', () => {
 			'park',
 		]);
 	});
+
+	describe('follow-up refinements', () => {
+		const kinds = (text: string) => scenarioFor(text).refinements.map((item) => item.kind);
+
+		it('reads price, distance, hours, noise and food wishes from the user’s words', () => {
+			expect(kinds('Хочу кофе\nУ меня мало денег')).toEqual(['budget']);
+			expect(kinds('Хочу кофе\nА поближе?')).toEqual(['closer']);
+			expect(kinds('Хочу кофе\nТолько что открыто сейчас')).toEqual(['openNow']);
+			expect(kinds('Хочу кофе\nПотише бы')).toEqual(['quiet']);
+			expect(kinds('Прогулка на час\nБез еды')).toEqual(['noFood']);
+		});
+
+		it('keeps refinements across turns, the latest price word winning', () => {
+			expect(scenarioFor('Хочу кофе\nБесплатно\nНу или недорого\nПоближе').refinements).toEqual([
+				{ kind: 'budget', label: 'недорого' },
+				{ kind: 'closer', label: 'поближе' },
+			]);
+		});
+
+		it('does not read the request itself or a location phrase as «поближе»', () => {
+			expect(kinds('Хочу кофе рядом')).toEqual([]);
+			expect(kinds('Хочу кофе\nЯ рядом с Байтереком')).toEqual([]);
+			expect(scenarioFor('Хочу кофе\nА поближе?').maxWalkMinutes).toBeLessThan(
+				scenarioFor('Хочу кофе').maxWalkMinutes,
+			);
+		});
+
+		it('flags a follow-up that changed nothing, but not a new interest, a place or thanks', () => {
+			expect(scenarioFor('Хочу кофе\nА как насчёт фиолетового?').unrecognized).toBe('А как насчёт фиолетового?');
+			expect(scenarioFor('Хочу кофе\nА теперь музей').unrecognized).toBeUndefined();
+			expect(scenarioFor('Хочу кофе\nА у Хан Шатыра?').unrecognized).toBeUndefined();
+			expect(scenarioFor('Хочу кофе\nСпасибо!').unrecognized).toBeUndefined();
+			expect(scenarioFor('А как насчёт фиолетового?').unrecognized).toBeUndefined();
+		});
+
+		it('«без еды» drops food from a walk but keeps the cafe a coffee request asked for', () => {
+			const walk = categoriesFor(scenarioFor('Хочу прогуляться\nБез еды'), { purpose: 'search' });
+			expect(walk).not.toContain('cafe');
+			expect(walk).toContain('park');
+			expect(categoriesFor(scenarioFor('Хочу кофе\nБез еды'), { purpose: 'search' })).toEqual(['cafe', 'library']);
+		});
+	});
 });
