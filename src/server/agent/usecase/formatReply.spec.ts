@@ -137,6 +137,16 @@ describe('formatRecommendations', () => {
 });
 
 describe('formatWalk', () => {
+	it('labels a single stop as a fallback instead of promising a route with several places', () => {
+		expect(
+			formatWalk({
+				legs: [{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 }],
+				note: '',
+				stops: [{ arriveAtMinute: 5, candidate: candidate('open'), order: 1 }],
+				totalMinutes: 25,
+			}),
+		).toContain('Предложена одна остановка');
+	});
 	it('renders a successful plan even when its internal search is not a separate tool call', () => {
 		const input = {
 			messages: [{ content: 'Построй маршрут на час', role: 'user' as const }],
@@ -158,7 +168,7 @@ describe('formatWalk', () => {
 		};
 		expect(recommendedPlaceIdsForTools(input)).toEqual(['osm:node/1']);
 		expect(replyForTools({ ...createCtx(), browserLocation: { lat: 51, lon: 71 } }, input)).toContain(
-			'Пеший маршрут: всего 25 мин',
+			'Предложена одна остановка: всего 25 мин',
 		);
 	});
 	it('uses the plan minutes, stop hours, source and note', () => {

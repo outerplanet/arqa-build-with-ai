@@ -115,7 +115,11 @@ export function formatRecommendations(
 
 export function formatWalk(plan: WalkPlan): string {
 	if (plan.stops.length === 0) return `Подходящий маршрут не найден. ${plan.note}`.trim();
-	const parts = [`Пеший маршрут: всего ${plan.totalMinutes} мин, включая переходы и посещения (оценка).`];
+	const parts = [
+		plan.stops.length === 1
+			? `Предложена одна остановка: всего ${plan.totalMinutes} мин, включая переход и посещение (оценка).`
+			: `Пеший маршрут: всего ${plan.totalMinutes} мин, включая переходы и посещения (оценка).`,
+	];
 	for (const [index, stop] of plan.stops.entries()) {
 		const leg = plan.legs[index];
 		parts.push(

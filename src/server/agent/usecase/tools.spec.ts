@@ -58,7 +58,9 @@ describe('executeTool', () => {
 		);
 		expect(planWalk).toHaveBeenCalledWith(expect.objectContaining({ durationMinutes: 60 }));
 		await executeTool(context, { args: { at: '2020-01-01T00:00:00Z', query: 'прогулка' }, name: 'find_places' });
-		expect(rankPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ at: ctx.now }));
+		expect(rankPlaces).toHaveBeenLastCalledWith(
+			expect.objectContaining({ at: ctx.now, query: context.userMessages!.join('\n') }),
+		);
 	});
 	it('waits for an asynchronous handler before reporting its result', async () => {
 		const handler = vi.spyOn(TOOLS[0]!, 'handler').mockResolvedValue({ completed: true });

@@ -144,7 +144,10 @@ export function ChatScreen({
 						{results.plan && (
 							<Callout tone="info">
 								<p className="font-medium">
-									Маршрут: {results.plan.stops.length} остановки · {Math.ceil(results.plan.totalMinutes)} мин
+									{results.plan.stops.length === 1
+										? 'Одна остановка'
+										: `Маршрут: ${results.plan.stops.length} остановки`}{' '}
+									· {Math.ceil(results.plan.totalMinutes)} мин
 								</p>
 								<p className="mt-1 text-sm">
 									{results.plan.note} Расстояния и линия — по прямой, проверьте проходы на месте.

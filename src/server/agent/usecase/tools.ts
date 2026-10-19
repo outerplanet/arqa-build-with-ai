@@ -116,6 +116,7 @@ export const TOOLS: readonly ToolSpec[] = [
 				at: ctx.now.toISOString(),
 				categories: preferences.categories ?? args.categories,
 				maxWalkMinutes: Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes),
+				query: preferences.query || args.query,
 			});
 		},
 		label: 'Поиск мест',
@@ -132,14 +133,14 @@ export const TOOLS: readonly ToolSpec[] = [
 	}),
 	defineTool({
 		description:
-			'Подбирает прогулку из 2–3 остановок в пределах бюджета времени. start должен совпадать с подтверждённой локацией пользователя. Расстояния приблизительные, не по пешеходному графу. Не используй всё время перед вылетом на прогулку: уточни запас на аэропорт.',
+			'Подбирает прогулку до 3 остановок в пределах бюджета времени; может вернуть одну запасную остановку с явной пометкой. start должен совпадать с подтверждённой локацией пользователя. Расстояния приблизительные, не по пешеходному графу. Не используй всё время перед вылетом на прогулку: уточни запас на аэропорт.',
 		handler: (ctx, args) => {
 			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
 			return planWalk(ctx, {
 				...args,
 				categories: preferences.categories ?? args.categories,
 				durationMinutes: Math.min(args.durationMinutes, preferences.durationMinutes ?? args.durationMinutes),
-				query: args.query ?? (preferences.query || undefined),
+				query: preferences.query || args.query,
 			});
 		},
 		label: 'Планирование прогулки',
