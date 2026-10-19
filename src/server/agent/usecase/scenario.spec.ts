@@ -77,6 +77,31 @@ describe('scenarioFor', () => {
 		expect(scenarioFor('Есть полчаса').durationMinutes).toBe(30);
 	});
 
+	it('maps «необычное», «интересное» and «что посмотреть» to a broad set of sights without playgrounds', () => {
+		for (const text of [
+			'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.',
+			'Хочу что-нибудь интересное рядом',
+			'Что можно посмотреть поблизости?',
+		]) {
+			const { categories } = scenarioFor(text);
+
+			expect(categories).toEqual(
+				expect.arrayContaining([
+					'attraction',
+					'artwork',
+					'monument',
+					'museum',
+					'park',
+					'theatre',
+					'place_of_worship',
+				]),
+			);
+			expect(categories).not.toContain('playground');
+			expect(categories).not.toContain('cafe');
+		}
+		expect(scenarioFor('Хочу посмотреть музей').categories).toEqual(['museum', 'gallery']);
+	});
+
 	it('does not turn words of the location phrase into category filters', () => {
 		const scenario = scenarioFor('Я у музея Нур Алем, хочу что-то необычное на 1–2 часа');
 

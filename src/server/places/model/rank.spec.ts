@@ -38,6 +38,20 @@ function input(places: ReturnType<typeof place>[], extra: Partial<RankInput> = {
 }
 
 describe('rankPlaces', () => {
+	it('does not let several cafes push the only park out of a short list', () => {
+		const cafes = ['c1', 'c2', 'c3', 'c4'].map((id) => place(id, { name: `Кафе ${id}` }));
+		const park = place('park', { category: 'park', name: 'NU Park', openingHours: null, tags: [] });
+		const semantic = new Map([...cafes.map((cafe) => [cafe.id, 0.5] as const), ['park', 0.2]]);
+		const ranked = rankPlaces(input([...cafes, park], { limit: 3, semantic }));
+
+		expect(ranked.map((candidate) => candidate.place.id)).toContain('park');
+		expect(ranked[0]!.place.category).toBe('cafe');
+		// Diversity reorders; it never rewrites a candidate's own score.
+		expect(ranked.find((candidate) => candidate.place.id === 'c2')?.score).toBe(
+			rankPlaces(input(cafes, { semantic }))[1]!.score,
+		);
+	});
+
 	it('adds a bounded tag bonus only for a matching internal query', () => {
 		const original = place('a', { tags: ['kids', 'power_sockets', 'wifi'] });
 		const base = input([original], { semantic: new Map([['a', 0.6]]) });
