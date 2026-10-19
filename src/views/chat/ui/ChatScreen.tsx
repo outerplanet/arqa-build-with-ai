@@ -35,7 +35,7 @@ export interface ChatScreenProps {
 export function ChatScreen({
 	demoMode = false,
 	emptyHint = 'Расскажите, где вы сейчас и сколько времени есть на прогулку.',
-	placeholder = 'Я у Байтерека, хочу прогуляться на 60 минут…',
+	placeholder = 'Я возле Mega Silk Way, хочу прогуляться на 60 минут…',
 	subtitle = 'Места рядом, время пешком и честные сведения из открытых городских данных.',
 	title = 'Куда пойдём в Астане?',
 }: ChatScreenProps) {
