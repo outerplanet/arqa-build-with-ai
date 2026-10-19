@@ -18,7 +18,7 @@ no cache tier, no database.
 | Components   | Radix UI primitives, styled here — no copied component kit |
 | Icons        | Heroicons                                                  |
 | Data         | `data/poi.json` from OpenStreetMap + Wikidata; vectors in `data/poi.vectors.json` |
-| Retrieval    | In-memory: cosine over 256-d embeddings, lexical fallback, geo and opening-hours filters |
+| Retrieval    | In-memory cosine over local multilingual 384-d embeddings; optional OpenAI 256-d; lexical fallback, geo and hours filters |
 | Map          | MapLibre GL with OpenFreeMap tiles                         |
 | Validation   | Zod, one schema shared by client and server                |
 | Mutations    | None; Route Handler for the chat                           |
@@ -27,6 +27,43 @@ no cache tier, no database.
 
 Do not add a second backend framework, a monorepo, Kubernetes, Redis or Kafka unless a written
 requirement makes it necessary. A starter's job is to be outgrown deliberately, not by accident.
+
+## Current POI retrieval and document exports
+
+The application reads the committed 1,091-place `data/poi.json` through `places/repo/places.ts`.
+`usecase/dependencies.ts` connects the real repositories and pure lexical, ranking and route
+algorithms. Landmark aliases reference dataset IDs rather than embedding their own coordinates.
+The historical Nur Alem alias points to Alem.ai (`osm:way/454857501`), supported by OSM history;
+the EXPO building and EXPO quarter remain separate, ambiguous objects.
+
+`scripts/embed.py` builds the static `data/poi.vectors.json` with
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`: 1,091 normalized 384-dimensional
+vectors. `data/vector_summary.json` records the source fingerprint and indexing time.
+There is no vector database or Python web server. A request spawns the configured Python
+interpreter, sends query text on stdin, loads cached model weights offline and returns a query
+vector. No query text or coordinates are persisted or logged. This works with mock chat and
+requires neither an API key nor a network connection after model setup.
+
+`kernel/embeddingConfig.ts` reads provider, model, interpreter and cache settings; the repository
+reads the configured index path and verifies its SHA-256 against the real application dataset.
+`semantic.ts` computes exact cosine similarity in memory. Raw similarity is in [-1, 1]; ranking
+clips negative semantic scores to zero. `vectorSearch.ts` validates query/topK and returns source
+texts, metadata and raw similarity. Missing, stale or invalid vectors and inference errors produce
+an explicit lexical-fallback note instead of failing the chat. The optional OpenAI backend uses
+`text-embedding-3-small` with 256 dimensions and requires direct Responses credentials; mock chat
+does not send queries to that backend. Indices from different models are never mixed.
+
+Python CLI `scripts/vector_search.py` also exposes `vector_search(query, top_k=5)` and rejects
+stale indices. Only explicit indexing may download model weights; query execution is offline.
+The model cache and virtual environments are ignored by git. Regenerate vectors after collection
+and restart the application to reload cached repositories.
+
+`scripts/export_pdf.py` reads the actual Markdown sources through Pandoc's JSON AST and renders
+them with ReportLab. Presentation H1 headings delimit slides; speaker comments are omitted.
+Scenarios render on A4. Unsupported structures and slide overflow fail explicitly. Outputs are
+staged before publication to `output/pdf/`, with compatibility copies under `docs/`. Export
+dependencies live in `scripts/pdf-requirements.txt`, separate from the application runtime.
+The README documents setup, environment variables and export/test commands.
 
 ## Why two axes
 

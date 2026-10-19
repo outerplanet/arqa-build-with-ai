@@ -18,7 +18,9 @@
 [результаты проверки](docs/live-check-2026-10-19.json).
 Добавлены карта OpenFreeMap, карточки, геолокация по кнопке и линия маршрута по прямой.
 Текст, карточки и маркеры используют один серверный выбор рекомендаций.
-Скрипт `pnpm embed` готов; файл векторов пока не создан, работает лексический поиск.
+Создан и подключён индекс **1091 × 384** настоящих векторов локальной мультиязычной модели
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. Для семантического поиска нужны
+Python-зависимости и локальный кэш весов; без них приложение сохраняет лексический поиск.
 
 ## Запуск
 
@@ -87,10 +89,57 @@ pnpm start
 Перед вылетом ассистент напоминает о времени дороги, регистрации и досмотра и не отдаёт весь
 запас прогулке. Указанный бюджет ограничивает суммарное время ходьбы и посещения.
 
-При подключённых векторах поиск использует `text-embedding-3-small`, 256 измерений, через
-[OpenAI Embeddings API](https://developers.openai.com/api/reference/typescript/resources/embeddings).
-В `mock`, с другим эндпоинтом, без совместимых векторов или при ошибке API используется
-лексический поиск. Пустые и некорректные векторы не вызывают сетевой запрос.
+По умолчанию `EMBEDDING_PROVIDER=local`: запрос кодируется локально в 384 измерения,
+сопоставляется с индексом по cosine similarity, затем применяются географические фильтры,
+часы и ранжирование. Лексика используется как резерв; совпадения тегов учитываются отдельно.
+Базы векторов и отдельного сервиса нет: индекс — статический JSON, поиск — в памяти сервера.
+SHA-256 датасета, модель, размерность и векторы проверяются перед использованием.
+При несовместимом индексе или недоступной модели ответ явно сообщает о лексическом поиске.
+
+### Локальные эмбеддинги без ключа
+
+```bash
+python3 -m venv .venv-vectors
+.venv-vectors/bin/python -m pip install -r scripts/vector-requirements.txt
+# Первый запуск скачивает веса модели и пересобирает индекс из data/poi.json.
+.venv-vectors/bin/python scripts/embed.py
+```
+
+Либо активируйте окружение и выполните `pnpm embed:local`.
+В Windows интерпретатор находится в `.venv-vectors/Scripts/python.exe`.
+Укажите соответствующий путь в `.env`:
+
+```dotenv
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+EMBEDDING_PYTHON=.venv-vectors/bin/python
+EMBEDDING_CACHE=.cache/embeddings
+EMBEDDING_INDEX_PATH=data/poi.vectors.json
+```
+
+Индекс уже закоммичен, но кэш весов и виртуальное окружение не включены в репозиторий.
+После первого скачивания генерация вектора запроса работает только с локальными файлами,
+в том числе при `LLM_PROVIDER=mock`; ключ OpenAI не требуется. Запрос передаётся Python через
+stdin, не сохраняется и не логируется. При обновлении POI пересоберите индекс и перезапустите
+сервер. `EMBEDDING_PROVIDER=lexical` явно отключает семантический поиск.
+
+Python API `vector_search(query: str, top_k: int = 5)` в `scripts/vector_search.py` возвращает
+тексты, метаданные и косинусное сходство от −1 до 1. Пример вызова из корня проекта:
+
+```bash
+.venv-vectors/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import vector_search; print(vector_search("музей и искусство", top_k=3))'
+```
+
+В TypeScript используется `src/server/places/usecase/vectorSearch.ts` с проверкой входа.
+Пути CLI задаются через `EMBEDDING_INDEX_PATH` и `EMBEDDING_DATASET_PATH`; приложение всегда
+сверяет индекс с настоящим `data/poi.json`.
+
+Необязательный альтернативный режим — `pnpm embed`: официальный OpenAI
+`text-embedding-3-small`, 256 измерений, ключ из локального `.env` (`OPENAI_API_KEY` либо
+прямой OpenAI `LLM_API_KEY`). Он заменяет тот же файл индекса; после генерации переключите
+`EMBEDDING_PROVIDER=openai` и `EMBEDDING_MODEL=text-embedding-3-small`.
+Онлайн-кодирование запросов поддерживается только с `LLM_PROVIDER=responses`, прямым OpenAI
+ключом и без `LLM_BASE_URL`. В mock, при стороннем эндпоинте или ошибке используется лексика.
 
 ## Подключение работы команды
 
@@ -140,7 +189,7 @@ pnpm start
 
 - **Часы работы `opening_hours`: 342 (31,35%)**.
 - **Описание из OSM или Wikidata: 20 (1,83%)**,
-  в том числе OSM — 3 (0,28%), Wikidata — 17 (1,56%).
+  в том числе OSM — 3 (0,27%), Wikidata — 17 (1,56%).
 - **Популярность из Wikidata: 24 (2,20%)**.
   Это нормализованное число sitelinks, а не рейтинг посетителей. Связь с Wikidata есть
   у 24 мест (2,20%). Ошибок пакетов обогащения: 0.
@@ -161,9 +210,10 @@ pnpm start
 и **Wikidata**, [CC0](https://www.wikidata.org/wiki/Wikidata:Licensing).
 Google Maps, 2GIS и Яндекс не используются.
 
-`pnpm embed` создаёт `data/poi.vectors.json` через официальный OpenAI API. Скрипт готов;
-генерация отложена до согласованного этапа команды. Пока файла нет, используется лексический поиск.
-Сбор POI не требует OpenAI. Поиск и маршруты уже подключены к реальным данным.
+`data/vector_summary.json` фиксирует модель, размерность, число векторов, SHA-256 исходного
+датасета и время индексации. Текущий локальный индекс создан **19 октября 2026** на всех
+1091 POI. Он содержит семантические представления исходных полей, а не новые описания мест.
+Сбор POI и локальная индексация не требуют OpenAI.
 
 ## API и приватность
 
@@ -189,13 +239,44 @@ location?: { lat: number, lon: number } }` и возвращает `{ reply, too
 сценарный диспетчер, формат ответа, границы локации, бюджет маршрута и резервный поиск. SDK
 в тестах замокан; их прохождение не подтверждает качество настоящего датасета или живой модели.
 
-Серверный mock уже проверен на реальных данных; [docs/scenarios.md](docs/scenarios.md)
-нужно обновить после интеграции. Дальше — живая модель, презентация и демо-видео. План и зоны
+Фактические ответы и границы проверок находятся в [docs/scenarios.md](docs/scenarios.md).
+Для повторного HTTP-прогона запустите приложение с `LLM_PROVIDER=mock`, затем `pnpm scenarios`:
+скрипт сохраняет результаты в `docs/presentation-http-probes.json` и завершает работу с ошибкой
+при нарушении ожиданий. Его локальные тестовые координаты не являются геолокацией участника.
+Предыдущие проверки живой модели записаны отдельно в `docs/live-check-2026-10-19.json`;
+они не подтверждают новые результаты локального семантического поиска. План и зоны
 ответственности — [docs/plan.md](docs/plan.md), требования сдачи — [docs/kickoff.md](docs/kickoff.md).
 
 Проект рассчитан на один город. Полнота OSM не гарантируется. Данных о погоде, ценах, событиях,
 загруженности и дороге до аэропорта нет. Маршруты приблизительны, по прямой с поправкой,
 без пешеходного графа и учёта перекрытий.
+
+## Сборка PDF из Markdown
+
+```bash
+python3 -m venv .venv-pdf
+.venv-pdf/bin/python -m pip install -r scripts/pdf-requirements.txt
+.venv-pdf/bin/python scripts/export_pdf.py
+```
+
+При активном окружении доступны `pnpm pdf` и `pnpm pdf:test`.
+Pandoc разбирает фактические `docs/presentation.md` и `docs/scenarios.md`, ReportLab формирует
+слайды и документ A4. Каждый заголовок первого уровня презентации начинает слайд; HTML-комментарии
+служат заметками докладчика и не печатаются. Копии текста в Python нет.
+
+Результаты — `output/pdf/presentation.pdf` и `output/pdf/scenarios.pdf`; совместимые копии для
+сдачи — `docs/presentation.pdf` и `docs/scenarios.pdf`. Параметры `--output-dir` и
+`--no-compat-copies` меняют расположение и отключают копии. Ошибка разбора, переполнение слайда
+или неподдерживаемая конструкция останавливает экспорт с диагностикой.
+Нужен локальный шрифт с кириллицей: Arial или DejaVu Sans. На Linux установите DejaVu Sans;
+нестандартную папку задайте через `ASTANA_PDF_FONT_DIR`.
+
+Дополнительные Python-проверки:
+
+```bash
+.venv-vectors/bin/python -m unittest discover -s scripts -p vector_search_test.py
+.venv-pdf/bin/python -m unittest discover -s scripts -p export_pdf_test.py
+```
 
 ## Команда и сторонние компоненты
 
@@ -209,6 +290,10 @@ location?: { lat: number, lon: number } }` и возвращает `{ reply, too
 Стек: Next.js, React, TypeScript, Tailwind CSS, Radix UI, Heroicons, Zod и OpenAI SDK.
 Карта использует MapLibre GL и тайлы OpenFreeMap. Остальные пакеты и
 версии перечислены в `package.json` и `pnpm-lock.yaml`.
+Локальные эмбеддинги: Sentence Transformers, PyTorch и готовая модель
+`paraphrase-multilingual-MiniLM-L12-v2`; версия Python-зависимостей зафиксирована в
+`scripts/vector-requirements.txt`. Экспорт документов: Pandoc (`pypandoc-binary`) и ReportLab,
+версии в `scripts/pdf-requirements.txt`. Собственное обучение модели не выполняется.
 
 Источники датасета: © участники OpenStreetMap,
 [ODbL](https://www.openstreetmap.org/copyright), и Wikidata, CC0. На карте видна
