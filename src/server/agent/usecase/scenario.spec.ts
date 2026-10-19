@@ -30,6 +30,23 @@ describe('scenarioFor', () => {
 		expect(scenarioFor(text).durationMinutes).toBe(durationMinutes);
 	});
 
+	it.each([
+		['Я у Байтерека, составь маршрут из трёх мест на 90 минут.', { max: 3, min: 3 }],
+		['Составь маршрут из 3 мест на час', { max: 3, min: 3 }],
+		['Составь маршрут из двух-трёх мест на 90 минут.', { max: 3, min: 2 }],
+		['Построй прогулку на два места', { max: 2, min: 2 }],
+		['Построй маршрут на 2 часа', undefined],
+	])('reads the number of stops from %s', (text, stops) => {
+		expect(scenarioFor(text).stops).toEqual(stops);
+	});
+
+	it('marks sightseeing requests, not coffee or walks', () => {
+		expect(scenarioFor('Я турист, что посмотреть?').sights).toBe(true);
+		expect(scenarioFor('Хочу что-то необычное').sights).toBe(true);
+		expect(scenarioFor('Хочу кофе').sights).toBe(false);
+		expect(scenarioFor('Хочу прогуляться').sights).toBe(false);
+	});
+
 	it('does not interpret landmark numbers as minutes', () => {
 		expect(scenarioFor('Я у Экспо 2017, дом 42').durationMinutes).toBeUndefined();
 		expect(scenarioFor('Экспо 2017').maxWalkMinutes).toBe(15);

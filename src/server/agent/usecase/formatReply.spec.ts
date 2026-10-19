@@ -1,5 +1,5 @@
 import { formatRecommendations, formatWalk } from '@server/agent/usecase/formatReply';
-import { recommendedPlaceIdsForTools, replyForTools } from '@server/agent/usecase/reply';
+import { answerForTools, recommendedPlaceIdsForTools, replyForTools } from '@server/agent/usecase/reply';
 import { createCtx } from '@server/kernel/ctx';
 import { type Candidate, type FindPlacesResult } from '@server/places/model/places.schema';
 import { describe, expect, it } from 'vitest';
@@ -340,7 +340,9 @@ describe('formatWalk', () => {
 
 		expect(filters).toBeDefined();
 		expect(filters).not.toContain('Построй маршрут');
-		expect(filters).toContain('до 60 минут');
+		// The whole budget and the per-leg limit are named apart, so neither reads as the other.
+		expect(filters).toContain('Вся прогулка — до 60 мин, включая переходы и посещения');
+		expect(filters).toContain('один переход — до 15 мин пешком');
 	});
 
 	it('describes route legs from the plan instead of a contradicting walk limit', () => {
@@ -392,5 +394,172 @@ describe('formatWalk', () => {
 		expect(reply).toContain('часы работы неизвестны');
 		expect(reply).toContain('OpenStreetMap');
 		expect(reply).toContain('Расстояние приблизительное');
+	});
+
+	it('says plainly when the requested number of stops does not fit', () => {
+		const reply = formatWalk(
+			{
+				legs: [{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 }],
+				note: '',
+				stops: [{ arriveAtMinute: 5, candidate: candidate('unknown'), order: 1 }],
+				totalMinutes: 25,
+			},
+			{ durationMinutes: 30, stops: { max: 3, min: 3 } },
+		);
+
+		expect(reply).toContain(
+			'Три места за 30 мин не помещаются с учётом переходов и посещений — в маршруте 1 остановка.',
+		);
+	});
+});
+
+/** Every numbered item in the text, split into the fields a card shows. */
+function textItems(reply: string) {
+	return reply
+		.split('\n\n')
+		.filter((part) => /^\d+\. /u.test(part))
+		.map((part) => ({
+			action: /^Что делать: (.+) \(сгенерированная идея\)\.$/mu.exec(part)?.[1],
+			hours: /^Часы: (.+)\.$/mu.exec(part)?.[1],
+			order: Number(/^(\d+)\. /u.exec(part)?.[1]),
+			visitMinutes: Number(/^На посещение: (\d+) мин/mu.exec(part)?.[1]),
+			why: /^Почему: (.+)\.$/mu.exec(part)?.[1],
+		}));
+}
+
+describe('structured recommendations', () => {
+	function searchCall(candidates: Candidate[]) {
+		return {
+			arguments: {},
+			durationMs: 1,
+			label: 'Поиск',
+			name: 'find_places',
+			result: result(candidates),
+			status: 'ok' as const,
+		};
+	}
+	const ctx = { ...createCtx(), browserLocation: { lat: 51, lon: 71 } };
+
+	it('carries the same places, order and words as the text reply for a search', () => {
+		const items = ['Музей Тест', 'Галерея Тест', 'Парк Тест', 'Сад Тест'].map((name, index) => {
+			const item = candidate(index === 0 ? 'open' : 'unknown', name);
+			item.place.id = `osm:node/${index + 1}`;
+			item.distanceM = 300 + index * 100;
+			item.walkMinutes = 5 + index;
+			return item;
+		});
+		const input = { messages: [{ content: 'Хочу в парк', role: 'user' as const }], toolCalls: [searchCall(items)] };
+		const answer = answerForTools(ctx, input);
+
+		expect(answer.recommendations).toHaveLength(3);
+		expect(answer.recommendedPlaceIds).toEqual(answer.recommendations!.map((item) => item.placeId));
+		expect(recommendedPlaceIdsForTools(input)).toEqual(answer.recommendedPlaceIds);
+		expect(textItems(answer.reply)).toEqual(
+			answer.recommendations!.map(({ action, hours, order, visitMinutes, why }) => ({
+				action,
+				hours,
+				order,
+				visitMinutes,
+				why,
+			})),
+		);
+		for (const item of answer.recommendations!) {
+			expect(item.action).not.toContain('сгенерированная идея');
+			expect(answer.reply).toContain(`${Math.round(item.distanceM)} м, ${item.walkMinutes} мин пешком`);
+		}
+	});
+
+	it('uses stop order and leg minutes for a route, and says the network caveat once', () => {
+		const first = candidate('unknown', 'Парк Первый');
+		const second = candidate('unknown', 'Музей Второй');
+		second.place.id = 'osm:node/2';
+		second.place.category = 'museum';
+		const answer = answerForTools(ctx, {
+			messages: [{ content: 'Построй маршрут на час', role: 'user' }],
+			toolCalls: [
+				{
+					arguments: {},
+					durationMs: 1,
+					label: 'Маршрут',
+					name: 'plan_walk',
+					result: {
+						legs: [
+							{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51, lon: 71 }, walkMinutes: 6 },
+							{ distanceM: 250, from: { lat: 51, lon: 71 }, to: { lat: 51, lon: 71 }, walkMinutes: 4 },
+						],
+						note: '',
+						stops: [
+							{ arriveAtMinute: 6, candidate: first, order: 1 },
+							{ arriveAtMinute: 30, candidate: second, order: 2 },
+						],
+						totalMinutes: 50,
+						walkingRoute: { note: 'Путь по пешеходным дорожкам OpenStreetMap.', status: 'unavailable' },
+					},
+					status: 'ok',
+				},
+			],
+		});
+
+		expect(
+			answer.recommendations?.map((item) => [item.order, item.placeId, item.distanceM, item.walkMinutes]),
+		).toEqual([
+			[1, 'osm:node/1', 400, 6],
+			[2, 'osm:node/2', 250, 4],
+		]);
+		expect(answer.recommendedPlaceIds).toEqual(['osm:node/1', 'osm:node/2']);
+		expect(textItems(answer.reply).map((item) => item.why)).toEqual(answer.recommendations!.map((item) => item.why));
+		expect(answer.reply.split('пешеходным дорожкам')).toHaveLength(2);
+	});
+
+	it('omits recommendations when nothing is recommended', () => {
+		const answer = answerForTools(ctx, {
+			messages: [{ content: 'Есть только 10 минут', role: 'user' }],
+			toolCalls: [searchCall([candidate('unknown')])],
+		});
+
+		expect(answer.recommendations).toBeUndefined();
+		expect(answer.recommendedPlaceIds).toEqual([]);
+	});
+
+	it('never offers a generic-named square as a sight while a named place is within reach', () => {
+		const square = candidate('unknown', 'Сквер');
+		square.score = 0.9;
+		const monument = candidate('unknown', 'Памятник Тест');
+		monument.place.id = 'osm:node/2';
+		monument.place.category = 'monument';
+		const answer = answerForTools(ctx, {
+			messages: [{ content: 'Я турист, что можно посмотреть?', role: 'user' }],
+			toolCalls: [searchCall([square, monument])],
+		});
+
+		expect(answer.recommendedPlaceIds).toEqual(['osm:node/2']);
+		expect(answer.recommendations![0]!.why).toContain('совпадает с запросом «достопримечательности»');
+		expect(answer.reply).not.toMatch(/^\d+\. Сквер/mu);
+	});
+
+	it('keeps a generic-named park only when nothing else is within reach, without calling it a sight', () => {
+		const answer = answerForTools(ctx, {
+			messages: [{ content: 'Я турист, что можно посмотреть?', role: 'user' }],
+			toolCalls: [searchCall([candidate('unknown', 'Сквер')])],
+		});
+
+		expect(answer.recommendations![0]!.why).not.toContain('совпадает');
+		expect(answer.reply).toContain('мало музеев, галерей и арт-объектов');
+	});
+
+	it('lists night answers from the nearest and says so', () => {
+		const far = candidate('open', 'Бар Дальний');
+		far.score = 0.9;
+		far.distanceM = 900;
+		const near = candidate('open', 'Бар Ближний');
+		near.place.id = 'osm:node/2';
+		near.distanceM = 200;
+		const answer = answerForTools(ctx, {
+			messages: [{ content: 'Что открыто ночью?', role: 'user' }],
+			toolCalls: [searchCall([far, near])],
+		});
+
+		expect(answer.recommendedPlaceIds).toEqual(['osm:node/2', 'osm:node/1']);
+		expect(answer.reply).toContain('от ближнего к дальнему');
 	});
 });

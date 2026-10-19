@@ -14,6 +14,10 @@ export interface Scenario {
 	/** The interest text without the location phrase: what retrieval should match. */
 	query: string;
 	route: boolean;
+	/** «Необычное», «что посмотреть», a tourist: named, notable places beat a generic-named park. */
+	sights: boolean;
+	/** «Из трёх мест», «2–3 места»: the fewest and the most stops the user asked for. */
+	stops?: { max: number; min: number };
 	/** A walk or route with no specific interest: sights and parks, at most one cafe. */
 	walk: boolean;
 	/** True when the user named a walking limit; a derived radius never overrides one. */
@@ -94,6 +98,18 @@ function durationFrom(text: string): number | undefined {
 	return value > 0 ? Math.min(240, value) : undefined;
 }
 
+const STOP_NUMBERS: Record<string, number> = { '2': 2, '3': 3, два: 2, двух: 2, трех: 3, три: 3 };
+const STOP_COUNT = /(?<!\p{L})(2|3|два|двух|три|трех)(?:\s*[-–—]\s*(3|три|трех))?\s+(?:мест|остановк|точ[ек])/u;
+
+/** «Из трёх мест», «3 места», «двух-трёх остановок». The planner allows two or three stops. */
+function stopsFrom(text: string): Scenario['stops'] {
+	const match = STOP_COUNT.exec(text);
+	if (!match) return undefined;
+	const min = STOP_NUMBERS[match[1]!]!;
+	const max = match[2] === undefined ? min : STOP_NUMBERS[match[2]]!;
+	return { max: Math.max(min, max), min };
+}
+
 const INTEREST_LABELS: [RegExp, string][] = [
 	[/ребен|детьми|детск/u, 'с ребёнком'],
 	[/интерактив/u, 'интерактивы'],
@@ -113,7 +129,7 @@ const INTEREST_LABELS: [RegExp, string][] = [
 	[/прогул|гуля|пройтись/u, 'прогулка'],
 ];
 
-interface Turn extends Omit<Scenario, 'walk'> {
+interface Turn extends Omit<Scenario, 'sights' | 'walk'> {
 	/** The turn starts a new request rather than refining the previous one. */
 	topical: boolean;
 	walkWords: boolean;
@@ -157,6 +173,7 @@ function parseTurn(text: string): Turn {
 		night,
 		query: interestText,
 		route,
+		stops: stopsFrom(lower),
 		topical:
 			hasLocation ||
 			flight ||
@@ -200,6 +217,8 @@ export function scenarioFor(text: string): Scenario {
 		night: topic.night,
 		query: query || text.trim(),
 		route,
+		sights: interest?.categories === SIGHT_CATEGORIES,
+		stops: turns.findLast((turn) => turn.stops !== undefined)?.stops,
 		walk: interest === undefined ? route : interest.categories === WALK_CATEGORIES,
 		walkLimitExplicit: explicitWalk !== undefined,
 	};

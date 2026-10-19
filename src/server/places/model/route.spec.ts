@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { distanceM, walkMinutes } from './geo';
 import { openStatus } from './hours';
 import { type Candidate, type Category, type GeoPoint, walkPlanSchema } from './places.schema';
-import { planWalk } from './route';
+import { legCapMinutes, planWalk, shortVisitMinutes } from './route';
 
 const START = { lat: 51.128, lon: 71.43 };
 // Distinct non-food categories by default so the same-category and food rules stay out of the way.
@@ -328,5 +328,66 @@ describe('planWalk', () => {
 		const others = ['x', 'y', 'z'].map((id, index) => candidate(id, START.lon + 0.002 + index * 0.002, 0.6, 20));
 		const result = plan([...others, top], 90);
 		expect(result.stops.map((stop) => stop.candidate.place.id)).toContain('top');
+	});
+
+	describe('a requested number of stops', () => {
+		// Three 30-minute stops about 2 minutes apart: full visits fit one stop in 60 minutes, not three.
+		const parks = () =>
+			[0.001, 0.002, 0.003].map((offset, index) =>
+				candidate(
+					`park-${index}`,
+					START.lon + offset * 1.5,
+					0.5,
+					30,
+					(['park', 'garden', 'attraction'] as const)[index],
+				),
+			);
+
+		it('keeps full visits and fewer stops when nobody asked for a number', () => {
+			const result = plan(parks(), 60);
+			expect(result.stops).toHaveLength(1);
+			expect(result.stops.every((stop) => stop.candidate.visitMinutes === 30)).toBe(true);
+			expect(result.note).not.toContain('сокращено');
+		});
+
+		it('shortens visits to fit the requested stops, never below the short estimate, and says so', () => {
+			const result = planWalk({
+				candidates: parks(),
+				durationMinutes: 60,
+				maxStops: 3,
+				requestedStops: 3,
+				start: START,
+			});
+			expect(result.stops).toHaveLength(3);
+			expect(result.totalMinutes).toBeLessThanOrEqual(60);
+			for (const stop of result.stops) {
+				expect(stop.candidate.visitMinutes).toBeGreaterThanOrEqual(
+					shortVisitMinutes({ ...stop.candidate, visitMinutes: 30 }),
+				);
+				expect(stop.candidate.visitMinutes).toBeLessThanOrEqual(30);
+			}
+			// Leftover minutes go back to the stops, so the budget is used rather than wasted.
+			expect(60 - result.totalMinutes).toBeLessThan(5);
+			expect(result.stops.some((stop) => stop.candidate.visitMinutes > 15)).toBe(true);
+			expect(result.note).toContain('сокращено');
+		});
+
+		it('returns fewer stops when even short visits cannot fit, and never a show cut in half', () => {
+			const shows = parks().map((entry) => ({ ...entry, place: { ...entry.place, category: 'theatre' as const } }));
+			const result = planWalk({
+				candidates: shows,
+				durationMinutes: 60,
+				maxStops: 3,
+				requestedStops: 3,
+				start: START,
+			});
+			expect(result.stops.length).toBeLessThan(3);
+			expect(result.stops.every((stop) => stop.candidate.visitMinutes === 30)).toBe(true);
+		});
+
+		it('names the per-leg limit the planner enforces', () => {
+			expect(legCapMinutes(60)).toBe(15);
+			expect(legCapMinutes(90)).toBe(22.5);
+		});
 	});
 });
