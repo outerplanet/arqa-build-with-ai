@@ -3,72 +3,200 @@ import 'server-only';
 
 export interface Scenario {
 	accessibleOnly?: boolean;
+	/** Categories from the user's stated interest only — never from the location phrase. */
 	categories?: Category[];
 	durationMinutes?: number;
 	flight: boolean;
+	/** Short Russian labels of the parsed interest, quoted back in «почему» and the filters. */
+	interests: string[];
 	maxWalkMinutes: number;
 	night: boolean;
+	/** The interest text without the location phrase: what retrieval should match. */
 	query: string;
 	route: boolean;
+	/** A walk or route with no specific interest: sights and parks, at most one cafe. */
+	walk: boolean;
+	/** True when the user named a walking limit; a derived radius never overrides one. */
+	walkLimitExplicit: boolean;
 }
+
+/** Sights and green space for a walk with no stated interest; one cafe at most is chosen later. */
+export const WALK_CATEGORIES: Category[] = [
+	'monument',
+	'attraction',
+	'artwork',
+	'museum',
+	'gallery',
+	'viewpoint',
+	'theatre',
+	'park',
+	'garden',
+	'cafe',
+];
+/** A planned route cannot cap cafes after the fact, so it leaves them out. */
+const ROUTE_CATEGORIES: Category[] = WALK_CATEGORIES.filter((category) => category !== 'cafe');
+
+/**
+ * «Я у музея Нур Алем, …» names where the user is, not what they want. Stripping it keeps
+ * «музея» from becoming a museum filter and the landmark name from steering retrieval.
+ * A bare «у» counts only after «я» («у меня 2 часа» is a budget), and «около» never before a number.
+ */
+const LOCATION_PHRASE = new RegExp(
+	[
+		// The preposition, with «я / сейчас / нахожусь» in front of it.
+		String.raw`(?<!\p{L})(?:(?:я\s+)?(?:сейчас\s+)?(?:нахожусь\s+)?(?:возле|около|рядом\s+со?|недалеко\s+от|в\s+районе)`,
+		String.raw`|я\s+(?:сейчас\s+)?(?:нахожусь\s+)?у|нахожусь\s+(?:в|на|у))\s+`,
+		// Not «у меня», «рядом со мной», «около 2 часов».
+		String.raw`(?!(?:меня|мной|нас|нами|вас|тебя|\d|час|полчас|пар|мин))`,
+		// The landmark: up to punctuation or the start of the request.
+		String.raw`[^,.;!?—–\n]*?(?=[,.;!?—–\n]|\s+(?:хочу|хотим|хотелось|ищу|ищем|что|где|куда|посоветуй|посоветуйте`,
+		String.raw`|подскажи|подскажите|есть|и|а|на\s+(?:\d|пар|час|полтора))(?!\p{L})|$)[,.;!?—–]?`,
+	].join(''),
+	'giu',
+);
+
+export function withoutLocation(text: string): string {
+	return text.replace(LOCATION_PHRASE, ' ').replace(/\s+/gu, ' ').trim();
+}
+
+const WALK_LIMIT = /(?:до|в пределах|не больше|не более)\s*(\d{1,2})\s*мин[а-я]*\s*(?:пешком|ходьбы)/u;
 
 function durationFrom(text: string): number | undefined {
 	if (/полтора\s*час/u.test(text)) return 90;
 	if (/пар[ауые]\s*час/u.test(text)) return 120;
-	const match = /(?:^|[^\d])(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?\s*(час[а-я]*|ч\b|мин[а-я]*)(?!\s*пешком)/u.exec(text);
-	if (!match) return undefined;
+	// `\b` is ASCII-only in JavaScript, so «2 ч» needs a Unicode-aware lookahead.
+	const match = /(?:^|\D)(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?\s*(час[а-я]*|ч(?!\p{L})|мин[а-я]*)(?!\s*пешком)/u.exec(
+		text,
+	);
+	if (!match) {
+		if (text.includes('полчаса')) return 30;
+		return /(?:на|за|есть|целый|около)\s+час(?:ок)?(?!\p{L})/u.test(text) ? 60 : undefined;
+	}
 	const value = Number(match[2] ?? match[1]) * (match[3]!.startsWith('ч') ? 60 : 1);
 	return value > 0 ? Math.min(240, value) : undefined;
 }
 
+const INTEREST_LABELS: [RegExp, string][] = [
+	[/ребен|детьми|детск/u, 'с ребёнком'],
+	[/интерактив/u, 'интерактивы'],
+	[/кофе|кофейн/u, 'кофе'],
+	[/кафе/u, 'кафе'],
+	[/розетк/u, 'розетка'],
+	[/тих|тишин/u, 'тихое место'],
+	[/библиотек/u, 'библиотека'],
+	[/музе/u, 'музей'],
+	[/галере|выставк/u, 'выставки'],
+	[/ноч/u, 'ночью'],
+	[/необыч/u, 'необычное'],
+	[/достопримеч|турист/u, 'достопримечательности'],
+	[/поесть|ресторан|обед|ужин/u, 'поесть'],
+	[/парк|набережн|свеж[а-я]*\s+воздух/u, 'парк и свежий воздух'],
+	[/прогул|гуля|пройтись/u, 'прогулка'],
+];
+
+interface Turn extends Omit<Scenario, 'walk'> {
+	/** The turn starts a new request rather than refining the previous one. */
+	topical: boolean;
+	walkWords: boolean;
+}
+
 /** Parse preferences only: facilities and flight transport times are never inferred. */
-function parseScenario(text: string): Scenario {
-	const query = text.trim();
-	const lower = query.toLowerCase().replaceAll('ё', 'е');
-	const flight = /вылет|рейс|самолет|аэропорт/u.test(lower);
-	const night = /ноч[а-я]*|ночью/u.test(lower);
+function parseTurn(text: string): Turn {
+	const full = text.trim().toLowerCase().replaceAll('ё', 'е');
+	const interestText = withoutLocation(text);
+	const lower = interestText.toLowerCase().replaceAll('ё', 'е');
+	const hasLocation = interestText.length < text.trim().length;
+	const flight = /вылет|рейс|самолет|аэропорт/u.test(full);
+	const night = /ноч[а-я]*/u.test(lower);
 	const route = /маршрут|составь.*прогул|построй.*прогул|пройти.*(?:все|эт[иом])|(?:соедини|объедини).*мест/u.test(
 		lower,
 	);
-	const accessibleOnly = /коляск|безбарьер|доступн[а-я]*\s+(?:сред|для.*инвалид)/u.test(lower) || undefined;
+	const accessibleOnly = /коляск|безбарьер|доступн[а-я]*\s+(?:сред|для.*инвалид)/u.test(full) || undefined;
+	const walkWords = /прогул|гуля|пройтись/u.test(lower);
 	let categories: Category[] | undefined;
-	if (/ребен|детск|площадк|интерактив/u.test(lower)) categories = ['playground', 'museum', 'zoo'];
+	if (/ребен|детьми|детск|площадк|интерактив/u.test(lower)) categories = ['playground', 'museum', 'zoo'];
 	else if (/кофе|кафе|кофейн|розетк|библиотек/u.test(lower)) categories = ['cafe', 'library'];
-	else if (/прогул|гуля|парк|набережн|свеж[а-я]*\s+воздух/u.test(lower))
-		categories = ['park', 'garden', 'viewpoint', 'artwork'];
 	else if (/музе|галере|выставк/u.test(lower)) categories = ['museum', 'gallery'];
 	else if (night) categories = ['bar', 'nightclub', 'viewpoint', 'artwork', 'attraction'];
 	else if (/достопримеч|турист|необыч|экспо|expo/u.test(lower))
-		categories = ['attraction', 'museum', 'viewpoint', 'artwork', 'monument'];
+		categories = ['attraction', 'museum', 'gallery', 'viewpoint', 'artwork', 'monument'];
 	else if (/поесть|ресторан|обед|ужин/u.test(lower)) categories = ['restaurant', 'cafe', 'fast_food'];
-	const walking = /(?:до|в пределах|не больше|не более)\s*(\d{1,2})\s*мин[а-я]*\s*(?:пешком|ходьбы)/u.exec(lower);
-	const maxWalkMinutes = walking ? Math.min(90, Math.max(5, Number(walking[1]))) : 15;
+	else if (/парк|набережн|свеж[а-я]*\s+воздух/u.test(lower)) categories = ['park', 'garden', 'viewpoint', 'artwork'];
+	else if (walkWords) categories = WALK_CATEGORIES;
+	const walking = WALK_LIMIT.exec(lower);
 	// Walking proximity is not a total time budget, even when it is the first number in a request.
-	const budgetText = lower.replace(/\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/gu, '');
-	const durationMinutes = durationFrom(budgetText);
-	return { accessibleOnly, categories, durationMinutes, flight, maxWalkMinutes, night, query, route };
+	const durationMinutes = durationFrom(lower.replace(/\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/gu, ''));
+	const interests = [
+		...new Set(INTEREST_LABELS.filter(([pattern]) => pattern.test(lower)).map(([, label]) => label)),
+	].slice(0, 2);
+	return {
+		accessibleOnly,
+		categories,
+		durationMinutes,
+		flight,
+		interests,
+		maxWalkMinutes: walking ? Math.min(90, Math.max(5, Number(walking[1]))) : 15,
+		night,
+		query: interestText,
+		route,
+		topical:
+			hasLocation ||
+			flight ||
+			night ||
+			categories !== undefined ||
+			durationMinutes !== undefined ||
+			/днем|утром|вечером|сейчас/u.test(lower),
+		walkLimitExplicit: walking !== null,
+		walkWords,
+	};
 }
 
-/** Later explicit preferences replace earlier ones; route followups retain the original interest. */
+/** A time budget sets how far one stop may be: a quarter of it, between 10 and 30 minutes. */
+function walkRadius(durationMinutes: number | undefined): number {
+	return durationMinutes === undefined ? 15 : Math.min(30, Math.max(10, Math.round(durationMinutes / 4)));
+}
+
+/** Later explicit preferences replace earlier ones; follow-ups («а поближе?») keep the context. */
 export function scenarioFor(text: string): Scenario {
 	const turns = text
 		.split('\n')
 		.filter((line) => line.trim())
-		.map(parseScenario);
-	const latest = turns.at(-1) ?? parseScenario('');
+		.map(parseTurn);
+	const latest = turns.at(-1) ?? parseTurn('');
+	const topic = turns.findLast((turn) => turn.topical) ?? latest;
+	const interest = turns.findLast((turn) => turn.categories !== undefined);
+	const durationMinutes = turns.findLast((turn) => turn.durationMinutes !== undefined)?.durationMinutes;
+	const explicitWalk = turns.findLast((turn) => turn.walkLimitExplicit);
+	const { route } = latest;
+	const query = turns
+		.map((turn) => turn.query)
+		.filter(Boolean)
+		.join('\n');
 	return {
-		...latest,
 		accessibleOnly: turns.some((turn) => turn.accessibleOnly) || undefined,
-		categories: turns.findLast((turn) => turn.categories !== undefined)?.categories,
-		durationMinutes: turns.findLast((turn) => turn.durationMinutes !== undefined)?.durationMinutes,
-		flight: turns.some((turn) => turn.flight),
-		maxWalkMinutes:
-			turns.findLast((turn) =>
-				/(?:до|в пределах|не больше|не более)\s*\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/u.test(
-					turn.query.toLowerCase(),
-				),
-			)?.maxWalkMinutes ?? latest.maxWalkMinutes,
-		night: turns.some((turn) => turn.night),
-		query: text.trim(),
+		categories: interest?.categories,
+		durationMinutes,
+		flight: topic.flight,
+		interests: interest?.interests.length ? interest.interests : latest.interests,
+		maxWalkMinutes: explicitWalk?.maxWalkMinutes ?? walkRadius(durationMinutes),
+		night: topic.night,
+		query: query || text.trim(),
+		route,
+		walk: interest === undefined ? route : interest.categories === WALK_CATEGORIES,
+		walkLimitExplicit: explicitWalk !== undefined,
 	};
+}
+
+/**
+ * Server authority over categories, without over-reach: a stated interest always wins; when the
+ * user named none, the model's choice stands; a walk or route with neither gets sights and parks.
+ */
+export function categoriesFor(
+	scenario: Scenario,
+	{ purpose, requested }: { purpose: 'route' | 'search'; requested?: readonly Category[] | undefined },
+): Category[] | undefined {
+	const walkSet = purpose === 'route' ? ROUTE_CATEGORIES : WALK_CATEGORIES;
+	if (scenario.categories !== undefined) return scenario.walk ? walkSet : scenario.categories;
+	if (requested?.length) return [...requested];
+	return scenario.walk || purpose === 'route' ? walkSet : undefined;
 }

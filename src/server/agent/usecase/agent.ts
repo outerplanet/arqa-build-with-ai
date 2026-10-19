@@ -61,6 +61,27 @@ function contextMessage(ctx: Ctx, input: AgentInput): string {
 
 const EXHAUSTED = 'Не удалось завершить запрос. Уточните пожелания и попробуйте ещё раз.';
 
+/**
+ * Ends a turn that stopped early — the provider failed or the turn cap ran out — without losing
+ * the work already done. Executed calls stay in the activity panel, and a successful search or
+ * plan still becomes an answer, because the answer text is built from tool results anyway.
+ * A provider failure before any tool ran is rethrown: the route reports it as a connection error.
+ */
+function stopped(
+	ctx: PlacesContext,
+	{ failure, input, toolCalls }: { failure?: unknown; input: AgentInput; toolCalls: ToolCall[] },
+): ChatResponse {
+	if (failure !== undefined) {
+		// Log the category only: a provider message can carry an endpoint, a model or a key.
+		process.stderr.write(`Model call failed mid-turn: ${failure instanceof Error ? failure.name : 'UnknownError'}\n`);
+		if (toolCalls.length === 0) throw failure instanceof Error ? failure : new Error('Model call failed');
+	}
+	const answered = toolCalls.some(
+		(call) => call.status === 'ok' && ['find_places', 'get_place', 'plan_walk'].includes(call.name),
+	);
+	return { reply: answered ? replyForTools(ctx, { messages: input.messages, toolCalls }) : EXHAUSTED, toolCalls };
+}
+
 // --- the Responses adapter ----------------------------------------------------------------------
 
 /**
@@ -89,17 +110,23 @@ async function runResponses(ctx: PlacesContext, input: AgentInput): Promise<Chat
 	];
 
 	for (let turn = 0; turn < MAX_TURNS; turn += 1) {
-		// eslint-disable-next-line no-await-in-loop -- an agent loop is a sequence, not a batch
-		const response = await withRetry(() =>
-			client.responses.create({
-				input: conversation,
-				model: env.LLM_MODEL,
-				// Nothing is kept on the provider's side: the whole conversation is resent each
-				// turn, which is also what makes the transcript ours rather than theirs.
-				store: false,
-				tools: [...responsesToolDefinitions(), ...hosted] as ResponsesTool[],
-			}),
-		);
+		let response;
+
+		try {
+			// eslint-disable-next-line no-await-in-loop -- an agent loop is a sequence, not a batch
+			response = await withRetry(() =>
+				client.responses.create({
+					input: conversation,
+					model: env.LLM_MODEL,
+					// Nothing is kept on the provider's side: the whole conversation is resent each
+					// turn, which is also what makes the transcript ours rather than theirs.
+					store: false,
+					tools: [...responsesToolDefinitions(), ...hosted] as ResponsesTool[],
+				}),
+			);
+		} catch (failure) {
+			return stopped(ctx, { failure, input, toolCalls });
+		}
 
 		// The model's own items go back in verbatim, reasoning included — dropping them is what
 		// makes a reasoning model repeat a tool call it has already made.
@@ -124,7 +151,7 @@ async function runResponses(ctx: PlacesContext, input: AgentInput): Promise<Chat
 		}
 	}
 
-	return { reply: EXHAUSTED, toolCalls };
+	return stopped(ctx, { input, toolCalls });
 }
 
 // --- the Chat Completions adapter ---------------------------------------------------------------
@@ -147,14 +174,20 @@ async function runChat(ctx: PlacesContext, input: AgentInput): Promise<ChatRespo
 	];
 
 	for (let turn = 0; turn < MAX_TURNS; turn += 1) {
-		// eslint-disable-next-line no-await-in-loop -- see above
-		const completion = await withRetry(() =>
-			client.chat.completions.create({
-				messages: conversation,
-				model: env.LLM_MODEL,
-				tools: chatToolDefinitions(),
-			}),
-		);
+		let completion;
+
+		try {
+			// eslint-disable-next-line no-await-in-loop -- see above
+			completion = await withRetry(() =>
+				client.chat.completions.create({
+					messages: conversation,
+					model: env.LLM_MODEL,
+					tools: chatToolDefinitions(),
+				}),
+			);
+		} catch (failure) {
+			return stopped(ctx, { failure, input, toolCalls });
+		}
 
 		const choice = completion.choices[0]?.message;
 
@@ -182,7 +215,7 @@ async function runChat(ctx: PlacesContext, input: AgentInput): Promise<ChatRespo
 		}
 	}
 
-	return { reply: EXHAUSTED, toolCalls };
+	return stopped(ctx, { input, toolCalls });
 }
 
 // --- the scripted adapter -----------------------------------------------------------------------
