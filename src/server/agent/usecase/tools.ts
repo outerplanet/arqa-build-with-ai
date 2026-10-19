@@ -8,7 +8,7 @@ import {
 	resolveLocationInputSchema,
 } from '@server/places/model/places.schema';
 import { type PlacesContext } from '@server/places/usecase/context';
-import { findPlaces } from '@server/places/usecase/findPlaces';
+import { searchPlaces } from '@server/places/usecase/findPlaces';
 import { getPlace } from '@server/places/usecase/getPlace';
 import { planWalk } from '@server/places/usecase/planWalk';
 import { resolveLocation } from '@server/places/usecase/resolveLocation';
@@ -109,20 +109,25 @@ export const TOOLS: readonly ToolSpec[] = [
 			'Ищет места рядом с локацией браузера или результатом resolve_location. Укажи пожелания, категории и предел ходьбы. Не выдумывай near: это должна быть подтверждённая точка пользователя. Данные о часах, источниках и расстояниях бери только из результата.',
 		handler: (ctx, args) => {
 			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
-			return findPlaces(ctx, {
-				...args,
-				accessibleOnly: preferences.accessibleOnly ?? args.accessibleOnly,
-				// This product answers "now"; the model cannot invent a different checking time.
-				at: ctx.now.toISOString(),
-				// Only categories from the user's interest override the model, never the location phrase.
-				categories: categoriesFor(preferences, { purpose: 'search', requested: args.categories }),
-				// The schema fills 15 when the model omits it, so a time budget sets the radius unless
-				// the user named a walking limit, which nothing may exceed.
-				maxWalkMinutes:
-					preferences.walkLimitExplicit || preferences.durationMinutes === undefined
-						? Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes)
-						: preferences.maxWalkMinutes,
-				query: preferences.query || args.query,
+			return searchPlaces(ctx, {
+				// Quoted in the filters only: the whole-walk budget is not a per-place radius.
+				budgetMinutes: preferences.durationMinutes,
+				filters: {
+					...args,
+					accessibleOnly: preferences.accessibleOnly ?? args.accessibleOnly,
+					// This product answers "now"; the model cannot invent a different checking time.
+					at: ctx.now.toISOString(),
+					// Only categories from the user's interest override the model, never the location phrase.
+					categories: categoriesFor(preferences, { purpose: 'search', requested: args.categories }),
+					// The schema fills 15 when the model omits it, so a time budget sets the radius unless
+					// the user named a walking limit, which nothing may exceed.
+					maxWalkMinutes:
+						preferences.walkLimitExplicit || preferences.durationMinutes === undefined
+							? Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes)
+							: preferences.maxWalkMinutes,
+					query: preferences.query || args.query,
+				},
+				preferNotable: preferences.sights,
 			});
 		},
 		label: 'Поиск мест',
@@ -142,10 +147,15 @@ export const TOOLS: readonly ToolSpec[] = [
 			'Подбирает прогулку до 3 остановок в пределах бюджета времени; может вернуть одну запасную остановку с явной пометкой. start должен совпадать с подтверждённой локацией пользователя. Если локальная пешеходная сеть доступна, учитывает путь по дорожкам и возвращает walkingRoute; иначе явно сообщает, что путь не проверен. Не используй всё время перед вылетом на прогулку: уточни запас на аэропорт.',
 		handler: (ctx, args) => {
 			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
+			const { stops } = preferences;
 			return planWalk(ctx, {
 				...args,
 				categories: categoriesFor(preferences, { purpose: 'route', requested: args.categories }),
 				durationMinutes: Math.min(args.durationMinutes, preferences.durationMinutes ?? args.durationMinutes),
+				// The user's own «из трёх мест» decides the stop count, not the model's argument.
+				...(stops === undefined
+					? {}
+					: { maxStops: Math.min(3, Math.max(2, stops.max)), requestedStops: Math.min(3, stops.min) }),
 				query: preferences.query || args.query,
 			});
 		},

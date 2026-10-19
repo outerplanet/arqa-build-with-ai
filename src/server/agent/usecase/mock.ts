@@ -4,7 +4,7 @@ import { type PlacesContext } from '@server/places/usecase/context';
 import { LANDMARKS, mentions } from '@server/places/usecase/landmarks';
 import { origin } from '@server/places/usecase/origin';
 import 'server-only';
-import { replyForTools } from './reply';
+import { answerForTools } from './reply';
 import { categoriesFor, scenarioFor } from './scenario';
 import { type CurrentTime, executeTool } from './tools';
 
@@ -38,10 +38,10 @@ export async function runMock(ctx: PlacesContext, input: { messages: readonly Ch
 			const resolved = resolvedLocationSchema.safeParse(call.result);
 
 			if (call.status === 'error' || !resolved.success || !resolved.data.found) {
-				return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
+				return { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 			}
 		} else {
-			return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
+			return { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 		}
 	}
 	const scenario = scenarioFor(userMessages.map((message) => message.content).join('\n'));
@@ -76,5 +76,5 @@ export async function runMock(ctx: PlacesContext, input: { messages: readonly Ch
 			}),
 		);
 	}
-	return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
+	return { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 }

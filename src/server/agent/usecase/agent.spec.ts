@@ -51,6 +51,9 @@ describe('the scripted agent', () => {
 
 		expect(result.reply).toContain('совпадает с запросом «кофе»');
 		expect(result.reply).not.toMatch(/по данным источника|\. по данным OSM/u);
+		expect(result.recommendations?.map((item) => item.order)).toEqual(
+			result.recommendations?.map((_, index) => index + 1),
+		);
 	});
 
 	it('every reported call carries what the panel renders', async () => {
@@ -100,6 +103,36 @@ describe('the live adapters', () => {
 
 		expect(result.toolCalls.map((call) => call.name)).toEqual(['find_places']);
 		expect(result.reply).toContain('Локация:');
+		// The fallback answer carries the same structured cards as any other path.
+		expect(result.recommendations?.length).toBeGreaterThan(0);
+		expect(result.recommendedPlaceIds).toEqual(result.recommendations?.map((item) => item.placeId));
+	});
+
+	it.each(['chat', 'responses'] as const)('returns structured recommendations from the %s dialect', async (name) => {
+		useProvider(name);
+		if (name === 'chat')
+			provider.chat
+				.mockResolvedValueOnce({
+					choices: [
+						{
+							message: {
+								content: null,
+								role: 'assistant',
+								tool_calls: [{ function: search, id: 'c1', type: 'function' }],
+							},
+						},
+					],
+				})
+				.mockResolvedValueOnce({ choices: [{ message: { content: 'Готово', role: 'assistant' } }] });
+		else
+			provider.responses
+				.mockResolvedValueOnce({ output: [{ call_id: 'r1', type: 'function_call', ...search }] })
+				.mockResolvedValueOnce({ output: [{ content: [], role: 'assistant', type: 'message' }] });
+		const result = await runAgent(ctx, { location, messages: [{ content: 'Хочу кофе', role: 'user' }] });
+
+		expect(result.recommendations?.length).toBeGreaterThan(0);
+		expect(result.recommendedPlaceIds).toEqual(result.recommendations?.map((item) => item.placeId));
+		for (const item of result.recommendations!) expect(result.reply).toContain(`Почему: ${item.why}.`);
 	});
 
 	it('answers from a successful search when the turn budget runs out', async () => {

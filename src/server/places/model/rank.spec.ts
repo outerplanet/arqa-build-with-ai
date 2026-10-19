@@ -1,7 +1,7 @@
 import 'server-only';
 import { describe, expect, it } from 'vitest';
 import { candidateSchema, type Place } from './places.schema';
-import { type RankInput, rankPlaces } from './rank';
+import { isGenericName, isNotable, type RankInput, rankPlaces } from './rank';
 
 function place(id: string, extra: Partial<Place> = {}): Place {
 	return {
@@ -38,6 +38,29 @@ function input(places: ReturnType<typeof place>[], extra: Partial<RankInput> = {
 }
 
 describe('rankPlaces', () => {
+	it('puts a named sight above a generic-named square for a sightseer, and only for one', () => {
+		const square = place('square', { category: 'park', name: 'Сквер', openingHours: null, tags: [] });
+		const monument = place('monument', {
+			category: 'monument',
+			lat: 51.131,
+			name: 'Табун Лошадей',
+			openingHours: null,
+			tags: [],
+		});
+		const semantic = new Map([
+			['monument', 0.6],
+			['square', 0.8],
+		]);
+		const ordinary = rankPlaces(input([square, monument], { semantic }));
+		const sightseeing = rankPlaces(input([square, monument], { preferNotable: true, semantic }));
+
+		expect(ordinary[0]!.place.id).toBe('square');
+		expect(sightseeing.map((candidate) => candidate.place.id)).toEqual(['monument', 'square']);
+		expect(isGenericName('  СКВЕР ')).toBe(true);
+		expect(isNotable(square)).toBe(false);
+		expect(isNotable(monument)).toBe(true);
+	});
+
 	it('does not let several cafes push the only park out of a short list', () => {
 		const cafes = ['c1', 'c2', 'c3', 'c4'].map((id) => place(id, { name: `Кафе ${id}` }));
 		const park = place('park', { category: 'park', name: 'NU Park', openingHours: null, tags: [] });

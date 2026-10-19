@@ -63,7 +63,8 @@ export function walkingCalculator(ctx: PlacesContext) {
 					collectedAt: data.collectedAt,
 					distanceM: legs.reduce((sum, leg) => sum + leg.distanceM, 0),
 					legs,
-					note: 'Путь по пешеходной сети OpenStreetMap. Концы линии привязаны к дорожкам не далее 75 м от точек; подход к входу не проверен. Возможны лестницы. Неразмеченные ограждения и временные перекрытия не учитываются.',
+					// Shown once in the reply and under the map: short, and it keeps the three real caveats.
+					note: 'Путь по пешеходным дорожкам OpenStreetMap; входы, лестницы и временные перекрытия не проверены.',
 					source: 'OpenStreetMap',
 					status: 'available',
 					stopIds: plan.stops.map((stop) => stop.candidate.place.id),

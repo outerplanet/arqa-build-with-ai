@@ -163,11 +163,12 @@ describe('real scenarios through the mock agent and the committed dataset', () =
 	});
 
 	// Within 15 minutes of Baiterek there are only a square and two galleries (no monuments or
-	// artworks in the dataset), so an honest 60-minute plan has one stop; 90 and 120 have two or more.
+	// artworks in the dataset), so an honest 60-minute plan has one stop. From 90 minutes the three
+	// stops the user asked for fit once some visits are shortened (QA: it used to stop at two).
 	it.each([
 		[60, 1],
-		[90, 2],
-		[120, 2],
+		[90, 3],
+		[120, 3],
 	])('plans a %i-minute route from Baiterek with at least %i stop(s)', async (minutes, minStops) => {
 		const answer = await ask(`Я у Байтерека, составь маршрут из трёх мест на ${minutes} минут.`);
 		const plan = walkPlanSchema.parse(answer.toolCalls.find((call) => call.name === 'plan_walk')?.result);
@@ -179,6 +180,72 @@ describe('real scenarios through the mock agent and the committed dataset', () =
 		expect(plan.totalMinutes).toBeLessThanOrEqual(minutes);
 		expect(ids).not.toContain(BAYTEREK);
 		expect(answer.recommendedPlaceIds).toEqual(ids);
+		expect(answer.recommendations?.map((item) => item.placeId) ?? []).toEqual(ids);
+		expect(answer.recommendations?.map((item) => item.walkMinutes) ?? []).toEqual(
+			plan.legs.map((leg) => leg.walkMinutes),
+		);
+		// Asked for three and given fewer: the reply says so instead of quietly dropping one.
+		if (plan.stops.length < 3) expect(answer.reply).toContain('Три места за');
+		else expect(answer.reply).not.toContain('не помещаются');
+		// The whole budget and the leg limit are named apart; the network caveat appears once.
+		expect(answer.reply).toContain(`Вся прогулка — до ${minutes} мин`);
+		expect(answer.reply.split('пешеходным дорожкам').length).toBeLessThanOrEqual(2);
+	});
+
+	it('labels the search radius and the whole walk apart for a route request', async () => {
+		const answer = await ask('Я у Байтерека, составь маршрут из трёх мест на 90 минут.');
+		const search = findPlacesResultSchema.parse(answer.toolCalls.find((call) => call.name === 'find_places')?.result);
+
+		expect(search.usedFilters).toContain('До 23 мин пешком до каждого места');
+		expect(search.usedFilters).toContain('Вся прогулка — до 90 мин');
+		expect(answer.reply).toContain('один переход — до 23 мин пешком');
+	});
+
+	it('never recommends a generic-named square to a departing tourist and ties every card to the text', async () => {
+		const answer = await ask('Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?', {
+			lat: 51.12829,
+			lon: 71.43045,
+		});
+		const { items, search } = expectRecommendations(answer, 'browser');
+		const names = answer.recommendedPlaceIds.map(
+			(id) => search.candidates.find((candidate) => candidate.place.id === id)!.place.name,
+		);
+
+		expect(names).not.toContain('Сквер');
+		expect(answer.reply).not.toMatch(/Сквер|Парк —/u);
+		expect(answer.recommendations?.map((item) => item.placeId)).toEqual(answer.recommendedPlaceIds);
+		for (const [index, item] of answer.recommendations!.entries()) {
+			expect(items[index]).toContain(`Почему: ${item.why}.`);
+			expect(items[index]).toContain(`Что делать: ${item.action} (сгенерированная идея).`);
+			expect(items[index]).toContain(`Часы: ${item.hours}.`);
+		}
+	});
+
+	it('leads «необычное» at EXPO with a named sight and never calls a park a match', async () => {
+		const answer = await ask('Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.');
+		const { items, search } = expectRecommendations(answer, 'text');
+		const first = search.candidates.find((candidate) => candidate.place.id === answer.recommendedPlaceIds[0])!;
+
+		expect(['attraction', 'artwork', 'monument', 'museum', 'gallery', 'theatre', 'viewpoint']).toContain(
+			first.place.category,
+		);
+		for (const item of items.filter((text) => /^Почему: парк/mu.test(text)))
+			expect(item).not.toContain('совпадает с запросом');
+	});
+
+	it('lists the night answer from the nearest open place', async () => {
+		const answer = await runAgent(
+			{ now: new Date('2026-10-19T18:30:00Z') },
+			{
+				location: NEAR_BAYTEREK,
+				messages: [{ content: 'Ищу необычную ночную активность (последние пару часов).', role: 'user' }],
+			},
+		);
+		const distances = answer.recommendations?.map((item) => item.distanceM) ?? [];
+
+		expect(distances.length).toBeGreaterThan(0);
+		expect(distances).toEqual(distances.toSorted((left, right) => left - right));
+		expect(answer.reply).toContain('от ближнего к дальнему');
 	});
 
 	it('answers the child request near Baiterek with a kids-tagged place', async () => {

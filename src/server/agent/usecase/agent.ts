@@ -12,7 +12,7 @@ import 'server-only';
 import { type ChatMessageParam, createClient, type ResponseItem, type ResponsesTool, withRetry } from './client';
 import { runMock } from './mock';
 import { SYSTEM_PROMPT } from './prompt';
-import { replyForTools } from './reply';
+import { answerForTools } from './reply';
 import { chatToolDefinitions, executeTool, responsesToolDefinitions } from './tools';
 
 /**
@@ -79,7 +79,9 @@ function stopped(
 	const answered = toolCalls.some(
 		(call) => call.status === 'ok' && ['find_places', 'get_place', 'plan_walk'].includes(call.name),
 	);
-	return { reply: answered ? replyForTools(ctx, { messages: input.messages, toolCalls }) : EXHAUSTED, toolCalls };
+	return answered
+		? { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls }
+		: { recommendedPlaceIds: [], reply: EXHAUSTED, toolCalls };
 }
 
 // --- the Responses adapter ----------------------------------------------------------------------
@@ -135,7 +137,7 @@ async function runResponses(ctx: PlacesContext, input: AgentInput): Promise<Chat
 		const requested = response.output.filter((item) => item.type === 'function_call');
 
 		if (requested.length === 0) {
-			return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
+			return { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 		}
 
 		for (const call of requested) {
@@ -194,7 +196,7 @@ async function runChat(ctx: PlacesContext, input: AgentInput): Promise<ChatRespo
 		if (choice === undefined) break;
 
 		if (choice.tool_calls === undefined || choice.tool_calls.length === 0) {
-			return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
+			return { ...answerForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 		}
 
 		conversation.push(choice);

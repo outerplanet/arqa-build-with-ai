@@ -13,6 +13,8 @@ export interface RankInput {
 	maxWalkMinutes: number;
 	origin: GeoPoint;
 	places: readonly Place[];
+	/** «Необычное», «что посмотреть», a tourist: named, notable places outrank generic-named parks. */
+	preferNotable?: boolean;
 	query?: string;
 	semantic: ReadonlyMap<string, number>;
 }
@@ -51,6 +53,20 @@ const VISIT_MINUTES: Record<Category, number> = {
 // Subtracted from the weighted score when a name is only a category word ("Кафе", "Сквер"):
 // such a place is still real, but a named one with equal signals is the better suggestion.
 const GENERIC_NAME_PENALTY = 0.05;
+// For a sightseeing request: a place worth a detour (a museum, a monument, a Wikidata entry)
+// gains, and a generic name ("Сквер", "Парк") loses more than in an ordinary search.
+const NOTABLE_CATEGORIES = new Set<Category>([
+	'artwork',
+	'attraction',
+	'gallery',
+	'monument',
+	'museum',
+	'theatre',
+	'viewpoint',
+]);
+const NOTABLE_CATEGORY_BONUS = 0.1;
+const WIKIDATA_BONUS = 0.05;
+const SIGHTSEEING_GENERIC_PENALTY = 0.2;
 // Charged per already chosen place of the same category while filling the result list.
 const DIVERSITY_PENALTY = 0.1;
 // Compared after nameKey(): lower case, ё→е, letters and digits only.
@@ -89,6 +105,21 @@ function nameKey(name: string): string {
 		.toLowerCase()
 		.replaceAll('ё', 'е')
 		.replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/** A name that is only a category word: real, but nothing to tell a visitor about. */
+export function isGenericName(name: string): boolean {
+	return GENERIC_NAMES.has(nameKey(name));
+}
+
+/** Worth a detour for a sightseer: a notable category, a Wikidata description or popularity. */
+export function isNotable(place: Place): boolean {
+	return (
+		!isGenericName(place.name) &&
+		(NOTABLE_CATEGORIES.has(place.category) ||
+			place.descriptionSource === 'wikidata' ||
+			(place.popularity !== null && place.popularity >= 0.3))
+	);
 }
 
 function byId(left: Candidate, right: Candidate): number {
@@ -164,7 +195,12 @@ export function rankPlaces(input: RankInput): Candidate[] {
 					WEIGHTS.open * why.open +
 					WEIGHTS.popularity * why.popularity +
 					WEIGHTS.tags * Number(why.tags.length > 0) -
-					GENERIC_NAME_PENALTY * Number(GENERIC_NAMES.has(nameKey(place.name))),
+					(input.preferNotable ? SIGHTSEEING_GENERIC_PENALTY : GENERIC_NAME_PENALTY) *
+						Number(isGenericName(place.name)) +
+					(input.preferNotable
+						? NOTABLE_CATEGORY_BONUS * Number(NOTABLE_CATEGORIES.has(place.category)) +
+							WIKIDATA_BONUS * Number(place.descriptionSource === 'wikidata')
+						: 0),
 			);
 			return {
 				distanceM: meters,

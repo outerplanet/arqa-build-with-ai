@@ -48,7 +48,13 @@ function astanaTime(at: Date): string {
 /** A walk's validated budget must filter the whole dataset before ranking's result limit. */
 export async function searchPlaces(
 	ctx: PlacesContext,
-	input: { durationMinutes?: number; filters: z.input<typeof findPlacesInputSchema> },
+	input: {
+		/** The user's whole-walk budget, quoted in the filters only; it filters nothing here. */
+		budgetMinutes?: number | undefined;
+		durationMinutes?: number;
+		filters: z.input<typeof findPlacesInputSchema>;
+		preferNotable?: boolean | undefined;
+	},
 ): Promise<FindPlacesResult> {
 	const parsed = findPlacesInputSchema.parse(input.filters);
 	const durationMinutes = planWalkInputSchema.shape.durationMinutes.optional().parse(input.durationMinutes);
@@ -67,18 +73,21 @@ export async function searchPlaces(
 		maxWalkMinutes: parsed.maxWalkMinutes,
 		origin: location.point,
 		places,
+		...(input.preferNotable ? { preferNotable: true } : {}),
 		query: parsed.query,
 		semantic: semantic.scores,
 	});
+	const budget = input.budgetMinutes ?? durationMinutes;
 
 	const result = findPlacesResultSchema.parse({
 		candidates,
 		note: semantic.note,
 		origin: location,
 		usedFilters: [
-			`Пешком до ${parsed.maxWalkMinutes} минут`,
+			// Two different limits, named so that nobody reads one as the other.
+			`До ${parsed.maxWalkMinutes} мин пешком до каждого места`,
+			...(budget === undefined ? [] : [`Вся прогулка — до ${budget} мин`]),
 			`Время проверки: ${astanaTime(at)}`,
-			...(durationMinutes === undefined ? [] : [`Ходьба и посещение до ${durationMinutes} минут`]),
 			...(parsed.categories === undefined
 				? []
 				: [`Категории: ${parsed.categories.map((category) => categoryNames[category]).join(', ')}`]),
