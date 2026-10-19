@@ -60,6 +60,7 @@
 }
 
 .places-map-origin {
+	pointer-events: none;
 	padding: 4px 8px;
 	border: 2px solid var(--color-border-strong);
 	border-radius: 8px;
