@@ -45,6 +45,24 @@ export function resolveLocation(
 			aliases.some((alias) => mentions(explicit[0]!.name, alias) || mentions(explicit[0]!.nameEn ?? '', alias)),
 		);
 	if (groups.length && explicit.length && !explicitContainsAlias) return unresolved;
+	if (groups.length) {
+		// Mask whole mentions before looking for another POI. A cafe named "Нур" inside
+		// "Нур Алем" is not a second location; the same cafe named separately still is.
+		const protectedNames = [
+			...groups.flat(),
+			...(explicitContainsAlias ? [explicit[0]!.name, explicit[0]!.nameEn ?? ''] : []),
+		]
+			.map(normalizeLocation)
+			.filter(Boolean)
+			.sort((left, right) => right.length - left.length);
+		const remaining = protectedNames.reduce(
+			(value, name) => value.replace(new RegExp(`(?<= )${name}(?= )`, 'gu'), ' '.repeat(name.length)),
+			` ${normalizeLocation(text)} `,
+		);
+		if (places.some((place) => [place.name, place.nameEn ?? ''].some((name) => name && mentions(remaining, name)))) {
+			return unresolved;
+		}
+	}
 	const anchorIds = groups.map((group) => LANDMARK_IDS.get(group)).filter((id) => id !== undefined);
 	if (groups.includes(LANDMARKS[0]!) && /квартал|территори/iu.test(text)) {
 		anchorIds.splice(anchorIds.indexOf('osm:way/454853233'), 1, 'osm:way/1456208623');

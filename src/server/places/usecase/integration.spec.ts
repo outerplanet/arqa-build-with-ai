@@ -17,6 +17,16 @@ afterEach(() => {
 });
 
 describe('committed dataset integration without injected dependencies', () => {
+	it('asks when a canonical landmark and an independently named POI both occur', () => {
+		expect(
+			resolveLocation(
+				{ now: new Date('2026-10-19T08:00:00Z') },
+				{
+					text: 'Я между Нур Алем и Национальный музей Республики Казахстан',
+				},
+			).found,
+		).toBe(false);
+	});
 	it.each(['Я между Нур Алем и AITU', 'Я на станции Байтерек'])(
 		'does not replace conflicting or typed locations with an anchor: %s',
 		(text) => {
