@@ -61,6 +61,23 @@ describe('OSM hours in Astana', () => {
 		expect(result.note).toContain('праздничные дни не учтены');
 		expect(openStatus('PH off', MONDAY_NOON).status).toBe('unknown');
 	});
+	it('keeps the weekday part of a rule that also lists public holidays, with low confidence', () => {
+		const saturday = new Date('2026-10-24T12:00:00+05:00');
+		const weekend = 'Mo-Fr 07:14-23:00; Sa,Su,PH 08:14-23:00';
+		expect(openStatus(weekend, saturday)).toMatchObject({ confidence: 'low', status: 'open', until: '23:00' });
+		expect(openStatus(weekend, new Date('2026-10-24T08:00:00+05:00'))).toMatchObject({
+			confidence: 'low',
+			opensAt: '08:14',
+			status: 'closed',
+		});
+		expect(openStatus(weekend, MONDAY_NOON)).toMatchObject({ confidence: 'low', status: 'open' });
+		const daily = openStatus('Mo-Su,PH 12:00-22:00', MONDAY_NOON);
+		expect(daily).toMatchObject({ confidence: 'low', status: 'open', until: '22:00' });
+		expect(daily.note).toContain('праздничные дни не учтены');
+		expect(openStatus('PH,Mo 09:00-11:00', MONDAY_NOON)).toMatchObject({ confidence: 'low', status: 'closed' });
+		expect(openStatus('PH 10:00-15:00', MONDAY_NOON)).toMatchObject({ confidence: 'low', status: 'unknown' });
+		expect(openStatus('Mo-Fr 09:00-18:00 PH', MONDAY_NOON)).toMatchObject({ confidence: 'low', status: 'unknown' });
+	});
 	it.each([
 		'sunrise-sunset',
 		'Mo 09:00-25:00',

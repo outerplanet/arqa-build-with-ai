@@ -1,9 +1,30 @@
 import 'server-only';
 import { distanceM, walkMinutes } from './geo';
-import { type Candidate, type GeoPoint, geoPointSchema, type WalkPlan } from './places.schema';
+import { type Candidate, type Category, type GeoPoint, geoPointSchema, type WalkPlan } from './places.schema';
 
 // Reordering the same scores can change their sum by a floating-point rounding error.
 const SCORE_EPSILON = 1e-12;
+// No single leg may take longer than this many minutes or this share of the whole budget,
+// whichever is larger: a 90-minute walk must not spend 43 minutes reaching its first stop.
+const LEG_CAP_MINUTES = 15;
+const LEG_CAP_SHARE = 0.25;
+// Two stops of the same category closer than this are one stop (three rocket models 25 m apart).
+const CLUSTER_M = 100;
+// A walk has at most one food stop; the rest should be things to see.
+const FOOD = new Set<Category>(['bar', 'cafe', 'fast_food', 'restaurant']);
+
+function byId(a: Candidate, b: Candidate): number {
+	return a.place.id < b.place.id ? -1 : a.place.id > b.place.id ? 1 : 0;
+}
+
+function compatible(stops: readonly Candidate[], next: Candidate): boolean {
+	return stops.every(
+		(stop) =>
+			stop.place.id !== next.place.id &&
+			!(FOOD.has(stop.place.category) && FOOD.has(next.place.category)) &&
+			(stop.place.category !== next.place.category || distanceM(stop.place, next.place) >= CLUSTER_M),
+	);
+}
 
 export function planWalk(input: {
 	candidates: readonly Candidate[];
@@ -37,26 +58,46 @@ export function planWalk(input: {
 				Number.isFinite(candidate.visitMinutes) &&
 				candidate.visitMinutes >= 0,
 		)
-		.sort((a, b) => (a.place.id < b.place.id ? -1 : a.place.id > b.place.id ? 1 : 0));
+		.sort(byId);
 	const maxStops = Math.min(3, Math.floor(input.maxStops));
+	const legCap = Math.max(LEG_CAP_MINUTES, LEG_CAP_SHARE * input.durationMinutes);
+	// The best-scored place reachable directly from the start anchors the walk: any route that
+	// includes it beats every route without it, so the top match is never traded for a far cluster.
+	let anchor: Candidate | null = null;
+	for (const candidate of pool) {
+		const walk = walkMinutes(distanceM(input.start, candidate.place));
+		if (
+			walk <= legCap &&
+			walk + candidate.visitMinutes <= input.durationMinutes &&
+			(anchor === null || candidate.score > anchor.score)
+		)
+			anchor = candidate;
+	}
 	let best: Candidate[] = [];
+	let bestAnchored = false;
 	let bestScore = -Infinity;
 	let bestMinutes = Infinity;
 
 	function search(state: { current: GeoPoint; minutes: number; score: number; stops: Candidate[] }): void {
 		const { current, minutes, score, stops } = state;
+		const anchored = anchor !== null && stops.includes(anchor);
 		if (
 			stops.length >= 1 &&
-			(score > bestScore + SCORE_EPSILON || (Math.abs(score - bestScore) <= SCORE_EPSILON && minutes < bestMinutes))
+			(Number(anchored) > Number(bestAnchored) ||
+				(anchored === bestAnchored &&
+					(score > bestScore + SCORE_EPSILON ||
+						(Math.abs(score - bestScore) <= SCORE_EPSILON && minutes < bestMinutes))))
 		) {
 			best = [...stops];
+			bestAnchored = anchored;
 			bestScore = score;
 			bestMinutes = minutes;
 		}
 		if (stops.length >= maxStops) return;
 		for (const candidate of pool) {
-			const nextMinutes = minutes + walkMinutes(distanceM(current, candidate.place)) + candidate.visitMinutes;
-			if (!stops.some((stop) => stop.place.id === candidate.place.id) && nextMinutes <= input.durationMinutes) {
+			const walk = walkMinutes(distanceM(current, candidate.place));
+			const nextMinutes = minutes + walk + candidate.visitMinutes;
+			if (walk <= legCap && nextMinutes <= input.durationMinutes && compatible(stops, candidate)) {
 				search({
 					current: candidate.place,
 					minutes: nextMinutes,

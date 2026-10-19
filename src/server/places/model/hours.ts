@@ -74,10 +74,19 @@ export function openStatus(raw: string | null, at: Date): OpenStatus {
 	const rules: Rule[] = [];
 	let partial = false;
 	for (const part of raw.split(';')) {
-		if (/\bPH\b/.test(part)) {
+		let text = part.trim();
+		const selector = /^([A-Za-z,-]+)\s+(.+)$/.exec(text);
+		const tokens = selector?.[1]!.split(',') ?? [];
+		if (selector && tokens.includes('PH')) {
+			// Public holidays are not modelled: drop only the PH token and keep the weekdays it shares
+			// a rule with ("Sa,Su,PH 08:00-23:00" still describes weekends). Confidence becomes low.
 			partial = true;
-		} else {
-			const rule = parseRule(part);
+			const days = tokens.filter((token) => token !== 'PH');
+			text = days.length ? `${days.join(',')} ${selector[2]}` : '';
+		}
+		// A holiday-only rule ("PH off") leaves nothing to parse.
+		if (!selector || text) {
+			const rule = parseRule(text);
 			// An unrecognised rule could override a recognised one. Never infer availability.
 			if (!rule) return { ...unknown, confidence: 'low' };
 			rules.push(rule);

@@ -2,21 +2,51 @@ import 'server-only';
 import { describe, expect, it } from 'vitest';
 import { distanceM, walkMinutes } from './geo';
 import { openStatus } from './hours';
-import { type Candidate, walkPlanSchema } from './places.schema';
+import { type Candidate, type Category, type GeoPoint, walkPlanSchema } from './places.schema';
 import { planWalk } from './route';
 
 const START = { lat: 51.128, lon: 71.43 };
+// Distinct non-food categories by default so the same-category and food rules stay out of the way.
+const SIGHTS: Category[] = [
+	'museum',
+	'gallery',
+	'theatre',
+	'cinema',
+	'park',
+	'garden',
+	'playground',
+	'viewpoint',
+	'attraction',
+	'monument',
+	'artwork',
+	'mall',
+	'library',
+	'zoo',
+	'theme_park',
+	'sports',
+	'place_of_worship',
+	'other',
+	'nightclub',
+];
+const FOOD: Category[] = ['cafe', 'restaurant', 'fast_food', 'bar'];
+let created = 0;
 function candidate(
 	id: string,
-	...[lon = START.lon, score = 0.5, visitMinutes = 10]: [number?, number?, number?]
+	...[lon = START.lon, score = 0.5, visitMinutes = 10, category = SIGHTS[created % SIGHTS.length]!]: [
+		number?,
+		number?,
+		number?,
+		Category?,
+	]
 ): Candidate {
+	created += 1;
 	return {
 		distanceM: 0,
 		open: openStatus('24/7', new Date('2026-10-19T07:00:00Z')),
 		place: {
 			...START,
 			address: null,
-			category: 'cafe',
+			category,
 			description: null,
 			descriptionSource: null,
 			id,
@@ -140,36 +170,130 @@ describe('planWalk', () => {
 
 	it('matches an independent exhaustive oracle for singles, pairs and triples', () => {
 		const candidates = [
-			candidate('a', 71.431, 0.3),
-			candidate('b', 71.445, 0.9),
-			candidate('c', 71.432, 0.5),
-			candidate('d', 71.425, 0.7),
+			candidate('a', 71.431, 0.3, 10, 'cafe'),
+			candidate('b', 71.445, 0.9, 10, 'museum'),
+			candidate('c', 71.432, 0.5, 10, 'restaurant'),
+			candidate('d', 71.425, 0.7, 10, 'park'),
+			candidate('e', 71.4255, 0.4, 10, 'park'),
+			candidate('f', 71.428, 0.2, 10, 'monument'),
 		];
-		for (const budget of [20, 30, 40, 50]) {
-			let optimum = -1;
+		for (const budget of [20, 30, 40, 50, 90]) {
+			const cap = Math.max(15, budget / 4);
+			const reachable = candidates.filter(
+				(entry) =>
+					walkMinutes(distanceM(START, entry.place)) <= cap &&
+					walkMinutes(distanceM(START, entry.place)) + entry.visitMinutes <= budget,
+			);
+			const anchor = reachable.reduce<Candidate | null>(
+				(top, entry) => (top === null || entry.score > top.score ? entry : top),
+				null,
+			);
+			let optimum = { anchored: false, score: -1 };
 			for (const first of candidates)
 				for (const second of [null, ...candidates])
 					for (const third of [null, ...candidates]) {
 						const sequence = second ? (third ? [first, second, third] : [first, second]) : [first];
-						if (new Set(sequence.map((entry) => entry.place.id)).size === sequence.length) {
+						const pairs = sequence.flatMap((x, i) => sequence.slice(i + 1).map((y) => [x, y] as const));
+						if (
+							new Set(sequence.map((entry) => entry.place.id)).size === sequence.length &&
+							sequence.filter((entry) => FOOD.includes(entry.place.category)).length <= 1 &&
+							pairs.every(
+								([x, y]) => x.place.category !== y.place.category || distanceM(x.place, y.place) >= 100,
+							)
+						) {
 							let elapsed = 0;
-							let previous = START;
+							let longest = 0;
+							let previous: GeoPoint = START;
 							for (const stop of sequence) {
-								elapsed += walkMinutes(distanceM(previous, stop.place)) + stop.visitMinutes;
+								const walk = walkMinutes(distanceM(previous, stop.place));
+								longest = Math.max(longest, walk);
+								elapsed += walk + stop.visitMinutes;
 								previous = stop.place;
 							}
-							if (elapsed <= budget)
-								optimum = Math.max(
-									optimum,
-									sequence.reduce((sum, stop) => sum + stop.score, 0),
-								);
+							const score = sequence.reduce((sum, stop) => sum + stop.score, 0);
+							const anchored = anchor !== null && sequence.includes(anchor);
+							if (
+								elapsed <= budget &&
+								longest <= cap &&
+								(Number(anchored) > Number(optimum.anchored) ||
+									(anchored === optimum.anchored && score > optimum.score + 1e-9))
+							)
+								optimum = { anchored, score };
 						}
 					}
 			const result = plan(candidates, budget);
 			expect(result.totalMinutes).toBeLessThanOrEqual(budget);
-			expect(result.stops.length ? result.stops.reduce((sum, stop) => sum + stop.candidate.score, 0) : -1).toBe(
-				optimum,
-			);
+			expect(result.stops.some((stop) => stop.candidate === anchor)).toBe(optimum.anchored);
+			expect(
+				result.stops.length ? result.stops.reduce((sum, stop) => sum + stop.candidate.score, 0) : -1,
+			).toBeCloseTo(optimum.score);
 		}
+	});
+
+	it('treats a same-category cluster as one stop and keeps the top nearby place (EXPO rockets)', () => {
+		const expo = { lat: 51.09, lon: 71.416 };
+		const located = (entry: Candidate, point: GeoPoint): Candidate => ({
+			...entry,
+			place: { ...entry.place, ...point },
+		});
+		const alem = located(candidate('alem', START.lon, 0.6, 60, 'museum'), { lat: 51.089252, lon: 71.4161925 });
+		const rockets = [0, 0.00035, 0.0007].map((offset, index) =>
+			located(candidate(`rocket-${index}`, START.lon, 0.53, 15, 'artwork'), {
+				lat: 51.0784556,
+				lon: 71.3861753 + offset,
+			}),
+		);
+		const alley = located(candidate('alley', START.lon, 0.5, 40, 'park'), { lat: 51.0915, lon: 71.4215 });
+		const result = planWalk({ candidates: [...rockets, alley, alem], durationMinutes: 90, maxStops: 3, start: expo });
+		const ids = result.stops.map((stop) => stop.candidate.place.id);
+		expect(ids).toContain('alem');
+		expect(ids.filter((id) => id.startsWith('rocket')).length).toBeLessThanOrEqual(1);
+		expect(result.legs.every((leg) => leg.walkMinutes <= 22.5)).toBe(true);
+		expect(result.totalMinutes).toBeLessThanOrEqual(90);
+
+		const near = [0, 0.00035, 0.0007].map((offset, index) =>
+			candidate(`statue-${index}`, START.lon + 0.001 + offset, 0.9, 10, 'artwork'),
+		);
+		const museum = candidate('museum', START.lon + 0.004, 0.3, 10, 'museum');
+		const clustered = plan([...near, museum], 90).stops.map((stop) => stop.candidate.place.id);
+		expect(clustered.filter((id) => id.startsWith('statue'))).toHaveLength(1);
+		expect(clustered).toContain('museum');
+		const apart = [
+			candidate('art-1', START.lon + 0.001, 0.9, 10, 'artwork'),
+			candidate('art-2', START.lon + 0.004, 0.9, 10, 'artwork'),
+		];
+		expect(plan(apart, 90).stops).toHaveLength(2);
+	});
+
+	it('caps every leg at the larger of 15 minutes and a quarter of the budget', () => {
+		const far = candidate('far', START.lon + 0.015, 0.9, 0);
+		const walk = walkMinutes(distanceM(START, far.place));
+		expect(walk).toBeGreaterThan(15);
+		expect(walk).toBeLessThan(30);
+		expect(plan([far], 40).stops).toEqual([]);
+		expect(plan([far], 120).stops).toHaveLength(1);
+		const hop = candidate('hop', START.lon + 0.0075, 0.5, 0);
+		const beyond = candidate('beyond', START.lon + 0.03, 0.9, 0);
+		expect(plan([hop, beyond], 60).stops.map((stop) => stop.candidate.place.id)).toEqual(['hop']);
+	});
+
+	it('allows at most one food stop and prefers sights to a food-only route', () => {
+		const food = FOOD.map((category, index) =>
+			candidate(`food-${index}`, START.lon + index * 0.003, 0.8, 20, category),
+		);
+		const park = candidate('park', START.lon + 0.002, 0.3, 20, 'park');
+		const monument = candidate('monument', START.lon + 0.005, 0.3, 15, 'monument');
+		const result = plan([...food, park, monument], 120);
+		const categories = result.stops.map((stop) => stop.candidate.place.category);
+		expect(categories.filter((category) => FOOD.includes(category))).toHaveLength(1);
+		expect(result.stops).toHaveLength(3);
+		expect(plan(food, 120).stops).toHaveLength(1);
+	});
+
+	it('includes the best-scored nearby place even when other sets add up to more', () => {
+		const top = candidate('top', START.lon + 0.001, 0.7, 60);
+		const others = ['x', 'y', 'z'].map((id, index) => candidate(id, START.lon + 0.002 + index * 0.002, 0.6, 20));
+		const result = plan([...others, top], 90);
+		expect(result.stops.map((stop) => stop.candidate.place.id)).toContain('top');
 	});
 });
