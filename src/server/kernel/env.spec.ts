@@ -23,24 +23,6 @@ describe('parseEnv', () => {
 		expect(() => parseEnv({})).toThrow(/\.env\.example/);
 	});
 
-	/**
-	 * The starter runs with no database on purpose: every service a reviewer has to stand up
-	 * before the product runs is another way for the review to end early.
-	 */
-	it('boots with no database at all', () => {
-		expect(parseEnv(VALID).DATABASE_URL).toBeUndefined();
-	});
-
-	it('still rejects a connection string for the wrong kind of database', () => {
-		expect(() => parseEnv({ ...VALID, DATABASE_URL: 'mysql://user:pass@localhost/db' })).toThrow(/PostgreSQL/);
-	});
-
-	it('accepts a PostgreSQL connection string when there is one', () => {
-		const url = 'postgresql://app_user:app_user@localhost:5433/app';
-
-		expect(parseEnv({ ...VALID, DATABASE_URL: url }).DATABASE_URL).toBe(url);
-	});
-
 	it('requires a key, because a missing one fails on stage instead of at boot', () => {
 		expect(() => parseEnv({})).toThrow(/LLM_API_KEY/);
 	});
@@ -97,7 +79,7 @@ describe('.env.example, as a reviewer receives it', () => {
 describe('a blank value means unset, not empty', () => {
 	const VALID_BLANKS = { LLM_API_KEY: 'k' };
 
-	it.each(['DATABASE_URL', 'LLM_BASE_URL', 'LLM_MODEL', 'OPENAI_VECTOR_STORE_ID', 'OPENAI_WEB_SEARCH'])(
+	it.each(['LLM_BASE_URL', 'LLM_MODEL', 'OPENAI_VECTOR_STORE_ID', 'OPENAI_WEB_SEARCH'])(
 		'accepts a blank %s',
 		(name) => {
 			expect(() => parseEnv({ ...VALID_BLANKS, [name]: '' })).not.toThrow();

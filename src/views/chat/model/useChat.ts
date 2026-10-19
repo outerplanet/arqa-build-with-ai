@@ -48,7 +48,7 @@ export function useChat(): UseChat {
 				const message =
 					typeof failure === 'object' && failure !== null && 'message' in failure
 						? String(failure.message)
-						: `The server answered ${String(response.status)}.`;
+						: `Сервер ответил ${String(response.status)}.`;
 
 				throw new Error(message);
 			}
@@ -56,7 +56,7 @@ export function useChat(): UseChat {
 			const parsed = chatResponseSchema.safeParse(await response.json());
 
 			if (!parsed.success) {
-				throw new Error('The server’s answer did not match the expected shape.');
+				throw new Error('Ответ сервера не совпал с ожидаемой формой.');
 			}
 
 			setMessages([...history, { content: parsed.data.reply, role: 'assistant' }]);
@@ -65,7 +65,7 @@ export function useChat(): UseChat {
 		} catch (cause) {
 			// The user's message stays in the transcript, so retry resends it rather than making
 			// somebody retype what they already said.
-			setError(cause instanceof Error ? cause.message : 'The agent could not be reached.');
+			setError(cause instanceof Error ? cause.message : 'Не удалось связаться с ассистентом.');
 			setStatus('error');
 		}
 	}, []);

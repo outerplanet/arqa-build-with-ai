@@ -25,10 +25,10 @@ export interface ChatScreenProps {
 }
 
 export function ChatScreen({
-	emptyHint = 'Try: “What time is it?”',
-	placeholder = 'Ask something…',
-	subtitle = 'Ask in plain language. The agent decides which tools it needs and shows its work.',
-	title = 'Agent',
+	emptyHint = 'Например: «Который час?»',
+	placeholder = 'Спросите что-нибудь…',
+	subtitle = 'Пишите обычным языком. Ассистент сам выбирает нужные инструменты и показывает, что сделал.',
+	title = 'Ассистент',
 }: ChatScreenProps) {
 	const { error, messages, retry, send, status, toolCalls } = useChat();
 	const pending = status === 'sending';
@@ -41,7 +41,7 @@ export function ChatScreen({
 			</div>
 
 			<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-				<Card className="min-h-[32rem]" description="Conversation" title="Chat">
+				<Card className="min-h-[32rem]" description="Разговор" title="Чат">
 					<div className="flex min-h-0 flex-1 flex-col">
 						<MessageList emptyHint={emptyHint} messages={messages} pending={pending} />
 
@@ -50,7 +50,7 @@ export function ChatScreen({
 								<div className="flex flex-wrap items-center gap-2">
 									<span>{error}</span>
 									<Button onClick={retry} size="sm" variant="secondary">
-										Retry
+										Повторить
 									</Button>
 								</div>
 							</Callout>

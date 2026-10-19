@@ -10,16 +10,16 @@ import 'server-only';
  * crosses a serialization boundary on its way to the browser, where `instanceof` has
  * already stopped being true and a string still is.
  *
- * Six categories are listed in that document. Four are here: the three a database
- * constraint can produce, and `forbidden`, which `requirePermission` raises. Policy rejection
- * and provider failure arrive with the tiers that raise them — a kind nothing throws is a
- * kind nobody maintains.
+ * Six categories are listed in that document. Four are here: conflict, duplicate and
+ * validation for a rule a usecase refuses, and `forbidden` for an action the caller may not
+ * take. Policy rejection and provider failure arrive with the tiers that raise them — a kind
+ * nothing throws is a kind nobody maintains.
  */
 export type DomainErrorKind = 'conflict' | 'duplicate' | 'forbidden' | 'validation';
 
 interface DomainErrorOptions {
 	cause?: unknown;
-	/** The database constraint that refused. For logs, and for the UI to be specific. */
+	/** The rule that refused. For logs, and for the UI to be specific. */
 	constraint?: string;
 	message?: string;
 }
@@ -32,7 +32,7 @@ const DEFAULT_MESSAGE: Record<DomainErrorKind, string> = {
 	conflict: 'This overlaps something that already exists.',
 	duplicate: 'A record with these values already exists.',
 	forbidden: 'This account is not allowed to do that.',
-	validation: 'The database rejected this value.',
+	validation: 'This value is not valid.',
 };
 
 export class DomainError extends Error {

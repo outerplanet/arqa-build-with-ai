@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							<Icon aria-hidden className={clsx('mt-0.5 size-4 shrink-0', className)} />
 							<Primitive.Title className="text-fg text-sm">{notice.message}</Primitive.Title>
 							<Primitive.Close
-								aria-label="Close"
+								aria-label="Закрыть"
 								className="text-fg-subtle hover:text-fg ml-auto cursor-pointer transition-colors"
 							>
 								<XMarkIcon aria-hidden className="size-4" />

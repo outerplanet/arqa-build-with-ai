@@ -24,6 +24,8 @@ const SEMANTIC = [
 	{ label: 'fg-subtle', note: 'placeholder', token: '--color-fg-subtle' },
 	{ label: 'accent', note: 'primary actions', token: '--color-accent' },
 	{ label: 'accent-subtle', note: 'tinted ground', token: '--color-accent-subtle' },
+	{ label: 'accent-bright', note: 'routes, markers', token: '--color-accent-bright' },
+	{ label: 'highlight', note: 'gold, with on-highlight text', token: '--color-highlight' },
 ];
 
 const SEMANTIC_HUES = [

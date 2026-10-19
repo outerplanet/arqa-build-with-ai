@@ -1,12 +1,10 @@
 import { config as loadEnvFile } from 'dotenv';
-import { configDefaults, defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 // First file wins, and dotenv never overwrites a variable that is already set, so an
-// explicit DATABASE_URL in the shell beats .env.test, which beats .env. That ordering is
-// what keeps `pnpm test` off the development database.
+// explicit variable in the shell beats .env.test, which beats .env. That ordering is what
+// keeps `pnpm test` on the scripted provider instead of a developer's real key.
 loadEnvFile({ path: ['.env.test.local', '.env.test', '.env'], quiet: true });
-
-const INTEGRATION_GLOB = 'src/**/*.integration.spec.ts';
 
 export default defineConfig({
 	resolve: { tsconfigPaths: true },
@@ -32,22 +30,8 @@ export default defineConfig({
 			{
 				test: {
 					environment: 'node',
-					exclude: [...configDefaults.exclude, INTEGRATION_GLOB],
 					include: ['src/**/*.spec.ts'],
 					name: 'unit',
-				},
-			},
-			{
-				test: {
-					environment: 'node',
-					// One database, one worker. These tests assert on roles, extensions and
-					// eventually on data; running them concurrently against a shared database turns
-					// a real failure into an intermittent one.
-					fileParallelism: false,
-					globalSetup: ['./vitest.globalSetup.ts'],
-					hookTimeout: 30_000,
-					include: [INTEGRATION_GLOB],
-					name: 'integration',
 				},
 			},
 		],

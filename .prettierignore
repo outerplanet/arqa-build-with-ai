@@ -2,7 +2,6 @@
 .next/
 .cache/
 coverage/
-src/server/db/generated/
 
 pnpm-lock.yaml
 settings.local.json

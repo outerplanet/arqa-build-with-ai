@@ -38,7 +38,7 @@ export function Composer({ disabled, onSend, placeholder }: ComposerProps) {
 	return (
 		<form className="border-border flex items-end gap-2 border-t pt-3" onSubmit={submit}>
 			<Textarea
-				aria-label="Message"
+				aria-label="Сообщение"
 				className="min-h-[2.75rem] flex-1 resize-none"
 				disabled={disabled}
 				onChange={(event) => {
@@ -50,9 +50,9 @@ export function Composer({ disabled, onSend, placeholder }: ComposerProps) {
 				value={draft}
 			/>
 
-			<Button aria-label="Send" disabled={disabled || empty} type="submit">
+			<Button aria-label="Отправить" disabled={disabled || empty} type="submit">
 				<PaperAirplaneIcon aria-hidden className="size-4" />
-				Send
+				Отправить
 			</Button>
 		</form>
 	);

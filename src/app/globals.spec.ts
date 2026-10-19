@@ -177,6 +177,8 @@ const PAIRS: readonly Pair[] = [
 	{ background: '--color-warning-bg', foreground: '--color-warning', minimum: 4.5 },
 	{ background: '--color-danger-bg', foreground: '--color-danger', minimum: 4.5 },
 	{ background: '--color-info-bg', foreground: '--color-info', minimum: 4.5 },
+	// Gold is a fill, and only ever under its own on-highlight text.
+	{ background: '--color-highlight', foreground: '--color-fg-on-highlight', minimum: 4.5 },
 ];
 
 describe.each([

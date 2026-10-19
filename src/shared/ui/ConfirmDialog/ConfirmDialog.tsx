@@ -61,7 +61,7 @@ export function ConfirmDialog({
 
 					<div className="flex justify-end gap-2">
 						<AlertDialog.Cancel asChild>
-							<Button variant="secondary">Cancel</Button>
+							<Button variant="secondary">Отмена</Button>
 						</AlertDialog.Cancel>
 
 						<AlertDialog.Action asChild>

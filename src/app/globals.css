@@ -9,7 +9,7 @@
    which is exactly how it reached a browser before anybody noticed.
 
    Naming the directory avoids that path entirely, and is the better setting
-   regardless: the scanner has no business reading docs/, prisma/migrations/ or
+   regardless: the scanner has no business reading docs/, node_modules/ or
    .claude/. Verified by building this file both ways — 0 bytes against 19KB.
    ========================================================================== */
 @import 'tailwindcss' source(none);
@@ -22,51 +22,53 @@
    ========================================================================== */
 
 :root {
-	/* Violet, and the reason is contrast rather than taste.
+	/* «Астана». Sky teal, the blue of the Kazakhstan flag, and steppe gold.
 
-	   The accent has to clear 4.5:1 against white text, because that is what a primary button is.
-	   Teal cannot: #0D8A80 measures 4.23 and fails, so the accent was forced down to #0F6E67,
-	   which is dark and low-chroma — and a projector, which crushes saturation in dark tones,
-	   renders it as near-black. The primary button stops looking primary.
+	   The flag teal is #00AFCA (brand-500), and it is bright: white text on it measures 2.63:1 and
+	   fails AA. So it is never a filled background under white text. Filled accents in the light
+	   theme use brand-700, #007A8F, which measures 5.02:1 against white and still reads as the
+	   same hue. The bright teal stays for what is not text: decorative accents and map routes
+	   (`accent-bright`), and the dark theme, where it carries dark text at 6.05:1.
 
-	   Violet clears the bar while still being vivid: #9333EA measures 5.38. It is also the only
-	   vivid hue that collides with none of the four semantic hues — success green, warning amber,
-	   danger red, info blue — which matters because the agent activity panel keeps ok-green and
-	   failed-red on screen next to accent-coloured controls all the time. */
-	--brand-50: #faf5ff;
-	--brand-100: #f3e8ff;
-	--brand-200: #e9d5ff;
-	--brand-300: #d8b4fe;
-	--brand-400: #c084fc;
-	--brand-500: #a855f7;
-	--brand-600: #9333ea;
-	--brand-700: #7e22ce;
-	--brand-800: #6b21a8;
-	--brand-900: #581c87;
-	--brand-950: #3b0764;
+	   On a white page even the focus ring cannot be the flag teal — 2.63:1 is under the 3:1 a
+	   boundary needs — so the light ring steps down one to brand-600 (3.83:1). */
+	--brand-50: #e6f8fb;
+	--brand-100: #c6eef5;
+	--brand-200: #94dfec;
+	--brand-300: #5ccde0;
+	--brand-400: #22bcd5;
+	--brand-500: #00afca;
+	--brand-600: #008fa6;
+	--brand-700: #007a8f;
+	--brand-800: #005f70;
+	--brand-900: #034a57;
+	--brand-950: #022e36;
 
-	/* Neutrals carry a trace of the brand hue, or pure grey next to violet reads dirty. Each step
-	   holds the exact OKLab lightness of the teal ladder it replaced — only the hue moved — so
-	   every contrast relationship and the whole sense of depth survive the swap unchanged. */
+	/* Gold, from the sun and the steppe eagle on the same flag. A highlight, never text on a
+	   light ground (1.59:1 on white): it is a fill, and what sits on it is near-black. */
+	--gold-400: #fec50c;
+
+	/* Neutrals carry a trace of the teal, or pure grey next to it reads dirty. Cool, with the
+	   lightest steps close to white so the light theme stays airy outdoors on a phone. */
 	--neutral-0: #ffffff;
-	--neutral-25: #fbfbfc;
-	--neutral-50: #f6f6f8;
-	--neutral-100: #efeff2;
-	--neutral-150: #e7e7ea;
-	--neutral-200: #dcdbe0;
-	--neutral-300: #c5c4cb;
-	--neutral-400: #a09ea7;
+	--neutral-25: #f7fafb;
+	--neutral-50: #f0f5f7;
+	--neutral-100: #e8eff2;
+	--neutral-150: #dde6ea;
+	--neutral-200: #d0dbe0;
+	--neutral-300: #b5c3c9;
+	--neutral-400: #93a3aa;
 	/* A half-step, added for `fg-subtle`. See the note on that token below. */
-	--neutral-450: #8d8b95;
-	--neutral-500: #77767e;
-	--neutral-600: #5d5c64;
-	--neutral-700: #49484f;
-	--neutral-800: #323138;
-	--neutral-900: #201f26;
-	--neutral-950: #151419;
-	--neutral-1000: #0b0b0e;
+	--neutral-450: #7e8f97;
+	--neutral-500: #66777f;
+	--neutral-600: #4d5d65;
+	--neutral-700: #3a4950;
+	--neutral-800: #26343a;
+	--neutral-900: #18262c;
+	--neutral-950: #0f1e24;
+	--neutral-1000: #081115;
 
-	--canvas-dark: #100f14;
+	--canvas-dark: #0b1418;
 }
 
 /* ==========================================================================
@@ -88,7 +90,7 @@
 	/* The ground behind a modal dialog. Darker in the light theme than in the dark one, and not
      the same black at the same opacity in both: over a near-black canvas a 40% black scrim is
      nearly invisible, which is the one thing an overlay must not be. */
-	--color-overlay: oklch(0.2 0.01 292 / 45%);
+	--color-overlay: oklch(0.2 0.02 220 / 45%);
 
 	--color-border: var(--neutral-150);
 	--color-border-strong: var(--neutral-300);
@@ -100,22 +102,27 @@
 
 	--color-fg: var(--neutral-950);
 	--color-fg-muted: var(--neutral-600);
-	/* `neutral-400` measured 2.62:1 on a white surface, which fails the 3:1 that §9 of
-	   docs/design-system.md sets for UI text — and it had been failing since before the hue
-	   changed. `neutral-450` measures 3.35:1. It is still visibly the quietest text on the
-	   screen; it is now also readable. Anything a person must actually read takes `fg-muted`. */
+	/* `neutral-400` would measure under the 3:1 that §9 of docs/design-system.md sets for UI
+	   text. `neutral-450` measures 3.35:1 on white. It is still visibly the quietest text on the
+	   screen; it is also readable. Anything a person must actually read takes `fg-muted`. */
 	--color-fg-subtle: var(--neutral-450);
 	--color-fg-on-accent: #ffffff;
 
-	/* The fill sits one step brighter than the teal it replaced could manage. `brand-600` is
-	   5.38:1 against white text — comfortably AA — and keeps its chroma under a projector, which
-	   is the whole reason for the change. `accent-fg` stays at 700: it is text on a light ground,
-	   where the extra contrast is worth more than the extra saturation. */
-	--color-accent: var(--brand-600);
-	--color-accent-hover: var(--brand-700);
-	--color-accent-active: var(--brand-800);
+	/* The fill is the deep teal, not the flag teal: white on `brand-700` is 5.02:1, white on
+	   `brand-500` is 2.63:1. `accent-fg` is the same deep teal as text on a light ground. */
+	--color-accent: var(--brand-700);
+	--color-accent-hover: var(--brand-800);
+	--color-accent-active: var(--brand-900);
 	--color-accent-subtle: var(--brand-50);
 	--color-accent-fg: var(--brand-700);
+	/* The flag teal itself, for things that are not text: a route line on the map, a marker, a
+	   decorative rule. Never a background under text in the light theme. */
+	--color-accent-bright: var(--brand-500);
+
+	/* Gold highlight: a "recommended" marker, the chosen place, a badge that should catch the
+	   eye. Always a fill with `on-highlight` text on it, in both themes. */
+	--color-highlight: var(--gold-400);
+	--color-fg-on-highlight: var(--neutral-950);
 
 	--color-success: #15803d;
 	--color-success-bg: #ecfdf3;
@@ -148,9 +155,9 @@
 	--color-identity-8: #334155;
 	--color-identity-8-bg: #e2e8f0;
 
-	--shadow-sm: 0 1px 2px rgb(11 11 14 / 0.06);
-	--shadow-md: 0 4px 12px rgb(11 11 14 / 0.08);
-	--shadow-lg: 0 12px 32px rgb(11 11 14 / 0.12);
+	--shadow-sm: 0 1px 2px rgb(15 30 36 / 0.06);
+	--shadow-md: 0 4px 12px rgb(15 30 36 / 0.08);
+	--shadow-lg: 0 12px 32px rgb(15 30 36 / 0.12);
 
 	color-scheme: light;
 }
@@ -159,27 +166,31 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
 		--color-canvas: var(--canvas-dark);
-		--color-surface: #18171e;
-		--color-surface-raised: #212027;
-		--color-surface-sunken: #131217;
-		--color-surface-hover: #36343c;
+		--color-surface: #13222a;
+		--color-surface-raised: #1a2b34;
+		--color-surface-sunken: #0e1a20;
+		--color-surface-hover: #263842;
 		--color-overlay: oklch(0 0 0 / 65%);
 
-		--color-border: #2e2d34;
-		--color-border-strong: #424149;
-		--color-border-hover: #5f5e67;
-		--color-border-focus: var(--brand-400);
+		--color-border: #22343d;
+		--color-border-strong: #33474f;
+		--color-border-hover: #4f646d;
+		--color-border-focus: var(--brand-500);
 
-		--color-fg: #ecebf0;
-		--color-fg-muted: #a2a1ab;
-		--color-fg-subtle: #74737c;
-		--color-fg-on-accent: #2e1065;
+		--color-fg: #e6f2f5;
+		--color-fg-muted: #9db1b9;
+		--color-fg-subtle: #6f848c;
+		--color-fg-on-accent: #04262d;
 
-		--color-accent: var(--brand-400);
-		--color-accent-hover: var(--brand-300);
-		--color-accent-active: var(--brand-200);
-		--color-accent-subtle: #2a1147;
+		--color-accent: var(--brand-500);
+		--color-accent-hover: var(--brand-400);
+		--color-accent-active: var(--brand-300);
+		--color-accent-subtle: #0a3640;
 		--color-accent-fg: var(--brand-300);
+		--color-accent-bright: var(--brand-500);
+
+		--color-highlight: var(--gold-400);
+		--color-fg-on-highlight: var(--canvas-dark);
 
 		--color-success: #5bd68c;
 		--color-success-bg: #0e2a1b;
@@ -219,27 +230,31 @@
 /* Explicit choice wins in both directions. */
 :root[data-theme='dark'] {
 	--color-canvas: var(--canvas-dark);
-	--color-surface: #18171e;
-	--color-surface-raised: #212027;
-	--color-surface-sunken: #131217;
-	--color-surface-hover: #36343c;
+	--color-surface: #13222a;
+	--color-surface-raised: #1a2b34;
+	--color-surface-sunken: #0e1a20;
+	--color-surface-hover: #263842;
 	--color-overlay: oklch(0 0 0 / 65%);
 
-	--color-border: #2e2d34;
-	--color-border-strong: #424149;
-	--color-border-hover: #5f5e67;
-	--color-border-focus: var(--brand-400);
+	--color-border: #22343d;
+	--color-border-strong: #33474f;
+	--color-border-hover: #4f646d;
+	--color-border-focus: var(--brand-500);
 
-	--color-fg: #ecebf0;
-	--color-fg-muted: #a2a1ab;
-	--color-fg-subtle: #74737c;
-	--color-fg-on-accent: #2e1065;
+	--color-fg: #e6f2f5;
+	--color-fg-muted: #9db1b9;
+	--color-fg-subtle: #6f848c;
+	--color-fg-on-accent: #04262d;
 
-	--color-accent: var(--brand-400);
-	--color-accent-hover: var(--brand-300);
-	--color-accent-active: var(--brand-200);
-	--color-accent-subtle: #2a1147;
+	--color-accent: var(--brand-500);
+	--color-accent-hover: var(--brand-400);
+	--color-accent-active: var(--brand-300);
+	--color-accent-subtle: #0a3640;
 	--color-accent-fg: var(--brand-300);
+	--color-accent-bright: var(--brand-500);
+
+	--color-highlight: var(--gold-400);
+	--color-fg-on-highlight: var(--canvas-dark);
 
 	--color-success: #5bd68c;
 	--color-success-bg: #0e2a1b;
@@ -315,6 +330,9 @@
 	--color-accent-subtle: var(--color-accent-subtle);
 	--color-accent-fg: var(--color-accent-fg);
 	--color-on-accent: var(--color-fg-on-accent);
+	--color-accent-bright: var(--color-accent-bright);
+	--color-highlight: var(--color-highlight);
+	--color-on-highlight: var(--color-fg-on-highlight);
 	--color-success: var(--color-success);
 	--color-warning: var(--color-warning);
 	--color-danger: var(--color-danger);

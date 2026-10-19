@@ -36,60 +36,96 @@ Three layers. Components use only layer 3.
 
 ## 2. Palette
 
-### 2.1. Brand — violet
+The palette is called **«Астана»**. It takes its two brand colours from the flag of Kazakhstan:
+the sky teal of the field and the gold of the sun. **Light is the default theme** — the product is
+used outdoors, on a phone, next to a map — and dark is a full equal, chosen in the toggle or by
+the system.
 
-Vivid, legible against both light and dark grounds, and clear of every semantic hue. It carries the product; it is not sprinkled around.
+### 2.1. Brand — sky teal
+
+The flag teal is `#00AFCA` (`--brand-500`). It carries the product; it is not sprinkled around.
 
 ```text
---brand-50   #FAF5FF
---brand-100  #F3E8FF
---brand-200  #E9D5FF
---brand-300  #D8B4FE
---brand-400  #C084FC
---brand-500  #A855F7
---brand-600  #9333EA
---brand-700  #7E22CE
---brand-800  #6B21A8
---brand-900  #581C87
---brand-950  #3B0764
+--brand-50   #E6F8FB
+--brand-100  #C6EEF5
+--brand-200  #94DFEC
+--brand-300  #5CCDE0
+--brand-400  #22BCD5
+--brand-500  #00AFCA   the flag teal
+--brand-600  #008FA6
+--brand-700  #007A8F   the light-theme accent fill
+--brand-800  #005F70
+--brand-900  #034A57
+--brand-950  #022E36
 ```
 
-**2.1.1.** The accent fill is `--brand-600`, which measures 5.38:1 against white text.
+**2.1.1.** The flag teal is bright, and white text on it measures **2.63:1** — a fail. So in the
+light theme the accent fill is the deep teal `--brand-700`, `#007A8F`, which measures **5.02:1**
+against white text and still reads as the same hue. The flag teal itself is kept for what is not
+text: `--color-accent-bright`, for route lines, markers and decorative rules on the map.
 
-The hue is chosen on contrast, not taste. A primary button is white text on the accent, so the accent must clear 4.5:1 — and teal, which this replaced, has no shade that is both accessible and vivid: `#0D8A80` measures 4.23 and fails, forcing the accent down to a dark, low-chroma `#0F6E67`. A projector crushes saturation in dark tones, so that rendered as near-black and the primary button stopped reading as primary.
+**2.1.2.** In the dark theme the accent is the flag teal itself, with dark text on it
+(`#04262D` on `#00AFCA`, **6.05:1**). There the brightness is an asset, not a problem.
 
-**2.1.2.** The accent must not be confusable with the semantic hues of §2.3, because status and action appear side by side — most visibly in the agent activity panel, where success green and danger red sit beside accent-coloured controls. That rules out green, amber, orange and red accents outright, and makes blue awkward against `info`. The free zones are teal/cyan, indigo/violet and magenta. Violet is the vivid one among them.
+**2.1.3.** The light focus ring is `--brand-600`, not the flag teal. A focus ring is a boundary and
+needs 3:1; `#00AFCA` on white is 2.63:1, `#008FA6` is 3.83:1. In the dark theme the ring is the
+flag teal (6.19:1 on the surface).
 
-### 2.2. Neutral — cool grey with a faint violet cast
+**2.1.4.** The accent must not be confusable with the semantic hues of §2.3, because status and action appear side by side — most visibly in the agent activity panel, where success green and danger red sit beside accent-coloured controls. Teal sits in the free zone between success green and info blue.
 
-Pure grey next to violet reads dirty. A trace of the brand hue in the neutrals makes the whole surface feel intentional.
+### 2.1a. Highlight — gold
 
-Each step holds the OKLab lightness of the teal ladder it replaced; only the hue moved. That is what kept every contrast relationship and the whole sense of depth intact across the change.
+```text
+--gold-400   #FEC50C   the gold of the flag
+```
+
+Gold is a **highlight**, not a second accent: the recommended place, the chosen stop, a badge that
+must catch the eye. It is always a fill with `--color-fg-on-highlight` text on it — near-black in
+both themes — and never text on a light ground, where it measures 1.59:1.
+
+### 2.2. Neutral — cool grey with a trace of teal
+
+Pure grey next to teal reads dirty. A trace of the brand hue in the neutrals makes the whole surface feel intentional.
 
 ```text
 --neutral-0     #FFFFFF
---neutral-25    #FBFBFC
---neutral-50    #F6F6F8
---neutral-100   #EFEFF2
---neutral-150   #E7E7EA
---neutral-200   #DCDBE0
---neutral-300   #C5C4CB
---neutral-400   #A09EA7
---neutral-450   #8D8B95
---neutral-500   #77767E
---neutral-600   #5D5C64
---neutral-700   #49484F
---neutral-800   #323138
---neutral-900   #201F26
---neutral-950   #151419
---neutral-1000  #0B0B0E
+--neutral-25    #F7FAFB   light canvas
+--neutral-50    #F0F5F7
+--neutral-100   #E8EFF2
+--neutral-150   #DDE6EA
+--neutral-200   #D0DBE0
+--neutral-300   #B5C3C9
+--neutral-400   #93A3AA
+--neutral-450   #7E8F97
+--neutral-500   #66777F
+--neutral-600   #4D5D65   light fg-muted
+--neutral-700   #3A4950
+--neutral-800   #26343A
+--neutral-900   #18262C
+--neutral-950   #0F1E24   light fg
+--neutral-1000  #081115
 ```
 
-**2.2.1.** The light canvas is `--neutral-25`, not white. Cards sit on it in white. Eight hours of pure `#FFFFFF` is what makes people tired.
+**2.2.1.** The light canvas is `--neutral-25`, `#F7FAFB`, not white. Cards sit on it in white.
 
-**2.2.2.** The dark canvas is `#100F14`, not black. Pure black plus bright text causes halation.
+**2.2.2.** The dark canvas is `#0B1418`, not black — pure black plus bright text causes halation. Dark surfaces are `#13222A`, dark text is `#E6F2F5`.
 
-**2.2.3.** `--neutral-450` exists for one token. `--color-fg-subtle` sat on `--neutral-400`, which measures 2.62:1 on a white surface and fails the 3:1 that §9 requires of UI text. `--neutral-450` measures 3.35:1 — still the quietest text on the screen, and now readable. Anything a person must actually read takes `fg-muted`, not `fg-subtle`.
+**2.2.3.** `--neutral-450` exists for one token, `--color-fg-subtle`: it measures 3.35:1 on a white surface, the 3:1 that §9 requires of UI text. Anything a person must actually read takes `fg-muted`, not `fg-subtle`.
+
+### 2.2a. Measured contrast
+
+Measured with the WCAG 2.x formula, and enforced by `src/app/globals.spec.ts`.
+
+| Pair | Light | Dark |
+|---|---|---|
+| `fg` on `canvas` | `#0F1E24` on `#F7FAFB` — 16.26:1 | `#E6F2F5` on `#0B1418` — 16.31:1 |
+| `fg` on `surface` | `#0F1E24` on `#FFFFFF` — 17.05:1 | `#E6F2F5` on `#13222A` — 14.25:1 |
+| `fg-muted` on `surface` | `#4D5D65` on `#FFFFFF` — 6.84:1 | `#9DB1B9` on `#13222A` — 7.31:1 |
+| `fg-subtle` on `surface` (3:1) | `#7E8F97` on `#FFFFFF` — 3.35:1 | `#6F848C` on `#13222A` — 4.15:1 |
+| `fg-on-accent` on `accent` | `#FFFFFF` on `#007A8F` — 5.02:1 | `#04262D` on `#00AFCA` — 6.05:1 |
+| `accent-fg` on `surface` | `#007A8F` on `#FFFFFF` — 5.02:1 | `#5CCDE0` on `#13222A` — 8.73:1 |
+| `accent-fg` on `accent-subtle` | `#007A8F` on `#E6F8FB` — 4.59:1 | `#5CCDE0` on `#0A3640` — 6.98:1 |
+| `fg-on-highlight` on `highlight` | `#0F1E24` on `#FEC50C` — 10.72:1 | `#0B1418` on `#FEC50C` — 11.71:1 |
 
 ### 2.3. Semantic hues
 
@@ -127,6 +163,10 @@ tinted ground in both, and a contrast check against all four.
 --color-accent-active
 --color-accent-subtle     tinted background
 --color-accent-fg         accent-coloured text and icons
+--color-accent-bright     the flag teal: routes, markers; never under text in light
+
+--color-highlight         gold fill: the recommended or chosen item
+--color-fg-on-highlight   text on a highlight fill
 ```
 
 ## 4. Status tokens
@@ -273,7 +313,7 @@ against both themes before it can be allowed, and one logo is enough to make a t
 
 ## 13. Theme switching
 
-**13.1.** Three choices: light, dark, system. Stored per user, applied before first paint.
+**13.1.** Three choices: light, dark, system. Stored per user, applied before first paint. With nothing stored, the theme is light (`DEFAULT_THEME` in `src/shared/lib/theme.ts`); "system" follows the operating system.
 
 **13.2.** The toggle sits in the profile menu, not on the main toolbar. It is set once.
 
@@ -285,4 +325,4 @@ against both themes before it can be allowed, and one logo is enough to make a t
 - No coloured page backgrounds; colour marks meaning.
 - No icon-only navigation. Icons accompany labels.
 - No animated dashboard charts.
-- No more than one accent hue.
+- No more than one accent hue. Gold is a highlight fill (§2.1a), not a second accent.

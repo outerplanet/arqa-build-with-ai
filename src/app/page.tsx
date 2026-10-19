@@ -9,13 +9,13 @@ import { AppShell, type NavigationSection } from '@widgets/appShell';
  * `src/server/`. Whoever renders the shell decides what this visitor sees.
  */
 const SECTIONS: readonly NavigationSection[] = [
-	{ href: '/', Icon: ChatBubbleLeftRightIcon, label: 'Agent' },
-	{ href: '/design', Icon: SwatchIcon, label: 'Design system' },
+	{ href: '/', Icon: ChatBubbleLeftRightIcon, label: 'Ассистент' },
+	{ href: '/design', Icon: SwatchIcon, label: 'Дизайн-система' },
 ];
 
 export default function HomePage() {
 	return (
-		<AppShell sections={SECTIONS} title="Starter">
+		<AppShell sections={SECTIONS} title="Прогулки по Астане">
 			<ChatScreen />
 		</AppShell>
 	);

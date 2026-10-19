@@ -20,7 +20,7 @@ function summarise(result: unknown): string {
 	if (typeof result === 'number' || typeof result === 'boolean') return String(result);
 
 	if (Array.isArray(result)) {
-		return result.length === 0 ? 'no results' : `${String(result.length)} result(s)`;
+		return result.length === 0 ? 'нет результатов' : `результатов: ${String(result.length)}`;
 	}
 
 	if (typeof result === 'object') {
@@ -30,6 +30,22 @@ function summarise(result: unknown): string {
 	}
 
 	return JSON.stringify(result);
+}
+
+/** The full value, indented, for the details block. `undefined` has no JSON form of its own. */
+function pretty(value: unknown): string {
+	return value === undefined ? '—' : JSON.stringify(value, null, 2);
+}
+
+function Detail({ title, value }: { title: string; value: unknown }) {
+	return (
+		<div className="mt-1.5">
+			<p className="text-fg-muted text-xs">{title}</p>
+			<pre className="bg-surface-sunken text-fg mt-0.5 max-h-60 overflow-auto rounded-sm p-2 text-xs">
+				{pretty(value)}
+			</pre>
+		</div>
+	);
 }
 
 function ActivityRow({ call }: { call: ToolCall }) {
@@ -47,12 +63,18 @@ function ActivityRow({ call }: { call: ToolCall }) {
 				<div className="flex items-center gap-2">
 					<code className="text-fg text-xs font-medium">{call.name}</code>
 					{/* Status is never colour alone: the icon and this word carry it too. */}
-					<Badge tone={ok ? 'success' : 'danger'}>{ok ? 'ok' : 'failed'}</Badge>
-					<span className="text-fg-subtle ml-auto text-xs tabular-nums">{call.durationMs} ms</span>
+					<Badge tone={ok ? 'success' : 'danger'}>{ok ? 'ok' : 'ошибка'}</Badge>
+					<span className="text-fg-subtle ml-auto text-xs tabular-nums">{call.durationMs} мс</span>
 				</div>
 
 				<p className="text-fg-muted mt-0.5 text-xs">{call.label}</p>
 				<p className="text-fg-subtle mt-1 truncate text-xs">{summarise(call.result)}</p>
+
+				<details className="mt-1">
+					<summary className="text-fg-muted hover:text-fg cursor-pointer text-xs">Подробнее</summary>
+					<Detail title="Аргументы" value={call.arguments} />
+					<Detail title="Результат" value={call.result} />
+				</details>
 			</div>
 		</li>
 	);
@@ -83,12 +105,12 @@ export function AgentActivity({ pending, toolCalls }: AgentActivityProps) {
 		<Card
 			action={<CpuChipIcon aria-hidden className="text-fg-subtle size-5" />}
 			className="h-full"
-			description="What the agent did on its last turn"
-			title="Agent activity"
+			description="Что ассистент сделал за последний ход"
+			title="Действия ассистента"
 		>
 			{toolCalls.length === 0 && !pending ? (
 				<p className="text-fg-muted text-sm">
-					Nothing yet. Send a message and the tools the agent chose for itself will appear here.
+					Пока пусто. Отправьте сообщение — здесь появятся инструменты, которые ассистент выбрал сам.
 				</p>
 			) : (
 				<ul aria-busy={pending} aria-live="polite" className="flex flex-col">

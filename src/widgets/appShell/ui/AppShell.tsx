@@ -34,7 +34,7 @@ export function AppShell({ children, sections, title }: AppShellProps) {
 		<ToastProvider>
 			<div className="flex min-h-screen">
 				<nav
-					aria-label="Sections"
+					aria-label="Разделы"
 					className="border-border bg-surface hidden w-60 shrink-0 flex-col gap-1 border-r p-3 md:flex"
 				>
 					<div className="mb-3 px-2 py-1.5">
@@ -52,7 +52,7 @@ export function AppShell({ children, sections, title }: AppShellProps) {
 					<header className="border-border bg-surface flex h-14 items-center justify-between gap-4 border-b px-3 md:px-6">
 						{/* The same sections again on a phone, where the sidebar is gone. Horizontal and
 					    scrollable rather than behind a hamburger: there are only a few. */}
-						<nav aria-label="Sections" className="flex gap-1 overflow-x-auto md:hidden">
+						<nav aria-label="Разделы" className="flex gap-1 overflow-x-auto md:hidden">
 							{sections.map((section) => (
 								<NavLink href={section.href} key={section.href} label={section.label} variant="header">
 									<section.Icon aria-hidden className="size-4 shrink-0" />

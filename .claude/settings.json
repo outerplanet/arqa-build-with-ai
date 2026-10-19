@@ -4,16 +4,13 @@
 		"allow": [
 			"Bash(pnpm build)",
 			"Bash(pnpm check)",
-			"Bash(pnpm db:logs)",
-			"Bash(pnpm db:psql)",
-			"Bash(pnpm db:up)",
+			"Bash(pnpm collect)",
 			"Bash(pnpm dev)",
 			"Bash(pnpm format)",
 			"Bash(pnpm lint)",
 			"Bash(pnpm lint:fix)",
 			"Bash(pnpm lint:no-cache)",
 			"Bash(pnpm test)",
-			"Bash(pnpm test:integration)",
 			"Bash(pnpm test:unit)",
 			"Bash(pnpm typecheck)",
 			"Bash(pnpm verify)"

@@ -30,26 +30,6 @@ const blank = (value: unknown) => (value === '' ? undefined : value);
  */
 const envSchema = z
 	.object({
-		/**
-		 * Optional, and absent by default.
-		 *
-		 * The starter boots, runs and demonstrates itself with no database at all — state lives in
-		 * JSON and in memory. That is deliberate: every service a reviewer has to stand up before
-		 * the product runs is another way for the review to end early. Set this only once
-		 * something genuinely needs to survive a restart, then `pnpm db:up && pnpm db:migrate`.
-		 */
-		DATABASE_URL: z.preprocess(
-			blank,
-			z
-				.string()
-				.min(1)
-				.refine(
-					(value) => /^postgres(ql)?:\/\//.test(value),
-					'must be a PostgreSQL connection string, for example postgresql://app_user:app_user@localhost:5433/app',
-				)
-				.optional(),
-		),
-
 		LLM_API_KEY: z.preprocess(blank, z.string().min(1).optional()),
 
 		/** Any Chat Completions compatible endpoint. Empty means OpenAI's own. */

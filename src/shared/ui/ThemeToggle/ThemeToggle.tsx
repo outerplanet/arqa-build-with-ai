@@ -1,6 +1,6 @@
 'use client';
 
-import { type Theme, THEME_STORAGE_KEY } from '@shared/lib';
+import { DEFAULT_THEME, type Theme, THEME_STORAGE_KEY } from '@shared/lib';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -16,9 +16,9 @@ function read(): Theme {
 	if (cached !== null) return cached;
 	try {
 		const stored = localStorage.getItem(THEME_STORAGE_KEY);
-		cached = stored === 'dark' || stored === 'light' ? stored : 'system';
+		cached = stored === 'dark' || stored === 'light' || stored === 'system' ? stored : DEFAULT_THEME;
 	} catch {
-		cached = 'system';
+		cached = DEFAULT_THEME;
 	}
 	return cached;
 }
@@ -29,7 +29,7 @@ function subscribe(onStoreChange: () => void): () => void {
 }
 
 function getServerSnapshot(): Theme {
-	return 'system';
+	return DEFAULT_THEME;
 }
 
 function apply(next: Theme): void {
@@ -48,9 +48,9 @@ function apply(next: Theme): void {
 }
 
 const OPTIONS: { label: string; value: Theme }[] = [
-	{ label: 'Light', value: 'light' },
-	{ label: 'Dark', value: 'dark' },
-	{ label: 'System', value: 'system' },
+	{ label: 'Светлая', value: 'light' },
+	{ label: 'Тёмная', value: 'dark' },
+	{ label: 'Системная', value: 'system' },
 ];
 
 export function ThemeToggle() {
@@ -58,7 +58,7 @@ export function ThemeToggle() {
 
 	return (
 		<div
-			aria-label="Colour theme"
+			aria-label="Тема оформления"
 			className="border-border bg-surface inline-flex rounded-md border p-0.5"
 			role="radiogroup"
 		>
