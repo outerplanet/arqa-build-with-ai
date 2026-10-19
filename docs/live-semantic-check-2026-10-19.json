@@ -1,0 +1,1523 @@
+{
+  "checkedAt": "2026-10-19T12:18:41.635Z",
+  "runtime": "Production webpack build; OpenAI Responses and local offline embeddings",
+  "datasetSha256": "4a7a3ff284be2aff8beb90ffab6ec6721eb5228a66c8632888d70eb682518621",
+  "index": {
+    "provider": "local",
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimensions": 384,
+    "count": 1091,
+    "datasetSha256": "4a7a3ff284be2aff8beb90ffab6ec6721eb5228a66c8632888d70eb682518621",
+    "generatedAt": "2026-10-19T11:42:10.291043+00:00",
+    "index": "data/poi.vectors.json",
+    "similarity": "cosine",
+    "modelSource": "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  },
+  "limitations": [
+    "Public simulated test locations, not participant geolocation.",
+    "Night query ran at actual server time, not a simulated 23:00.",
+    "HTTP assertions verify tool grounding and runtime availability; relevance remains a human judgement.",
+    "EXPO is ambiguous and correctly asks for clarification.",
+    "Python environment and model cache are installed separately from standalone output."
+  ],
+  "cases": [
+    {
+      "id": "expo",
+      "query": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.",
+      "simulatedPublicLocation": null,
+      "httpStatus": 200,
+      "elapsedMs": 5498,
+      "checked": true,
+      "semanticUsed": null,
+      "body": {
+        "recommendedPlaceIds": [],
+        "reply": "Не удалось однозначно определить ориентир. Уточните название здания или музея либо передайте геолокацию.",
+        "toolCalls": [
+          {
+            "arguments": {
+              "text": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком."
+            },
+            "durationMs": 49,
+            "label": "Определение локации",
+            "name": "resolve_location",
+            "result": {
+              "confidence": "low",
+              "found": false,
+              "label": null,
+              "matchedPlaceId": null,
+              "point": null
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "mega",
+      "query": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.",
+      "simulatedPublicLocation": null,
+      "httpStatus": 200,
+      "elapsedMs": 14516,
+      "checked": true,
+      "semanticUsed": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:way/1467797207"
+        ],
+        "reply": "Локация: Mega Silk Way (из ваших слов).\n\nФильтры: Запрос: Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.; Пешком до 15 минут; Время проверки: 2026-10-19T12:07:36.274Z; Категории: парк, сад, смотровая площадка, арт-объект.\n\n1. NU Park — 562 м, 10 мин пешком (оценка).\nПочему: парк в 562 м от отправной точки.\nНа посещение: 40 мин (оценка).\nЧто делать: пройтись по парку и отдохнуть (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/way/1467797207).",
+        "toolCalls": [
+          {
+            "arguments": {
+              "text": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут."
+            },
+            "durationMs": 33,
+            "label": "Определение локации",
+            "name": "resolve_location",
+            "result": {
+              "confidence": "high",
+              "found": true,
+              "label": "Mega Silk Way",
+              "matchedPlaceId": "osm:way/499328514",
+              "point": {
+                "lat": 51.089,
+                "lon": 71.407
+              }
+            },
+            "status": "ok"
+          },
+          {
+            "arguments": {
+              "near": {
+                "lat": 51.089,
+                "lon": 71.407
+              },
+              "query": "Места для прогулки на 30–60 минут рядом с Mega Silk Way",
+              "categories": [
+                "park",
+                "garden",
+                "viewpoint",
+                "attraction",
+                "monument",
+                "artwork"
+              ],
+              "maxWalkMinutes": 30,
+              "limit": 10
+            },
+            "durationMs": 6159,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 562.0161461549811,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394,
+                    "address": null,
+                    "category": "park",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:way/1467797207",
+                    "name": "NU Park",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/way/1467797207",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.30277291341344414,
+                  "visitMinutes": 40,
+                  "walkMinutes": 10,
+                  "why": {
+                    "distance": 0.33333333333333337,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.36109895020027694,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": "Mega Silk Way",
+                "point": {
+                  "lat": 51.089,
+                  "lon": 71.407
+                },
+                "source": "text"
+              },
+              "usedFilters": [
+                "Запрос: Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:07:36.274Z",
+                "Категории: парк, сад, смотровая площадка, арт-объект"
+              ]
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "coffee",
+      "query": "Хочу тихое место с кофе и розеткой недалеко от меня.",
+      "simulatedPublicLocation": {
+        "lat": 51.089,
+        "lon": 71.405
+      },
+      "httpStatus": 200,
+      "elapsedMs": 12748,
+      "checked": true,
+      "semanticUsed": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:node/14275682079",
+          "osm:node/12520559591",
+          "osm:node/9047331879"
+        ],
+        "reply": "Локация: 51.089, 71.405 (геолокация браузера).\n\nФильтры: Запрос: Хочу тихое место с кофе и розеткой недалеко от меня.; Пешком до 15 минут; Время проверки: 2026-10-19T12:07:50.790Z; Категории: кафе, библиотека.\n\n1. Drinkit — 77 м, 2 мин пешком (оценка).\nПочему: кафе в 77 м от отправной точки.\nНа посещение: 30 мин (оценка).\nРозетки: данных нет — уточните перед выходом.\nУровень шума не проверен — уточните у места.\nЧто делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).\nЧасы: открыто по данным источника до 22:00. по данным OSM открыто до 22:00.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/14275682079).\n\n2. Лепим и варим — 199 м, 4 мин пешком (оценка).\nПочему: кафе в 199 м от отправной точки.\nНа посещение: 30 мин (оценка).\nРозетки: данных нет — уточните перед выходом.\nУровень шума не проверен — уточните у места.\nЧто делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).\nЧасы: открыто по данным источника до 23:00. по данным OSM открыто до 23:00.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/12520559591).\n\n3. Starbucks — 273 м, 5 мин пешком (оценка).\nПочему: кафе в 273 м от отправной точки.\nНа посещение: 30 мин (оценка).\nРозетки: данных нет — уточните перед выходом.\nУровень шума не проверен — уточните у места.\nЧто делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).\nЧасы: открыто по данным источника до 22:00. по данным OSM открыто до 22:00.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/9047331879).",
+        "toolCalls": [
+          {
+            "arguments": {
+              "near": {
+                "lat": 51.089,
+                "lon": 71.405
+              },
+              "query": "тихое кафе с кофе и розеткой",
+              "categories": [
+                "cafe"
+              ],
+              "maxWalkMinutes": 15,
+              "limit": 5
+            },
+            "durationMs": 4634,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 76.60259147949992,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 22:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "22:00"
+                  },
+                  "place": {
+                    "lat": 51.0890765,
+                    "lon": 71.40609,
+                    "address": "Қабанбай Батыр даңғылы 62",
+                    "category": "cafe",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/14275682079",
+                    "name": "Drinkit",
+                    "nameEn": null,
+                    "openingHours": "Mo-Su 08:00-22:00",
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/14275682079",
+                    "tags": [],
+                    "website": "https://drinkit.ru/",
+                    "wheelchair": null
+                  },
+                  "score": 0.5969675592598049,
+                  "visitMinutes": 30,
+                  "walkMinutes": 2,
+                  "why": {
+                    "distance": 0.8666666666666667,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.5757522314828456,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 199.49531914626593,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 23:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "23:00"
+                  },
+                  "place": {
+                    "lat": 51.0891569,
+                    "lon": 71.4078454,
+                    "address": null,
+                    "category": "cafe",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/12520559591",
+                    "name": "Лепим и варим",
+                    "nameEn": null,
+                    "openingHours": "Mo-Su 10:00-23:00",
+                    "phone": "+7 707 180 7400",
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/12520559591",
+                    "tags": [],
+                    "website": "https://lepimivarim.ru",
+                    "wheelchair": null
+                  },
+                  "score": 0.5767573078174284,
+                  "visitMinutes": 30,
+                  "walkMinutes": 4,
+                  "why": {
+                    "distance": 0.7333333333333334,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.6085599362102375,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 273.49316480719875,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 22:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "22:00"
+                  },
+                  "place": {
+                    "lat": 51.0890092,
+                    "lon": 71.4089158,
+                    "address": null,
+                    "category": "cafe",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/9047331879",
+                    "name": "Starbucks",
+                    "nameEn": "Starbucks",
+                    "openingHours": "Mo-Su 08:00-22:00",
+                    "phone": "+7 727 339 9860;+7 800 0802185",
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/9047331879",
+                    "tags": [],
+                    "website": "https://www.starbucks.com.kz/",
+                    "wheelchair": null
+                  },
+                  "score": 0.5510808439476989,
+                  "visitMinutes": 30,
+                  "walkMinutes": 5,
+                  "why": {
+                    "distance": 0.6666666666666667,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.5860354432025803,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 303.6272358942673,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 23:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "23:00"
+                  },
+                  "place": {
+                    "lat": 51.0889451,
+                    "lon": 71.4093464,
+                    "address": "ТРЦ MEGA Silk Way, Кабанбай батыр проспект 62",
+                    "category": "cafe",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/13173517356",
+                    "name": "Gasteria",
+                    "nameEn": null,
+                    "openingHours": "Mo-Th 10:00-23:00; Fr-Su 10:00-00:00",
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/13173517356",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.5382578942368484,
+                  "visitMinutes": 30,
+                  "walkMinutes": 6,
+                  "why": {
+                    "distance": 0.6,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.5956447355921212,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 651.4201702107982,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.0941798,
+                    "lon": 71.4093574,
+                    "address": null,
+                    "category": "cafe",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/6408255389",
+                    "name": "завтрак бар",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/6408255389",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.3911346530458582,
+                  "visitMinutes": 30,
+                  "walkMinutes": 12,
+                  "why": {
+                    "distance": 0.19999999999999996,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.6653366326146455,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": null,
+                "point": {
+                  "lat": 51.089,
+                  "lon": 71.405
+                },
+                "source": "browser"
+              },
+              "usedFilters": [
+                "Запрос: Хочу тихое место с кофе и розеткой недалеко от меня.",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:07:50.790Z",
+                "Категории: кафе, библиотека"
+              ]
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "child",
+      "query": "Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?",
+      "simulatedPublicLocation": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "httpStatus": 200,
+      "elapsedMs": 11602,
+      "checked": true,
+      "semanticUsed": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:node/2691137163"
+        ],
+        "reply": "Локация: 51.128, 71.43 (геолокация браузера).\n\nФильтры: Запрос: Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?; Пешком до 15 минут; Время проверки: 2026-10-19T12:08:03.540Z; Категории: детская площадка, музей, зоопарк.\n\n1. Gymboree — 568 м, 10 мин пешком (оценка).\nПочему: детская площадка в 568 м от отправной точки.\nНа посещение: 40 мин (оценка).\nИнтерактивы: данных нет — уточните перед выходом.\nЧто делать: сделать остановку для игры с ребёнком, проверив состояние площадки на месте (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/2691137163).",
+        "toolCalls": [
+          {
+            "arguments": {
+              "near": {
+                "lat": 51.128,
+                "lon": 71.43
+              },
+              "query": "Детские площадки или музей с интерактивами, подходящие для посещения с ребёнком",
+              "categories": [
+                "playground",
+                "museum"
+              ],
+              "limit": 5,
+              "maxWalkMinutes": 25
+            },
+            "durationMs": 5342,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 567.5494110313864,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.1289248,
+                    "lon": 71.4220016,
+                    "address": null,
+                    "category": "playground",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/2691137163",
+                    "name": "Gymboree",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/2691137163",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.35402723592065544,
+                  "visitMinutes": 40,
+                  "walkMinutes": 10,
+                  "why": {
+                    "distance": 0.33333333333333337,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.48923475646830517,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": null,
+                "point": {
+                  "lat": 51.128,
+                  "lon": 71.43
+                },
+                "source": "browser"
+              },
+              "usedFilters": [
+                "Запрос: Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:08:03.540Z",
+                "Категории: детская площадка, музей, зоопарк"
+              ]
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "flight",
+      "query": "Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?",
+      "simulatedPublicLocation": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "httpStatus": 200,
+      "elapsedMs": 13252,
+      "checked": true,
+      "semanticUsed": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:way/230401645"
+        ],
+        "reply": "Локация: 51.128, 71.43 (геолокация браузера).\n\nФильтры: Запрос: Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?; Пешком до 15 минут; Время проверки: 2026-10-19T12:08:15.142Z; Категории: достопримечательность, музей, смотровая площадка, арт-объект, памятник.\n\nВремя дороги в аэропорт, регистрации и досмотра неизвестно — проверьте его и вычтите из времени до вылета. Весь запас нельзя отдавать прогулке.\n\n1. Байтерек — 45 м, 1 мин пешком (оценка).\nПочему: памятник в 45 м от отправной точки.\nНа посещение: 15 мин (оценка).\nдостопримечательность города (Wikidata).\nЧто делать: осмотреть памятник и сделать фото (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/way/230401645).",
+        "toolCalls": [
+          {
+            "arguments": {
+              "near": {
+                "lat": 51.128,
+                "lon": 71.43
+              },
+              "query": "Достопримечательности поблизости, подходящие для короткого визита туристу перед вылетом",
+              "categories": [
+                "attraction",
+                "monument",
+                "museum",
+                "viewpoint",
+                "park"
+              ],
+              "maxWalkMinutes": 15,
+              "limit": 5,
+              "at": "2026-10-19T12:08:15Z"
+            },
+            "durationMs": 5107,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 45.092901814572045,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.1282882,
+                    "lon": 71.4304546,
+                    "address": "Нұржол желек жолы 14",
+                    "category": "monument",
+                    "description": "достопримечательность города",
+                    "descriptionSource": "wikidata",
+                    "id": "osm:way/230401645",
+                    "name": "Байтерек",
+                    "nameEn": "Bayterek",
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": 0.5959578882977504,
+                    "sourceUrl": "https://www.openstreetmap.org/way/230401645",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.5038626002251377,
+                  "visitMinutes": 15,
+                  "walkMinutes": 1,
+                  "why": {
+                    "distance": 0.9333333333333333,
+                    "open": 0.5,
+                    "popularity": 0.5959578882977504,
+                    "semantic": 0.33983369515507345,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": null,
+                "point": {
+                  "lat": 51.128,
+                  "lon": 71.43
+                },
+                "source": "browser"
+              },
+              "usedFilters": [
+                "Запрос: Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:08:15.142Z",
+                "Категории: достопримечательность, музей, смотровая площадка, арт-объект, памятник"
+              ]
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "id": "night",
+      "query": "Ищу необычную ночную активность на последние пару часов. Что сейчас открыто?",
+      "simulatedPublicLocation": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "httpStatus": 200,
+      "elapsedMs": 16884,
+      "checked": true,
+      "semanticUsed": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:node/2826184438",
+          "osm:node/4199896989",
+          "osm:node/8595205064"
+        ],
+        "reply": "Локация: 51.128, 71.43 (геолокация браузера).\n\nФильтры: Запрос: Ищу необычную ночную активность на последние пару часов. Что сейчас открыто?; Пешком до 15 минут; Время проверки: 2026-10-19T12:08:28.391Z; Категории: бар, ночной клуб, смотровая площадка, арт-объект, достопримечательность.\n\nУ части найденных мест часы работы неизвестны — уточните перед выходом; они исключены из ночных рекомендаций.\n\n1. Лигалайф — 333 м, 6 мин пешком (оценка).\nПочему: бар в 333 м от отправной точки.\nНа посещение: 45 мин (оценка).\nЧто делать: познакомиться с местом и осмотреться (сгенерированная идея).\nЧасы: открыто по данным источника до 06:00. по данным OSM открыто до 06:00.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/2826184438).\n\n2. Avtor — 456 м, 8 мин пешком (оценка).\nПочему: бар в 456 м от отправной точки.\nНа посещение: 45 мин (оценка).\nЧто делать: познакомиться с местом и осмотреться (сгенерированная идея).\nЧасы: открыто по данным источника. по данным OSM открыто круглосуточно.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/4199896989).\n\n3. Пинта — 490 м, 9 мин пешком (оценка).\nПочему: бар в 490 м от отправной точки.\nНа посещение: 45 мин (оценка).\nЧто делать: познакомиться с местом и осмотреться (сгенерированная идея).\nЧасы: открыто по данным источника до 02:00. по данным OSM открыто до 02:00.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/node/8595205064).",
+        "toolCalls": [
+          {
+            "arguments": {
+              "timeZone": "Asia/Almaty"
+            },
+            "durationMs": 63,
+            "label": "Проверка времени",
+            "name": "get_current_time",
+            "result": {
+              "iso": "2026-10-19T12:08:28.391Z",
+              "local": "понедельник, 19 октября 2026 г. в 17:08",
+              "timeZone": "Asia/Almaty"
+            },
+            "status": "ok"
+          },
+          {
+            "arguments": {
+              "near": {
+                "lat": 51.128,
+                "lon": 71.43
+              },
+              "at": "2026-10-19T17:08:00+05:00",
+              "categories": [
+                "attraction",
+                "viewpoint",
+                "artwork",
+                "museum",
+                "gallery",
+                "park",
+                "other"
+              ],
+              "query": "необычная ночная активность, необычные места открытые сейчас вечером",
+              "limit": 10,
+              "maxWalkMinutes": 90
+            },
+            "durationMs": 5733,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 332.5398884526303,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 06:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "06:00"
+                  },
+                  "place": {
+                    "lat": 51.1296521,
+                    "lon": 71.4339722,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/2826184438",
+                    "name": "Лигалайф",
+                    "nameEn": null,
+                    "openingHours": "09:00-06:00",
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/2826184438",
+                    "tags": [],
+                    "website": "https://www.fairplay.kz/",
+                    "wheelchair": null
+                  },
+                  "score": 0.42144133989703214,
+                  "visitMinutes": 45,
+                  "walkMinutes": 6,
+                  "why": {
+                    "distance": 0.6,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.30360334974258046,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 456.4559717787103,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто круглосуточно",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.1280843,
+                    "lon": 71.4365396,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/4199896989",
+                    "name": "Avtor",
+                    "nameEn": null,
+                    "openingHours": "24/7",
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/4199896989",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.3785330963052424,
+                  "visitMinutes": 45,
+                  "walkMinutes": 8,
+                  "why": {
+                    "distance": 0.4666666666666667,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.27966607409643934,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 489.60419995990776,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 02:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "02:00"
+                  },
+                  "place": {
+                    "lat": 51.12467,
+                    "lon": 71.43459,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/8595205064",
+                    "name": "Пинта",
+                    "nameEn": null,
+                    "openingHours": "Fr-Sa 12:00-03:00; Mo-Th,Su 12:00-02:00",
+                    "phone": "+7 778 445 9895",
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/8595205064",
+                    "tags": [],
+                    "website": "http://pinta.kz/",
+                    "wheelchair": null
+                  },
+                  "score": 0.3710348425158412,
+                  "visitMinutes": 45,
+                  "walkMinutes": 9,
+                  "why": {
+                    "distance": 0.4,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.302587106289603,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 509.0738261390949,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 01:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "01:00"
+                  },
+                  "place": {
+                    "lat": 51.1301482,
+                    "lon": 71.4364422,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/11345949802",
+                    "name": "Golpas",
+                    "nameEn": null,
+                    "openingHours": "Mo-Su 12:00-01:00",
+                    "phone": "+7 707 304 0605;+7 7172 51 61 85",
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/11345949802",
+                    "tags": [],
+                    "website": "https://golpas.cafe",
+                    "wheelchair": null
+                  },
+                  "score": 0.3574551054547628,
+                  "visitMinutes": 45,
+                  "walkMinutes": 9,
+                  "why": {
+                    "distance": 0.4,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.26863776363690695,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 458.20417866273715,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.1247205,
+                    "lon": 71.4339755,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/11920102269",
+                    "name": "Celentano retro bar",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/11920102269",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.33516070137030984,
+                  "visitMinutes": 45,
+                  "walkMinutes": 8,
+                  "why": {
+                    "distance": 0.4666666666666667,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.3587350867591079,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 358.31286209488366,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.125008,
+                    "lon": 71.4319065,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/6404747238",
+                    "name": "Ozen",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/6404747238",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.3104703918718431,
+                  "visitMinutes": 45,
+                  "walkMinutes": 7,
+                  "why": {
+                    "distance": 0.5333333333333333,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.25534264634627446,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 679.956843702944,
+                  "open": {
+                    "confidence": "high",
+                    "note": "по данным OSM открыто до 06:00",
+                    "opensAt": null,
+                    "status": "open",
+                    "until": "06:00"
+                  },
+                  "place": {
+                    "lat": 51.1247253,
+                    "lon": 71.4217715,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/2825987611",
+                    "name": "Спорт-бар \"Итальянская серия А\", БК FairPlay",
+                    "nameEn": null,
+                    "openingHours": "09:00-06:00",
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/2825987611",
+                    "tags": [],
+                    "website": "https://www.fairplay.kz/",
+                    "wheelchair": null
+                  },
+                  "score": 0.2903825326209949,
+                  "visitMinutes": 45,
+                  "walkMinutes": 12,
+                  "why": {
+                    "distance": 0.19999999999999996,
+                    "open": 1,
+                    "popularity": 0,
+                    "semantic": 0.2259563315524873,
+                    "tags": []
+                  }
+                },
+                {
+                  "distanceM": 623.6482075196437,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.1224522,
+                    "lon": 71.4286878,
+                    "address": null,
+                    "category": "bar",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:node/10170592263",
+                    "name": "Bla Bla Bar",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/node/10170592263",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.23521070125350674,
+                  "visitMinutes": 45,
+                  "walkMinutes": 11,
+                  "why": {
+                    "distance": 0.2666666666666667,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.2338600864671002,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": null,
+                "point": {
+                  "lat": 51.128,
+                  "lon": 71.43
+                },
+                "source": "browser"
+              },
+              "usedFilters": [
+                "Запрос: Ищу необычную ночную активность на последние пару часов. Что сейчас открыто?",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:08:28.391Z",
+                "Категории: бар, ночной клуб, смотровая площадка, арт-объект, достопримечательность"
+              ]
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    }
+  ],
+  "packaged": [
+    {
+      "mode": "standalone-mock-local",
+      "homeStatus": 200,
+      "cssStatus": 200,
+      "httpStatus": 200,
+      "checked": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:way/1467797207",
+          "osm:relation/20321069",
+          "osm:relation/20321071"
+        ],
+        "reply": "Локация: Mega Silk Way (из ваших слов).\nФильтры: Запрос: Я возле Mega Silk Way, хочу прогуляться 30–60 минут.\nПострой пеший маршрут на 2 часа.; Пешком до 15 минут; Время проверки: 2026-10-19T12:17:46.273Z; Категории: парк, сад, смотровая площадка, арт-объект.\n\nПеший маршрут: всего 105 мин, включая переходы и посещения (оценка).\n\n1. NU Park — прибытие через 10 мин от старта. Переход: 562 м, 10 мин.\nПочему: парк в 562 м от отправной точки.\nНа посещение: 40 мин (оценка).\nЧто делать: пройтись по парку и отдохнуть (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/way/1467797207).\n\n2. Макет ракеты-носителя Зенит — прибытие через 74 мин от старта. Переход: 1349 м, 24 мин.\nПочему: арт-объект в 1868 м от отправной точки.\nНа посещение: 15 мин (оценка).\nЧто делать: осмотреть арт-объект и сделать фото (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/relation/20321069).\n\n3. Макет ракеты-носителя Союз — прибытие через 90 мин от старта. Переход: 50 м, 1 мин.\nПочему: арт-объект в 1913 м от отправной точки.\nНа посещение: 15 мин (оценка).\nЧто делать: осмотреть арт-объект и сделать фото (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/relation/20321071).\n\nВремя ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.",
+        "toolCalls": [
+          {
+            "arguments": {
+              "text": "Я возле Mega Silk Way, хочу прогуляться 30–60 минут."
+            },
+            "durationMs": 28,
+            "label": "Определение локации",
+            "name": "resolve_location",
+            "result": {
+              "confidence": "high",
+              "found": true,
+              "label": "Mega Silk Way",
+              "matchedPlaceId": "osm:way/499328514",
+              "point": {
+                "lat": 51.089,
+                "lon": 71.407
+              }
+            },
+            "status": "ok"
+          },
+          {
+            "arguments": {
+              "categories": [
+                "park",
+                "garden",
+                "viewpoint",
+                "artwork"
+              ],
+              "limit": 5,
+              "maxWalkMinutes": 15,
+              "query": "Я возле Mega Silk Way, хочу прогуляться 30–60 минут.\nПострой пеший маршрут на 2 часа."
+            },
+            "durationMs": 6828,
+            "label": "Поиск мест",
+            "name": "find_places",
+            "result": {
+              "candidates": [
+                {
+                  "distanceM": 562.0161461549811,
+                  "open": {
+                    "confidence": "none",
+                    "note": "часы работы неизвестны — уточните перед выходом",
+                    "opensAt": null,
+                    "status": "unknown",
+                    "until": null
+                  },
+                  "place": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394,
+                    "address": null,
+                    "category": "park",
+                    "description": null,
+                    "descriptionSource": null,
+                    "id": "osm:way/1467797207",
+                    "name": "NU Park",
+                    "nameEn": null,
+                    "openingHours": null,
+                    "phone": null,
+                    "popularity": null,
+                    "sourceUrl": "https://www.openstreetmap.org/way/1467797207",
+                    "tags": [],
+                    "website": null,
+                    "wheelchair": null
+                  },
+                  "score": 0.2729027545910181,
+                  "visitMinutes": 40,
+                  "walkMinutes": 10,
+                  "why": {
+                    "distance": 0.33333333333333337,
+                    "open": 0.5,
+                    "popularity": 0,
+                    "semantic": 0.2864235531442118,
+                    "tags": []
+                  }
+                }
+              ],
+              "note": null,
+              "origin": {
+                "label": "Mega Silk Way",
+                "point": {
+                  "lat": 51.089,
+                  "lon": 71.407
+                },
+                "source": "text"
+              },
+              "usedFilters": [
+                "Запрос: Я возле Mega Silk Way, хочу прогуляться 30–60 минут.\nПострой пеший маршрут на 2 часа.",
+                "Пешком до 15 минут",
+                "Время проверки: 2026-10-19T12:17:46.273Z",
+                "Категории: парк, сад, смотровая площадка, арт-объект"
+              ]
+            },
+            "status": "ok"
+          },
+          {
+            "arguments": {
+              "categories": [
+                "park",
+                "garden",
+                "viewpoint",
+                "artwork"
+              ],
+              "durationMinutes": 120,
+              "query": "Я возле Mega Silk Way, хочу прогуляться 30–60 минут.\nПострой пеший маршрут на 2 часа.",
+              "start": {
+                "lat": 51.089,
+                "lon": 71.407
+              }
+            },
+            "durationMs": 5275,
+            "label": "Планирование прогулки",
+            "name": "plan_walk",
+            "result": {
+              "legs": [
+                {
+                  "distanceM": 562.0161461549811,
+                  "from": {
+                    "lat": 51.089,
+                    "lon": 71.407
+                  },
+                  "to": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394
+                  },
+                  "walkMinutes": 10
+                },
+                {
+                  "distanceM": 1348.7263734261749,
+                  "from": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394
+                  },
+                  "to": {
+                    "lat": 51.0784556,
+                    "lon": 71.3861753
+                  },
+                  "walkMinutes": 24
+                },
+                {
+                  "distanceM": 50.27444418338134,
+                  "from": {
+                    "lat": 51.0784556,
+                    "lon": 71.3861753
+                  },
+                  "to": {
+                    "lat": 51.0780444,
+                    "lon": 71.3858761
+                  },
+                  "walkMinutes": 1
+                }
+              ],
+              "note": "Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.",
+              "stops": [
+                {
+                  "arriveAtMinute": 10,
+                  "candidate": {
+                    "distanceM": 562.0161461549811,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0872699,
+                      "lon": 71.3994394,
+                      "address": null,
+                      "category": "park",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:way/1467797207",
+                      "name": "NU Park",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/way/1467797207",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.41179164347990693,
+                    "visitMinutes": 40,
+                    "walkMinutes": 10,
+                    "why": {
+                      "distance": 0.8888888888888888,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.2864235531442118,
+                      "tags": []
+                    }
+                  },
+                  "order": 1
+                },
+                {
+                  "arriveAtMinute": 74,
+                  "candidate": {
+                    "distanceM": 1868.3301904236184,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0784556,
+                      "lon": 71.3861753,
+                      "address": null,
+                      "category": "artwork",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:relation/20321069",
+                      "name": "Макет ракеты-носителя Зенит",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/relation/20321069",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.32668041856929303,
+                    "visitMinutes": 15,
+                    "walkMinutes": 33,
+                    "why": {
+                      "distance": 0.6333333333333333,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.23336771308989915,
+                      "tags": []
+                    }
+                  },
+                  "order": 2
+                },
+                {
+                  "arriveAtMinute": 90,
+                  "candidate": {
+                    "distanceM": 1913.433088645347,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0780444,
+                      "lon": 71.3858761,
+                      "address": null,
+                      "category": "artwork",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:relation/20321071",
+                      "name": "Макет ракеты-носителя Союз",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/relation/20321071",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.3132435941648052,
+                    "visitMinutes": 15,
+                    "walkMinutes": 34,
+                    "why": {
+                      "distance": 0.6222222222222222,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.20672009652312406,
+                      "tags": []
+                    }
+                  },
+                  "order": 3
+                }
+              ],
+              "totalMinutes": 105
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    },
+    {
+      "mode": "live-local",
+      "homeStatus": 200,
+      "cssStatus": 200,
+      "httpStatus": 200,
+      "checked": true,
+      "body": {
+        "recommendedPlaceIds": [
+          "osm:way/1467797207",
+          "osm:relation/20321069",
+          "osm:relation/20321071"
+        ],
+        "reply": "Локация: Mega Silk Way (из ваших слов).\nФильтры: Я возле Mega Silk Way, хочу прогуляться 30–60 минут.\nПострой пеший маршрут на 2 часа..\n\nПеший маршрут: всего 105 мин, включая переходы и посещения (оценка).\n\n1. NU Park — прибытие через 10 мин от старта. Переход: 562 м, 10 мин.\nПочему: парк в 562 м от отправной точки.\nНа посещение: 40 мин (оценка).\nЧто делать: пройтись по парку и отдохнуть (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/way/1467797207).\n\n2. Макет ракеты-носителя Зенит — прибытие через 74 мин от старта. Переход: 1349 м, 24 мин.\nПочему: арт-объект в 1868 м от отправной точки.\nНа посещение: 15 мин (оценка).\nЧто делать: осмотреть арт-объект и сделать фото (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/relation/20321069).\n\n3. Макет ракеты-носителя Союз — прибытие через 90 мин от старта. Переход: 50 м, 1 мин.\nПочему: арт-объект в 1913 м от отправной точки.\nНа посещение: 15 мин (оценка).\nЧто делать: осмотреть арт-объект и сделать фото (сгенерированная идея).\nЧасы: часы работы неизвестны — уточните перед выходом.\nИсточник места: [OpenStreetMap](https://www.openstreetmap.org/relation/20321071).\n\nВремя ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.",
+        "toolCalls": [
+          {
+            "arguments": {
+              "text": "Я возле Mega Silk Way, хочу прогуляться 30–60 минут."
+            },
+            "durationMs": 33,
+            "label": "Определение локации",
+            "name": "resolve_location",
+            "result": {
+              "confidence": "high",
+              "found": true,
+              "label": "Mega Silk Way",
+              "matchedPlaceId": "osm:way/499328514",
+              "point": {
+                "lat": 51.089,
+                "lon": 71.407
+              }
+            },
+            "status": "ok"
+          },
+          {
+            "arguments": {
+              "start": {
+                "lat": 51.089,
+                "lon": 71.407
+              },
+              "durationMinutes": 120,
+              "maxStops": 3
+            },
+            "durationMs": 4974,
+            "label": "Планирование прогулки",
+            "name": "plan_walk",
+            "result": {
+              "legs": [
+                {
+                  "distanceM": 562.0161461549811,
+                  "from": {
+                    "lat": 51.089,
+                    "lon": 71.407
+                  },
+                  "to": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394
+                  },
+                  "walkMinutes": 10
+                },
+                {
+                  "distanceM": 1348.7263734261749,
+                  "from": {
+                    "lat": 51.0872699,
+                    "lon": 71.3994394
+                  },
+                  "to": {
+                    "lat": 51.0784556,
+                    "lon": 71.3861753
+                  },
+                  "walkMinutes": 24
+                },
+                {
+                  "distanceM": 50.27444418338134,
+                  "from": {
+                    "lat": 51.0784556,
+                    "lon": 71.3861753
+                  },
+                  "to": {
+                    "lat": 51.0780444,
+                    "lon": 71.3858761
+                  },
+                  "walkMinutes": 1
+                }
+              ],
+              "note": "Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.",
+              "stops": [
+                {
+                  "arriveAtMinute": 10,
+                  "candidate": {
+                    "distanceM": 562.0161461549811,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0872699,
+                      "lon": 71.3994394,
+                      "address": null,
+                      "category": "park",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:way/1467797207",
+                      "name": "NU Park",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/way/1467797207",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.41179164347990693,
+                    "visitMinutes": 40,
+                    "walkMinutes": 10,
+                    "why": {
+                      "distance": 0.8888888888888888,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.2864235531442118,
+                      "tags": []
+                    }
+                  },
+                  "order": 1
+                },
+                {
+                  "arriveAtMinute": 74,
+                  "candidate": {
+                    "distanceM": 1868.3301904236184,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0784556,
+                      "lon": 71.3861753,
+                      "address": null,
+                      "category": "artwork",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:relation/20321069",
+                      "name": "Макет ракеты-носителя Зенит",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/relation/20321069",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.32668041856929303,
+                    "visitMinutes": 15,
+                    "walkMinutes": 33,
+                    "why": {
+                      "distance": 0.6333333333333333,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.23336771308989915,
+                      "tags": []
+                    }
+                  },
+                  "order": 2
+                },
+                {
+                  "arriveAtMinute": 90,
+                  "candidate": {
+                    "distanceM": 1913.433088645347,
+                    "open": {
+                      "confidence": "none",
+                      "note": "часы работы неизвестны — уточните перед выходом",
+                      "opensAt": null,
+                      "status": "unknown",
+                      "until": null
+                    },
+                    "place": {
+                      "lat": 51.0780444,
+                      "lon": 71.3858761,
+                      "address": null,
+                      "category": "artwork",
+                      "description": null,
+                      "descriptionSource": null,
+                      "id": "osm:relation/20321071",
+                      "name": "Макет ракеты-носителя Союз",
+                      "nameEn": null,
+                      "openingHours": null,
+                      "phone": null,
+                      "popularity": null,
+                      "sourceUrl": "https://www.openstreetmap.org/relation/20321071",
+                      "tags": [],
+                      "website": null,
+                      "wheelchair": null
+                    },
+                    "score": 0.3132435941648052,
+                    "visitMinutes": 15,
+                    "walkMinutes": 34,
+                    "why": {
+                      "distance": 0.6222222222222222,
+                      "open": 0.5,
+                      "popularity": 0,
+                      "semantic": 0.20672009652312406,
+                      "tags": []
+                    }
+                  },
+                  "order": 3
+                }
+              ],
+              "totalMinutes": 105
+            },
+            "status": "ok"
+          }
+        ]
+      }
+    }
+  ]
+}

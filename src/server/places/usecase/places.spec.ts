@@ -1,4 +1,5 @@
 import { runAgent } from '@server/agent/usecase/agent';
+import { replyForTools } from '@server/agent/usecase/reply';
 import { executeTool } from '@server/agent/usecase/tools';
 import { resetEnvCache } from '@server/kernel/env';
 import { type Candidate, type Place } from '@server/places/model/places.schema';
@@ -67,6 +68,18 @@ afterEach(() => {
 });
 
 describe('places usecases', () => {
+	it('keeps the lexical fallback disclosure in a route result and its rendered reply', async () => {
+		const { ctx } = fixture();
+		const result = await planWalk(ctx, { durationMinutes: 60, start: ctx.browserLocation! });
+		expect(result.note).toContain('По прямой');
+		expect(result.note).toContain('лексический поиск');
+		expect(
+			replyForTools(ctx, {
+				messages: [{ content: 'Построй маршрут на час', role: 'user' }],
+				toolCalls: [{ arguments: {}, durationMs: 1, label: 'Маршрут', name: 'plan_walk', result, status: 'ok' }],
+			}),
+		).toContain('лексический поиск');
+	});
 	it('rejects a location invented by the model rather than stated by the user', async () => {
 		const { ctx, deps } = fixture();
 		Object.assign(ctx, { userMessages: ['Хочу кофе рядом со мной'] });

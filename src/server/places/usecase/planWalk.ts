@@ -78,5 +78,5 @@ export async function planWalk(ctx: PlacesContext, input: z.input<typeof planWal
 		start: origin(ctx).point,
 	});
 
-	return result;
+	return { ...result, note: [result.note, found.note].filter(Boolean).join(' ') };
 }

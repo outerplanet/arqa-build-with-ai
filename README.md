@@ -60,6 +60,20 @@ pnpm start
 Если окружение блокирует служебный порт Turbopack, используйте `pnpm build --webpack`.
 Этот вариант production-сборки проверен после интеграции локальных векторов.
 
+Для отдельного standalone-пакета после сборки выполните:
+
+```bash
+pnpm prepare:standalone
+pnpm prepare:standalone:test
+LLM_PROVIDER=mock EMBEDDING_PROVIDER=lexical node .next/standalone/server.js
+```
+
+Подготовка копирует ресурсы интерфейса и удаляет файлы `.env*` из пакета; исходный `.env`
+сохраняется. Передавайте настройки процесса при запуске на сервере. Python и веса модели
+в пакет не входят. Для локального семантического поиска установите их отдельно и передайте
+`EMBEDDING_PROVIDER=local`, **абсолютные** `EMBEDDING_PYTHON` и `EMBEDDING_CACHE`:
+standalone-сервер работает из каталога пакета. В PowerShell задайте переменные через `$env:`.
+
 ## Режимы модели
 
 | `LLM_PROVIDER` | Поведение |
@@ -102,28 +116,30 @@ SHA-256 датасета, модель, размерность и векторы
 ### Локальные эмбеддинги без ключа
 
 ```bash
-python3 -m venv .venv-vectors
-.venv-vectors/bin/python -m pip install -r scripts/vector-requirements.txt
-# Первый запуск скачивает веса модели и пересобирает индекс из data/poi.json.
-.venv-vectors/bin/python scripts/embed.py
+python3 -m venv ../.arqa-vectors-venv
+../.arqa-vectors-venv/bin/python -m pip install -r scripts/vector-requirements.txt
+# Индекс уже в Git. Скачиваем только веса, не меняя данные и векторы.
+../.arqa-vectors-venv/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import model; model(offline=False)'
 ```
 
-На macOS/Linux можно активировать окружение и выполнить `pnpm embed:local`.
-В Windows используйте явный интерпретатор (наличие команды `python3` не требуется):
+Окружение создаётся рядом с репозиторием: иначе ESLint сканирует JS-файлы Python-пакетов.
+Только после изменения POI пересоберите индекс командой
+`../.arqa-vectors-venv/bin/python scripts/embed.py` либо активируйте окружение и выполните
+`pnpm embed:local`. В Windows используйте явный интерпретатор:
 
 ```powershell
-py -3 -m venv .venv-vectors
-.venv-vectors\Scripts\python.exe -m pip install -r scripts\vector-requirements.txt
-.venv-vectors\Scripts\python.exe scripts\embed.py
+py -3 -m venv ../.arqa-vectors-venv
+../.arqa-vectors-venv/Scripts/python.exe -m pip install -r scripts/vector-requirements.txt
+../.arqa-vectors-venv/Scripts/python.exe -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import model; model(offline=False)'
 ```
 
-В Windows задайте в `.env` `EMBEDDING_PYTHON=.venv-vectors/Scripts/python.exe`.
+В Windows задайте в `.env` `EMBEDDING_PYTHON=../.arqa-vectors-venv/Scripts/python.exe`.
 Настройки macOS/Linux:
 
 ```dotenv
 EMBEDDING_PROVIDER=local
 EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-EMBEDDING_PYTHON=.venv-vectors/bin/python
+EMBEDDING_PYTHON=../.arqa-vectors-venv/bin/python
 EMBEDDING_CACHE=.cache/embeddings
 EMBEDDING_INDEX_PATH=data/poi.vectors.json
 ```
@@ -139,7 +155,7 @@ Python API `vector_search(query: str, top_k: int = 5)` в `scripts/vector_search
 тексты, метаданные и косинусное сходство от −1 до 1. Пример вызова из корня проекта:
 
 ```bash
-.venv-vectors/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import vector_search; print(vector_search("музей и искусство", top_k=3))'
+../.arqa-vectors-venv/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import vector_search; print(vector_search("музей и искусство", top_k=3))'
 ```
 
 В TypeScript используется `src/server/places/usecase/vectorSearch.ts` с проверкой входа.
@@ -255,8 +271,11 @@ location?: { lat: number, lon: number } }` и возвращает `{ reply, too
 Для повторного HTTP-прогона запустите приложение с `LLM_PROVIDER=mock`, затем `pnpm scenarios`:
 скрипт сохраняет результаты в `docs/presentation-http-probes.json` и завершает работу с ошибкой
 при нарушении ожиданий. Его локальные тестовые координаты не являются геолокацией участника.
-Предыдущие проверки живой модели записаны отдельно в `docs/live-check-2026-10-19.json`;
-они не подтверждают новые результаты локального семантического поиска. План и зоны
+Предыдущие проверки живой модели записаны отдельно в `docs/live-check-2026-10-19.json`.
+Совместный прогон OpenAI и локальной модели —
+[docs/live-semantic-check-2026-10-19.json](docs/live-semantic-check-2026-10-19.json):
+шесть сценариев, пять поисков без лексического резерва и уточнение «Экспо»;
+маршрут на 105 минут и загрузка CSS проверены также из standalone-пакета. План и зоны
 ответственности — [docs/plan.md](docs/plan.md), требования сдачи — [docs/kickoff.md](docs/kickoff.md).
 
 Проект рассчитан на один город. Полнота OSM не гарантируется. Данных о погоде, ценах, событиях,
@@ -266,9 +285,9 @@ location?: { lat: number, lon: number } }` и возвращает `{ reply, too
 ## Сборка PDF из Markdown
 
 ```bash
-python3 -m venv .venv-pdf
-.venv-pdf/bin/python -m pip install -r scripts/pdf-requirements.txt
-.venv-pdf/bin/python scripts/export_pdf.py
+python3 -m venv ../.arqa-pdf-venv
+../.arqa-pdf-venv/bin/python -m pip install -r scripts/pdf-requirements.txt
+../.arqa-pdf-venv/bin/python scripts/export_pdf.py
 ```
 
 На macOS/Linux при активном окружении доступны `pnpm pdf` и `pnpm pdf:test`.
@@ -311,8 +330,8 @@ Pandoc разбирает фактические `docs/presentation.md` и `docs
 Дополнительные Python-проверки:
 
 ```bash
-.venv-vectors/bin/python -m unittest discover -s scripts -p vector_search_test.py
-.venv-pdf/bin/python -m unittest discover -s scripts -p export_pdf_test.py
+../.arqa-vectors-venv/bin/python -m unittest discover -s scripts -p vector_search_test.py
+../.arqa-pdf-venv/bin/python -m unittest discover -s scripts -p export_pdf_test.py
 ```
 
 ## Команда и сторонние компоненты
