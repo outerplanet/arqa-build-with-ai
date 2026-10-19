@@ -11,6 +11,8 @@ Read this before writing code. Then read the doc that covers what you are touchi
 - `docs/ui-patterns.md` — which control a task gets, how forms and tables behave
 - `docs/plan.md` — the scenario, the contract, which lane you are in, and a ready prompt for each
   lane. Re-read it after every pull.
+- `docs/team-guide.md` — how the non-developer teammates work with their orchestrator. Keep your
+  behaviour consistent with it.
 - `docs/case.md` — the task, word for word in substance. `docs/kickoff.md` — deadlines, what is
   submitted, the judging criteria and the submission checklist.
 
@@ -294,11 +296,12 @@ full lanes, with tasks and ready prompts, are in `docs/plan.md`.
 | `src/server/places/model/{geo,hours,lexical,rank,route}.ts` | Абылай | Distances, opening-hours parsing, ranking and the walk planner are pure algorithms with tests — a competitive programmer's ground. |
 | `scripts/collect.ts`, `scripts/embed.ts`, `data/**`, `src/server/places/repo/**` | Адиль | He knows datasets: collection, cleaning, quality and the vectors. |
 | `docs/scenarios.md`, `docs/presentation*` | Адиль | He knows what the data can and cannot answer, so he writes the scenarios and limitations. |
-| `src/views/**`, `src/widgets/**`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/globals.css` | Ораз if he takes part; otherwise Саян's second agent in a worktree | The screen: chat, map, cards. |
+| `src/views/**`, `src/widgets/**`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/globals.css` | Ораз if he takes part; otherwise a separate orchestrator on a fourth laptop that Саян starts with the «Экран» prompt | The screen: chat, map, cards. |
 
-Nobody types code by hand: **each person runs one or two agents** (Claude Code or Codex) with the
-prompts in `docs/plan.md`, reviews what they produce, and pushes. A second agent on the same laptop
-works in its own worktree.
+Nobody types code by hand: **each laptop runs one Claude Code orchestrator** started with the
+lane's prompt from `docs/plan.md`; it splits the work across subagents in worktrees, merges,
+reviews, commits and — when asked — pushes. See **One orchestrator per laptop** below. The person
+directs, checks the result in the browser, and decides.
 
 The schema file is the contract. Write it first, then everyone works against it in parallel. If it
 has to change, change it once, in one place, and say so — two people quietly adapting to each
@@ -343,8 +346,10 @@ make the edit.
   A push that waits two hours is a conflict that waits two hours.
 - **Stage your own paths by name** — `git add src/server/<domain>/repo` — not `git add -A`, which
   sweeps up whatever another agent on the same laptop left half-written.
-- **Agents do not push, force-push, rebase or amend.** The person does, so every commit carries a
-  person's identity and nobody's history is rewritten under them.
+- **The orchestrator pushes only when its person asks** («синхронизируй»): `git pull --rebase`,
+  `pnpm check`, then `git push`. Commits carry the person's git identity, so authorship stays
+  theirs. **Never force-push, never amend or rebase anything already pushed**, never push with a
+  red gate. Subagents never touch git remotes.
 - **A conflict in a path you do not own: take theirs.** In your own path: keep yours and re-run
   `pnpm check`.
 - **`package.json` and `pnpm-lock.yaml` belong to the lead.** A lockfile conflict is unreadable.
@@ -354,26 +359,34 @@ make the edit.
   `git config user.email` with the address on your GitHub account. A commit under somebody else's
   name is evidence of the wrong person's work.
 
-### More than one agent on one laptop
+### One orchestrator per laptop, subagents in worktrees
 
-Two agents in one working copy see each other's half-written files, fail each other's gate and
-commit each other's changes. A second agent gets **its own worktree**, on a path set of its own
-from the plan:
+**The teammates are not developers.** Each of them talks to exactly one Claude Code session — the
+**orchestrator** — and never runs git, worktrees or merges by hand. The orchestrator does all of it:
 
-```bash
-git worktree add ../hack-<task> -b <task>      # beside the project, never inside it
-cd ../hack-<task>
-cp ../project/.env .env
-pnpm install                                   # fast: pnpm links from its store
-pnpm dev -p 3001                               # a port of its own
-```
+1. **Split the lane** into 2–3 independent tasks with disjoint files, taken from the lane in
+   `docs/plan.md`.
+2. **Run each task as a subagent with `isolation: "worktree"`**, in parallel. A subagent works only
+   in its task's files, runs the relevant specs, and commits on its worktree branch. It never
+   pushes and never touches another lane's paths.
+3. **Merge each finished worktree** into `main` in the main working copy, then **remove the
+   worktree** (`git worktree remove`, and delete its branch). A worktree left under
+   `.claude/worktrees` is picked up by `eslint .` and turns the gate red for everyone.
+4. **Review before trusting it**: a separate review subagent checks the merged work against the
+   contract in `docs/plan.md`, the case's hard requirements (`AGENTS.md`, agent rules 7–10) and
+   whether the tests actually assert. Fix what it finds.
+5. **`pnpm check` green, then commit** the lane's paths by name.
+6. **Report to the person in plain Russian**, without jargon: what now works, what to open in the
+   browser or which command to run to see it, and what comes next. If the person must decide
+   something, ask one clear question with a recommended answer.
 
-When the task is done, merge it back from the main working copy and push from there:
-`git merge <task>`, then `git worktree remove ../hack-<task>`. Claude Code subagents started with
-`isolation: "worktree"` do the same thing automatically.
+Two agents working directly in one working copy see each other's half-written files and commit
+each other's changes — that is why every parallel task goes through a worktree. If a worktree
+needs `.env`, the orchestrator copies it there; `.env` is never committed.
 
-Two agents per laptop is the useful ceiling. Past that, the person spends the day reviewing and
-merging instead of directing.
+When the person says «синхронизируй», the orchestrator pulls with rebase, resolves conflicts in its
+own lane's paths (in another lane's path it takes theirs), runs `pnpm check`, and pushes. When the
+person pastes an error, the orchestrator diagnoses it before changing anything.
 
 **Someone new to the stack gets the bounded, well-specified, testable tier** — not less work. A repo
 function with a frozen signature and a spec is the safest thing to hand anybody working in an
