@@ -65,7 +65,7 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 		<div className="flex flex-col gap-2">
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
-					className="h-auto min-h-10 whitespace-normal"
+					className="h-auto! min-h-10 whitespace-normal!"
 					disabled={disabled || pending}
 					onClick={locate}
 					variant="secondary"

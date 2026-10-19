@@ -5,7 +5,7 @@ import { type ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-	description: 'AI-помощник: куда сходить в Астане рядом с вами — с объяснением почему',
+	description: 'ИИ-помощник: куда сходить в Астане рядом с вами — с объяснением почему',
 	title: 'Прогулки по Астане',
 };
 

@@ -8,21 +8,13 @@ import { Card } from '@shared/ui/Card';
 import { PlacesMap } from '@widgets/placesMap';
 import { useMemo, useState } from 'react';
 import { readPlacesResults } from '../model/results';
+import { SCENARIOS } from '../model/scenarios';
 import { useChat } from '../model/useChat';
 import { AgentActivity } from './AgentActivity';
 import { Composer } from './Composer';
 import { LocationControl } from './LocationControl';
 import { MessageList } from './MessageList';
 import { PlaceCards } from './PlaceCards';
-
-const SCENARIOS = [
-	{ label: 'Необычное у Экспо', query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.' },
-	{ label: 'Прогулка у Mega', query: 'Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.' },
-	{ label: 'Тихое кафе', query: 'Хочу тихое место с кофе и розеткой недалеко от меня.' },
-	{ label: 'С ребёнком', query: 'Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?' },
-	{ label: 'До вылета', query: 'Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?' },
-	{ label: 'Ночная прогулка', query: 'Ищу необычную ночную активность на последние пару часов.' },
-] as const;
 
 export interface ChatScreenProps {
 	demoMode?: boolean;
@@ -35,7 +27,7 @@ export interface ChatScreenProps {
 export function ChatScreen({
 	demoMode = false,
 	emptyHint = 'Расскажите, где вы сейчас и сколько времени есть на прогулку.',
-	placeholder = 'Я возле Mega Silk Way, хочу прогуляться на 60 минут…',
+	placeholder = 'Например: я возле Mega Silk Way, хочу прогуляться 30–60 минут…',
 	subtitle = 'Места рядом, время пешком и честные сведения из открытых городских данных.',
 	title = 'Куда пойдём в Астане?',
 }: ChatScreenProps) {
@@ -66,24 +58,44 @@ export function ChatScreen({
 			<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 				<div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
 					<Card
-						className="min-h-[32rem]"
+						className="min-h-[32rem] shrink-0"
 						description="Укажите ориентир, интересы и время — ассистент проверит подходящие места"
 						title="Ваша прогулка"
 					>
 						<LocationControl disabled={pending} location={location} onChange={setLocation} />
 						{messages.length === 0 && (
-							<div aria-label="Примеры запросов" className="flex flex-wrap gap-2" role="group">
-								{SCENARIOS.map((scenario) => (
-									<Button
-										className="h-auto min-h-10 text-left whitespace-normal"
-										disabled={pending}
-										key={scenario.label}
-										onClick={() => send(scenario.query)}
-										variant="secondary"
-									>
-										{scenario.label}
-									</Button>
-								))}
+							<div className="flex flex-col gap-2">
+								<p className="text-fg-muted text-xs" id="scenario-hint">
+									Примеры из кейса — нажмите, чтобы отправить. Запросы со значком{' '}
+									<MapPinIcon aria-hidden className="inline size-3.5 align-text-bottom" /> ищут места рядом с
+									вами: сначала нажмите «Использовать мою геолокацию» или напишите ориентир сами.
+								</p>
+								<div
+									aria-describedby="scenario-hint"
+									aria-label="Примеры запросов"
+									className="flex flex-wrap gap-2"
+									role="group"
+								>
+									{SCENARIOS.map((scenario) => (
+										<Button
+											// `!`: Button joins classes with clsx, not a merger, so its own
+											// `whitespace-nowrap h-9` would otherwise win and a long chip overflows.
+											className="h-auto! min-h-10 max-w-full justify-start py-2 text-left whitespace-normal!"
+											disabled={pending}
+											key={scenario.query}
+											onClick={() => send(scenario.query)}
+											variant="secondary"
+										>
+											{scenario.needsLocation && (
+												<>
+													<MapPinIcon aria-hidden className="size-4 shrink-0" />
+													<span className="sr-only">Нужна геолокация: </span>
+												</>
+											)}
+											{scenario.query}
+										</Button>
+									))}
+								</div>
 							</div>
 						)}
 						<div className="flex min-h-0 flex-1 flex-col gap-3">
