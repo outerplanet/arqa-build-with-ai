@@ -2,10 +2,11 @@
 
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { Button } from '@shared/ui/Button';
+import { Badge } from '@shared/ui/Badge';
 import { Callout } from '@shared/ui/Callout';
 import { Card } from '@shared/ui/Card';
 import { useMemo, useState } from 'react';
-import { placesFromToolCalls } from '../model/places';
+import { readPlacesResults } from '../model/results';
 import { useChat } from '../model/useChat';
 import { AgentActivity } from './AgentActivity';
 import { Composer } from './Composer';
@@ -24,6 +25,7 @@ const SCENARIOS = [
 ] as const;
 
 export interface ChatScreenProps {
+	demoMode?: boolean;
 	emptyHint?: string;
 	placeholder?: string;
 	subtitle?: string;
@@ -31,15 +33,20 @@ export interface ChatScreenProps {
 }
 
 export function ChatScreen({
+	demoMode = false,
 	emptyHint = 'Расскажите, где вы сейчас и сколько времени есть на прогулку.',
 	placeholder = 'Я у Байтерека, хочу прогуляться на 60 минут…',
 	subtitle = 'Места рядом, время пешком и честные сведения из открытых городских данных.',
 	title = 'Куда пойдём в Астане?',
 }: ChatScreenProps) {
-	const { error, location, messages, retry, send, setLocation, status, toolCalls } = useChat();
+	const { error, location, messages, recommendedPlaceIds, retry, send, setLocation, status, toolCalls } = useChat();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const pending = status === 'sending';
-	const { candidates, origin, plan } = useMemo(() => placesFromToolCalls(toolCalls), [toolCalls]);
+	const { candidates, plan, search } = useMemo(
+		() => readPlacesResults(toolCalls, recommendedPlaceIds),
+		[recommendedPlaceIds, toolCalls],
+	);
+	const origin = search?.origin.point ?? plan?.legs[0]?.from ?? null;
 	const activeId = candidates.some((candidate) => candidate.place.id === selectedId) ? selectedId : null;
 
 	return (
@@ -52,6 +59,7 @@ export function ChatScreen({
 					<p className="text-accent-fg mb-1 text-xs font-medium">ПРОГУЛКИ ПО АСТАНЕ</p>
 					<h1 className="text-fg text-2xl font-semibold">{title}</h1>
 					<p className="text-fg-muted mt-1 text-sm">{subtitle}</p>
+					{demoMode && <Badge tone="warning">Демонстрационный режим</Badge>}
 				</div>
 			</div>
 

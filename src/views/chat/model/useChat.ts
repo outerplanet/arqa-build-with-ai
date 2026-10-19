@@ -26,6 +26,7 @@ export interface UseChat {
 	error: string | null;
 	location: GeoPoint | null;
 	messages: readonly ChatMessage[];
+	recommendedPlaceIds: readonly string[];
 	retry: () => void;
 	send: (content: string) => void;
 	setLocation: (point: GeoPoint | null) => void;
@@ -36,6 +37,7 @@ export interface UseChat {
 export function useChat(): UseChat {
 	const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
+	const [recommendedPlaceIds, setRecommendedPlaceIds] = useState<readonly string[]>([]);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
 	const [location, setLocation] = useState<GeoPoint | null>(null);
@@ -87,6 +89,7 @@ export function useChat(): UseChat {
 
 			setMessages([...request.messages, { content: parsed.data.reply, role: 'assistant' }]);
 			setToolCalls(parsed.data.toolCalls);
+			setRecommendedPlaceIds(parsed.data.recommendedPlaceIds ?? []);
 			setStatus('idle');
 		} catch (cause) {
 			// The user's message stays in the transcript, so retry resends it rather than making
@@ -100,7 +103,7 @@ export function useChat(): UseChat {
 
 	const send = useCallback(
 		(content: string) => {
-			if (inFlight.current) return;
+			if (inFlight.current || content.trim().length === 0) return;
 			const history = [...messages, { content, role: 'user' as const }];
 
 			setMessages(history);
@@ -113,5 +116,5 @@ export function useChat(): UseChat {
 		if (lastRequest.current !== null) void exchange(lastRequest.current);
 	}, [exchange]);
 
-	return { error, location, messages, retry, send, setLocation: updateLocation, status, toolCalls };
+	return { error, location, messages, recommendedPlaceIds, retry, send, setLocation: updateLocation, status, toolCalls };
 }

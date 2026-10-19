@@ -1,6 +1,10 @@
 import { ChatScreen } from '@pages/chat';
+import { readEnv } from '@server/kernel/env';
 import { ThemeToggle } from '@shared/ui/ThemeToggle';
 import { ToastProvider } from '@shared/ui/Toast';
+
+// Resolve the running provider at request time, including after a provider switch.
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
 	return (
@@ -18,7 +22,7 @@ export default function HomePage() {
 					</div>
 				</header>
 				<main className="mx-auto max-w-[1600px] p-3 md:p-6">
-					<ChatScreen />
+					<ChatScreen demoMode={readEnv().LLM_PROVIDER === 'mock'} />
 				</main>
 				<footer className="text-fg-muted mx-auto max-w-[1600px] px-3 pb-6 text-xs md:px-6">
 					© участники OpenStreetMap · Wikidata · Расстояния приблизительные. Проверяйте часы работы перед выходом.
