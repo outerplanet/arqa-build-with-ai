@@ -72,6 +72,39 @@ function plan(candidates: ReturnType<typeof candidate>[], ...[durationMinutes = 
 }
 
 describe('planWalk', () => {
+	it('uses graph distances and budgets instead of crossing an obstacle directly', () => {
+		const result = planWalk({
+			candidates: [candidate('osm:node/1')],
+			durationMinutes: 22,
+			maxStops: 3,
+			measureLeg: () => ({ distanceM: 900, walkMinutes: 12 }),
+			start: START,
+		});
+		expect(result.totalMinutes).toBe(22);
+		expect(result.legs[0]).toMatchObject({ distanceM: 900, walkMinutes: 12 });
+		expect(
+			planWalk({
+				candidates: [candidate('osm:node/1')],
+				durationMinutes: 21,
+				maxStops: 3,
+				measureLeg: () => ({ distanceM: 900, walkMinutes: 12 }),
+				start: START,
+			}).stops,
+		).toEqual([]);
+	});
+	it('never replaces an unreachable graph leg with a straight-line shortcut', () => {
+		for (const leg of [null, { distanceM: NaN, walkMinutes: 1 }, { distanceM: 10, walkMinutes: -1 }]) {
+			expect(
+				planWalk({
+					candidates: [candidate('osm:node/1')],
+					durationMinutes: 60,
+					maxStops: 3,
+					measureLeg: () => leg,
+					start: START,
+				}).stops,
+			).toEqual([]);
+		}
+	});
 	it('returns a walk accepted by the shared contract', () => {
 		expect(() => walkPlanSchema.parse(plan([candidate('osm:node/1'), candidate('osm:node/2')]))).not.toThrow();
 	});

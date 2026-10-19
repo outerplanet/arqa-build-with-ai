@@ -30,6 +30,7 @@ export function planWalk(input: {
 	candidates: readonly Candidate[];
 	durationMinutes: number;
 	maxStops: number;
+	measureLeg?: (from: GeoPoint, to: GeoPoint) => { distanceM: number; walkMinutes: number } | null;
 	start: GeoPoint;
 }): WalkPlan {
 	const empty: WalkPlan = {
@@ -61,22 +62,43 @@ export function planWalk(input: {
 		.sort(byId);
 	const maxStops = Math.min(3, Math.floor(input.maxStops));
 	const legCap = Math.max(LEG_CAP_MINUTES, LEG_CAP_SHARE * input.durationMinutes);
-	// The best-scored place reachable directly from the start anchors the walk: any route that
-	// includes it beats every route without it, so the top match is never traded for a far cluster.
-	let anchor: Candidate | null = null;
-	for (const candidate of pool) {
-		const walk = walkMinutes(distanceM(input.start, candidate.place));
-		if (
-			walk <= legCap &&
-			walk + candidate.visitMinutes <= input.durationMinutes &&
-			(anchor === null || candidate.score > anchor.score)
-		)
-			anchor = candidate;
-	}
 	let best: Candidate[] = [];
 	let bestAnchored = false;
 	let bestScore = -Infinity;
 	let bestMinutes = Infinity;
+	const measured = new Map<string, { distanceM: number; walkMinutes: number } | null>();
+	const measure = (from: GeoPoint, to: GeoPoint) => {
+		const key = JSON.stringify([from.lat, from.lon, to.lat, to.lon]);
+		if (!measured.has(key)) {
+			const meters = distanceM(from, to);
+			const leg = input.measureLeg
+				? input.measureLeg(from, to)
+				: { distanceM: meters, walkMinutes: walkMinutes(meters) };
+			measured.set(
+				key,
+				leg &&
+					Number.isFinite(leg.distanceM) &&
+					leg.distanceM >= 0 &&
+					Number.isFinite(leg.walkMinutes) &&
+					leg.walkMinutes >= 0
+					? leg
+					: null,
+			);
+		}
+		return measured.get(key) ?? null;
+	};
+	// Anchor selection must obey the same graph and per-leg limit as the final route.
+	let anchor: Candidate | null = null;
+	for (const candidate of pool) {
+		const leg = measure(input.start, candidate.place);
+		if (
+			leg !== null &&
+			leg.walkMinutes <= legCap &&
+			leg.walkMinutes + candidate.visitMinutes <= input.durationMinutes &&
+			(anchor === null || candidate.score > anchor.score)
+		)
+			anchor = candidate;
+	}
 
 	function search(state: { current: GeoPoint; minutes: number; score: number; stops: Candidate[] }): void {
 		const { current, minutes, score, stops } = state;
@@ -95,15 +117,17 @@ export function planWalk(input: {
 		}
 		if (stops.length >= maxStops) return;
 		for (const candidate of pool) {
-			const walk = walkMinutes(distanceM(current, candidate.place));
-			const nextMinutes = minutes + walk + candidate.visitMinutes;
-			if (walk <= legCap && nextMinutes <= input.durationMinutes && compatible(stops, candidate)) {
-				search({
-					current: candidate.place,
-					minutes: nextMinutes,
-					score: score + candidate.score,
-					stops: [...stops, candidate],
-				});
+			const leg = measure(current, candidate.place);
+			if (leg !== null && leg.walkMinutes <= legCap && compatible(stops, candidate)) {
+				const nextMinutes = minutes + leg.walkMinutes + candidate.visitMinutes;
+				if (nextMinutes <= input.durationMinutes) {
+					search({
+						current: candidate.place,
+						minutes: nextMinutes,
+						score: score + candidate.score,
+						stops: [...stops, candidate],
+					});
+				}
 			}
 		}
 	}
@@ -112,9 +136,10 @@ export function planWalk(input: {
 	let previous = input.start;
 	const legs: WalkPlan['legs'] = [];
 	const stops = best.map((candidate, index) => {
-		const meters = distanceM(previous, candidate.place);
-		const minutes = walkMinutes(meters);
-		// Keep straight-line meters; walkMinutes applies the 1.3 detour factor exactly once.
+		const leg = measure(previous, candidate.place)!;
+		const meters = leg.distanceM;
+		const minutes = leg.walkMinutes;
+		// A supplied graph measurement already includes detours; never inflate it again.
 		const to = { lat: candidate.place.lat, lon: candidate.place.lon };
 		legs.push({ distanceM: meters, from: previous, to, walkMinutes: minutes });
 		elapsed += minutes;

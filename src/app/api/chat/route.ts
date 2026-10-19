@@ -4,7 +4,7 @@ import { recommendedPlaceIdsForTools } from '@server/agent/usecase/reply';
 import { createCtx } from '@server/kernel/ctx';
 
 /**
- * The only network call the interface makes.
+ * The chat and its request-scoped, local walking calculation.
  *
  * It validates on the way in and on the way out. The outbound parse looks redundant — we built
  * that object ourselves — but it is what stops a change in the usecase from reaching the browser

@@ -17,7 +17,7 @@ no cache tier, no database.
 | Styling      | Tailwind CSS, semantic tokens only                         |
 | Components   | Radix UI primitives, styled here — no copied component kit |
 | Icons        | Heroicons                                                  |
-| Data         | `data/poi.json` from OpenStreetMap + Wikidata; vectors in `data/poi.vectors.json` |
+| Data         | `data/poi.json` from OpenStreetMap + Wikidata; vectors in `data/poi.vectors.json`; static OSM walking graph in `data/walking-graph.json` |
 | Retrieval    | In-memory cosine over local multilingual 384-d embeddings; optional OpenAI 256-d; lexical fallback, geo and hours filters |
 | Map          | MapLibre GL with OpenFreeMap tiles                         |
 | Validation   | Zod, one schema shared by client and server                |
@@ -29,6 +29,21 @@ Do not add a second backend framework, a monorepo, Kubernetes, Redis or Kafka un
 requirement makes it necessary. A starter's job is to be outgrown deliberately, not by accident.
 
 ## Current POI retrieval and document exports
+
+Walking navigation uses a separate committed OSM graph collected by `scripts/collectWalking.ts`.
+The repository validates and caches public graph data; the pure `walkingGraph.ts` builds directed
+adjacency and runs A*. Only shared OSM node IDs connect paths; geometry intersections do not.
+Snaps split graph edges within 75 m. No original-point connectors are drawn through buildings.
+Private/unsupported access, blocked barriers, fords and pedestrian one-way restrictions are handled
+conservatively during collection. Steps remain allowed; this is not wheelchair routing.
+
+`planWalk` supplies a request-scoped graph measurement callback to the pure budget planner.
+Graph walking minutes use 75 m/min without the straight-line detour factor, with visits included.
+Only the public graph index survives requests; location/path caches are request-local.
+The frozen `places.schema.ts` remains unchanged. The tool result carries an additional validated
+`walkingRoute` envelope, and the map draws its exact leg geometries. Missing graphs produce an
+explicit preliminary estimate with no navigation line; disconnected legs never fall back to a
+straight shortcut. Unmapped barriers, temporary closures and the approach to an entrance remain unknown.
 
 The application reads the committed 1,091-place `data/poi.json` through `places/repo/places.ts`.
 `usecase/dependencies.ts` connects the real repositories and pure lexical, ranking and route

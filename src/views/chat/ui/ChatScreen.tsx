@@ -176,6 +176,7 @@ export function ChatScreen({
 							onSelect={setSelectedId}
 							pending={pending}
 							selectedId={activeId}
+							walkingRoute={walkingRoute}
 						/>
 					</div>
 				</div>
@@ -187,6 +188,7 @@ export function ChatScreen({
 						onSelect={setSelectedId}
 						pending={pending}
 						selectedId={activeId}
+						walkingRoute={walkingRoute}
 					/>
 				</div>
 			</div>

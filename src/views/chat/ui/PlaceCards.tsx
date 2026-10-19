@@ -1,6 +1,7 @@
 'use client';
 
 import { type Candidate, type Category } from '@server/places/model/places.schema';
+import { type WalkingRoute } from '@server/places/model/walkingRoute.schema';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { Callout } from '@shared/ui/Callout';
@@ -50,9 +51,18 @@ export interface PlaceCardsProps {
 	onSelect: (id: string) => void;
 	pending: boolean;
 	selectedId: string | null;
+	walkingRoute?: WalkingRoute | null;
 }
 
-export function PlaceCards({ candidates, error, onRetry, onSelect, pending, selectedId }: PlaceCardsProps) {
+export function PlaceCards({
+	candidates,
+	error,
+	onRetry,
+	onSelect,
+	pending,
+	selectedId,
+	walkingRoute,
+}: PlaceCardsProps) {
 	return (
 		<Card description="Только места, которые вернули инструменты ассистента" title="Места для прогулки">
 			{pending ? (
@@ -85,6 +95,10 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 				<ul className="flex flex-col gap-3">
 					{candidates.map((candidate, index) => {
 						const { open, place } = candidate;
+						const leg =
+							walkingRoute?.status === 'available' && walkingRoute.stopIds[index] === place.id
+								? walkingRoute.legs[index]
+								: null;
 						const sourceUrl = /^https:\/\/(?:www\.)?openstreetmap\.org\//u.test(place.sourceUrl)
 							? place.sourceUrl
 							: null;
@@ -115,11 +129,14 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 									{place.address ? ` · ${place.address}` : ''}
 								</p>
 								<p className="text-fg mt-2 text-sm tabular-nums">
-									{Math.round(candidate.distanceM)} м · ≈ {candidate.walkMinutes} мин пешком ·{' '}
-									{candidate.visitMinutes} мин на посещение
+									{Math.round(leg?.distanceM ?? candidate.distanceM)} м · ≈{' '}
+									{leg?.walkMinutes ?? candidate.walkMinutes} мин пешком · {candidate.visitMinutes} мин на
+									посещение
 								</p>
 								<p className="text-fg-muted mt-1 text-xs">
-									Расстояние и время приблизительные, пешеходный путь не проверен.
+									{leg
+										? `${index === 0 ? 'От старта' : 'От предыдущей остановки'} по дорожкам. Подход к входу не проверен.`
+										: 'Расстояние и время приблизительные, пешеходный путь не проверен.'}
 								</p>
 								<div className="mt-3">
 									<Badge
