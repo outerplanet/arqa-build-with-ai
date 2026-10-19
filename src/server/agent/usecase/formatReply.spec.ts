@@ -128,6 +128,147 @@ describe('formatRecommendations', () => {
 		expect(reply).toContain('часы работы неизвестны');
 	});
 
+	it('builds «почему» from the matched interest, OSM tags, open status and walk time', () => {
+		const cafe = candidate('open', 'Кофейня');
+		cafe.place.category = 'cafe';
+		cafe.place.tags = ['wifi'];
+		cafe.why.tags = ['wifi'];
+		cafe.walkMinutes = 3;
+		cafe.open = {
+			confidence: 'high',
+			note: 'по данным OSM открыто до 22:00',
+			opensAt: null,
+			status: 'open',
+			until: '22:00',
+		};
+		const reply = formatRecommendations(result([cafe]), {
+			categories: ['cafe', 'library'],
+			interests: ['кофе'],
+		});
+
+		expect(reply).toContain(
+			'Почему: кафе — совпадает с запросом «кофе», по данным OSM есть Wi-Fi, открыто до 22:00, 3 мин пешком.',
+		);
+		expect(reply).not.toContain('от отправной точки');
+	});
+
+	it('never says «открыто» in the reason without an open status', () => {
+		const reply = formatRecommendations(result([candidate('unknown')]), { interests: ['прогулка'] });
+		const why = reply.split('\n').find((line) => line.startsWith('Почему:'));
+
+		expect(why).toBeDefined();
+		expect(why).not.toContain('открыто');
+	});
+
+	it('states the hours once, in one sentence, and says low confidence aloud', () => {
+		const open = candidate('open');
+		open.open = {
+			confidence: 'high',
+			note: 'по данным OSM открыто до 00:00',
+			opensAt: null,
+			status: 'open',
+			until: '00:00',
+		};
+		const reply = formatRecommendations(result([open]));
+
+		expect(reply).toContain('Часы: открыто до 00:00 по данным OpenStreetMap.');
+		expect(reply).not.toContain('по данным OSM открыто');
+		expect(reply).not.toContain('открыто по данным источника');
+
+		const partial = candidate('open');
+		partial.open = {
+			confidence: 'low',
+			note: 'по данным OSM открыто до 18:00',
+			opensAt: null,
+			status: 'open',
+			until: '18:00',
+		};
+		expect(formatRecommendations(result([partial]))).toContain('уверенность низкая');
+		expect(formatRecommendations(result([candidate('unknown')]))).toContain(
+			'Часы: часы работы неизвестны — уточните перед выходом.',
+		);
+	});
+
+	it('shows parsed filters and the check time instead of the raw conversation', () => {
+		const found = result([candidate('open')]);
+		found.usedFilters = [
+			'Запрос: Я у Нур Алем, хочу что-то необычное',
+			'Пешком до 15 минут',
+			'Время проверки: 2026-10-19T10:00:00.000Z',
+		];
+		const reply = formatRecommendations(found, { interests: ['необычное'] });
+
+		expect(reply).not.toContain('Я у Нур Алем');
+		expect(reply).toContain('Интерес: необычное');
+		expect(reply).toContain('Часы проверены на 15:00 по Астане');
+		expect(reply).not.toContain('2026-10-19T10:00');
+	});
+
+	it('says what time the hours were checked for when night is asked during the day', () => {
+		const reply = formatRecommendations(result([candidate('open')]), {
+			night: true,
+			now: new Date('2026-10-19T10:00:00.000Z'),
+		});
+
+		expect(reply).toContain('Сейчас 15:00 по Астане — часы проверены на это время');
+		expect(
+			formatRecommendations(result([candidate('open')]), { night: true, now: new Date('2026-10-19T18:30:00.000Z') }),
+		).not.toContain('Сейчас 23:30');
+	});
+
+	it('keeps a walk without a stated interest to at most one cafe', () => {
+		const cafes = [1, 2, 3].map((n) => {
+			const item = candidate('open', `Кафе ${n}`);
+			item.place.category = 'cafe';
+			item.place.id = `osm:node/${n}`;
+			return item;
+		});
+		const park = candidate('open', 'Парк');
+		park.place.id = 'osm:node/9';
+		const reply = formatRecommendations(result([...cafes, park]), { walk: true });
+
+		expect(reply).toContain('Кафе 1');
+		expect(reply).not.toContain('Кафе 2');
+		expect(reply).toContain('Парк');
+		expect(reply).toContain('Почему: парк — подходит для прогулки');
+		expect(reply).toContain('Почему: кафе — остановка на кофе');
+	});
+
+	it('does not recommend the landmark the user is standing at', () => {
+		const here = candidate('open', 'Нур Алем');
+		const next = candidate('open', 'Соседний музей');
+		next.place.id = 'osm:node/2';
+		const ids = recommendedPlaceIdsForTools({
+			messages: [{ content: 'Я у Нур Алем, хочу что-то необычное', role: 'user' }],
+			toolCalls: [
+				{
+					arguments: {},
+					durationMs: 1,
+					label: 'Локация',
+					name: 'resolve_location',
+					result: {
+						confidence: 'high',
+						found: true,
+						label: 'Нур Алем',
+						matchedPlaceId: 'osm:node/1',
+						point: { lat: 51, lon: 71 },
+					},
+					status: 'ok',
+				},
+				{
+					arguments: {},
+					durationMs: 1,
+					label: 'Поиск',
+					name: 'find_places',
+					result: result([here, next]),
+					status: 'ok',
+				},
+			],
+		});
+
+		expect(ids).toEqual(['osm:node/2']);
+	});
+
 	it('labels a generated description separately from the place source', () => {
 		const place = candidate('unknown');
 		place.place.description = 'Описание для теста';
@@ -171,6 +312,73 @@ describe('formatWalk', () => {
 			'Предложена одна остановка: всего 25 мин',
 		);
 	});
+	it('builds route filters from the parsed request, never from the raw conversation', () => {
+		const reply = replyForTools(
+			{ ...createCtx(), browserLocation: { lat: 51, lon: 71 } },
+			{
+				messages: [{ content: 'Построй маршрут на час', role: 'user' }],
+				toolCalls: [
+					{
+						arguments: {},
+						durationMs: 1,
+						label: 'Маршрут',
+						name: 'plan_walk',
+						result: {
+							legs: [
+								{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 },
+							],
+							note: '',
+							stops: [{ arriveAtMinute: 5, candidate: candidate('open'), order: 1 }],
+							totalMinutes: 25,
+						},
+						status: 'ok',
+					},
+				],
+			},
+		);
+		const filters = reply.split('\n').find((line) => line.startsWith('Фильтры:'));
+
+		expect(filters).toBeDefined();
+		expect(filters).not.toContain('Построй маршрут');
+		expect(filters).toContain('до 60 минут');
+	});
+
+	it('describes route legs from the plan instead of a contradicting walk limit', () => {
+		const far = candidate('unknown');
+		far.distanceM = 2600;
+		far.walkMinutes = 27;
+		const found = result([far]);
+		found.usedFilters = ['Запрос: Построй маршрут на 90 минут', 'Пешком до 15 минут'];
+		const reply = replyForTools(
+			{ ...createCtx(), browserLocation: { lat: 51, lon: 71 } },
+			{
+				messages: [{ content: 'Построй маршрут на 90 минут', role: 'user' }],
+				toolCalls: [
+					{ arguments: {}, durationMs: 1, label: 'Поиск', name: 'find_places', result: found, status: 'ok' },
+					{
+						arguments: {},
+						durationMs: 1,
+						label: 'Маршрут',
+						name: 'plan_walk',
+						result: {
+							legs: [
+								{ distanceM: 2100, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 27 },
+							],
+							note: '',
+							stops: [{ arriveAtMinute: 27, candidate: far, order: 1 }],
+							totalMinutes: 67,
+						},
+						status: 'ok',
+					},
+				],
+			},
+		);
+
+		expect(reply).not.toContain('Пешком до 15 минут');
+		expect(reply).toContain('Переход: 2100 м, 27 мин');
+		expect(reply).toContain('переход 27 мин');
+	});
+
 	it('uses the plan minutes, stop hours, source and note', () => {
 		const reply = formatWalk({
 			legs: [{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 }],

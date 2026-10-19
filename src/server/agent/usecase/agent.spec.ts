@@ -1,7 +1,17 @@
 import { runAgent } from '@server/agent/usecase/agent';
 import { type Ctx } from '@server/kernel/ctx';
 import { resetEnvCache } from '@server/kernel/env';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const provider = vi.hoisted(() => ({ chat: vi.fn(), responses: vi.fn() }));
+
+vi.mock('@server/agent/usecase/client', () => ({
+	createClient: () => ({
+		chat: { completions: { create: provider.chat } },
+		responses: { create: provider.responses },
+	}),
+	withRetry: <T>(call: () => Promise<T>) => call(),
+}));
 
 /**
  * These exercise the scripted adapter, which is the only one that can run in a test without a
@@ -33,6 +43,16 @@ describe('the scripted agent', () => {
 		expect(result.reply).toContain(time.timeZone);
 	});
 
+	it('answers a coffee request with a concrete reason and one hours sentence', async () => {
+		const result = await runAgent(
+			{ now: new Date('2026-10-19T10:00:00.000Z') },
+			{ location: { lat: 51.089, lon: 71.416 }, messages: [{ content: 'Хочу кофе', role: 'user' }] },
+		);
+
+		expect(result.reply).toContain('совпадает с запросом «кофе»');
+		expect(result.reply).not.toMatch(/по данным источника|\. по данным OSM/u);
+	});
+
 	it('every reported call carries what the panel renders', async () => {
 		const result = await runAgent(ctx, { messages: [{ content: 'Который час?', role: 'user' }] });
 
@@ -40,5 +60,62 @@ describe('the scripted agent', () => {
 			expect(call.label.length).toBeGreaterThan(0);
 			expect(call.status).toBe('ok');
 		}
+	});
+});
+
+describe('the live adapters', () => {
+	const location = { lat: 51.089, lon: 71.416 };
+	const search = { arguments: JSON.stringify({ query: 'кофе' }), name: 'find_places' };
+
+	function useProvider(name: 'chat' | 'responses') {
+		process.env.LLM_PROVIDER = name;
+		process.env.LLM_API_KEY = 'test-key';
+		resetEnvCache();
+	}
+
+	afterEach(() => {
+		delete process.env.LLM_API_KEY;
+		process.env.LLM_PROVIDER = 'mock';
+		resetEnvCache();
+		provider.chat.mockReset();
+		provider.responses.mockReset();
+	});
+
+	it('keeps executed tool calls and answers from them when the provider fails mid-turn', async () => {
+		useProvider('chat');
+		provider.chat
+			.mockResolvedValueOnce({
+				choices: [
+					{
+						message: {
+							content: null,
+							role: 'assistant',
+							tool_calls: [{ function: search, id: 'c1', type: 'function' }],
+						},
+					},
+				],
+			})
+			.mockRejectedValueOnce(new Error('provider down'));
+		const result = await runAgent(ctx, { location, messages: [{ content: 'Хочу кофе', role: 'user' }] });
+
+		expect(result.toolCalls.map((call) => call.name)).toEqual(['find_places']);
+		expect(result.reply).toContain('Локация:');
+	});
+
+	it('answers from a successful search when the turn budget runs out', async () => {
+		useProvider('responses');
+		provider.responses.mockResolvedValue({ output: [{ call_id: 'r1', type: 'function_call', ...search }] });
+		const result = await runAgent(ctx, { location, messages: [{ content: 'Хочу кофе', role: 'user' }] });
+
+		expect(result.toolCalls.length).toBeGreaterThan(0);
+		expect(result.reply).toContain('Локация:');
+		expect(result.reply).not.toContain('Не удалось завершить запрос');
+	});
+
+	it('still reports a provider failure before any tool ran as an error', async () => {
+		useProvider('responses');
+		provider.responses.mockRejectedValue(new Error('provider down'));
+
+		await expect(runAgent(ctx, { location, messages: [{ content: 'Хочу кофе', role: 'user' }] })).rejects.toThrow();
 	});
 });

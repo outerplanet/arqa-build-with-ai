@@ -54,13 +54,56 @@ describe('executeTool', () => {
 		});
 		expect(call.status).toBe('ok');
 		expect(rankPlaces).toHaveBeenCalledWith(
-			expect.objectContaining({ categories: ['park', 'garden', 'viewpoint', 'artwork'] }),
+			expect.objectContaining({ categories: expect.arrayContaining(['park', 'garden', 'monument']) }),
 		);
 		expect(planWalk).toHaveBeenCalledWith(expect.objectContaining({ durationMinutes: 60 }));
 		await executeTool(context, { args: { at: '2020-01-01T00:00:00Z', query: 'прогулка' }, name: 'find_places' });
 		expect(rankPlaces).toHaveBeenLastCalledWith(
-			expect.objectContaining({ at: ctx.now, query: context.userMessages!.join('\n') }),
+			expect.objectContaining({ at: ctx.now, maxWalkMinutes: 15, query: 'хочу прогуляться 30–60 минут' }),
 		);
+	});
+
+	function contextFor(message: string) {
+		const rankPlaces = vi.fn(() => []);
+		const planWalk = vi.fn(() => ({ legs: [], note: 'Нет подходящих остановок', stops: [], totalMinutes: 0 }));
+		const context: PlacesContext = {
+			...ctx,
+			browserLocation: { lat: 51.089, lon: 71.405 },
+			places: {
+				getPlaceById: () => null,
+				lexicalScores: () => new Map(),
+				planWalk,
+				rankPlaces,
+				readPlaces: () => [],
+				readVectors: () => null,
+			},
+			userMessages: [message],
+		};
+		return { context, planWalk, rankPlaces };
+	}
+
+	it('lets the model choose categories when the user named only a location', async () => {
+		const { context, rankPlaces } = contextFor('Я у музея Нур Алем');
+
+		await executeTool(context, { args: { categories: ['park'], query: 'парк' }, name: 'find_places' });
+		expect(rankPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ categories: ['park'] }));
+	});
+
+	it('widens the walking radius to the time budget when the model keeps the default', async () => {
+		const { context, rankPlaces } = contextFor('Хочу прогуляться 90 минут');
+
+		await executeTool(context, { args: { query: 'прогулка' }, name: 'find_places' });
+		expect(rankPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ maxWalkMinutes: 23 }));
+	});
+
+	it('plans a route without stated interests through sights and parks, not fast food', async () => {
+		const { context, rankPlaces } = contextFor('Построй маршрут на 90 минут');
+
+		await executeTool(context, { args: { durationMinutes: 90, start: context.browserLocation }, name: 'plan_walk' });
+		const [{ categories }] = rankPlaces.mock.lastCall as unknown as [{ categories: string[] }];
+
+		expect(categories).toEqual(expect.arrayContaining(['monument', 'park']));
+		expect(categories).not.toContain('fast_food');
 	});
 	it('waits for an asynchronous handler before reporting its result', async () => {
 		const handler = vi.spyOn(TOOLS[0]!, 'handler').mockResolvedValue({ completed: true });

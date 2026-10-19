@@ -5,7 +5,7 @@ import { LANDMARKS, mentions } from '@server/places/usecase/landmarks';
 import { origin } from '@server/places/usecase/origin';
 import 'server-only';
 import { replyForTools } from './reply';
-import { scenarioFor } from './scenario';
+import { categoriesFor, scenarioFor } from './scenario';
 import { type CurrentTime, executeTool } from './tools';
 
 export async function runMock(ctx: PlacesContext, input: { messages: readonly ChatMessage[] }): Promise<ChatResponse> {
@@ -48,7 +48,7 @@ export async function runMock(ctx: PlacesContext, input: { messages: readonly Ch
 	const search = await executeTool(ctx, {
 		args: {
 			accessibleOnly: scenario.accessibleOnly,
-			categories: scenario.categories,
+			categories: categoriesFor(scenario, { purpose: 'search' }),
 			limit: 5,
 			maxWalkMinutes: scenario.maxWalkMinutes,
 			query: scenario.query,
@@ -67,7 +67,7 @@ export async function runMock(ctx: PlacesContext, input: { messages: readonly Ch
 		toolCalls.push(
 			await executeTool(ctx, {
 				args: {
-					categories: scenario.categories,
+					categories: categoriesFor(scenario, { purpose: 'route' }),
 					durationMinutes: scenario.durationMinutes,
 					query: scenario.query,
 					start: origin(ctx).point,

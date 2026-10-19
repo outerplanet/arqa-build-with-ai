@@ -14,7 +14,7 @@ import { planWalk } from '@server/places/usecase/planWalk';
 import { resolveLocation } from '@server/places/usecase/resolveLocation';
 import 'server-only';
 import { z } from 'zod';
-import { scenarioFor } from './scenario';
+import { categoriesFor, scenarioFor } from './scenario';
 
 /**
  * The tool registry: one place that knows what the agent can do.
@@ -114,8 +114,14 @@ export const TOOLS: readonly ToolSpec[] = [
 				accessibleOnly: preferences.accessibleOnly ?? args.accessibleOnly,
 				// This product answers "now"; the model cannot invent a different checking time.
 				at: ctx.now.toISOString(),
-				categories: preferences.categories ?? args.categories,
-				maxWalkMinutes: Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes),
+				// Only categories from the user's interest override the model, never the location phrase.
+				categories: categoriesFor(preferences, { purpose: 'search', requested: args.categories }),
+				// The schema fills 15 when the model omits it, so a time budget sets the radius unless
+				// the user named a walking limit, which nothing may exceed.
+				maxWalkMinutes:
+					preferences.walkLimitExplicit || preferences.durationMinutes === undefined
+						? Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes)
+						: preferences.maxWalkMinutes,
 				query: preferences.query || args.query,
 			});
 		},
@@ -138,7 +144,7 @@ export const TOOLS: readonly ToolSpec[] = [
 			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
 			return planWalk(ctx, {
 				...args,
-				categories: preferences.categories ?? args.categories,
+				categories: categoriesFor(preferences, { purpose: 'route', requested: args.categories }),
 				durationMinutes: Math.min(args.durationMinutes, preferences.durationMinutes ?? args.durationMinutes),
 				query: preferences.query || args.query,
 			});

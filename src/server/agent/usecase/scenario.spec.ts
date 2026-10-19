@@ -1,12 +1,13 @@
-import { scenarioFor } from '@server/agent/usecase/scenario';
+import { categoriesFor, scenarioFor } from '@server/agent/usecase/scenario';
 import { describe, expect, it } from 'vitest';
 
 describe('scenarioFor', () => {
 	it('uses the newest explicit budget and interest while preserving an unspecified interest', () => {
 		expect(scenarioFor('Я у Mega, хочу гулять 30–60 минут\nПострой маршрут на 2 часа')).toMatchObject({
-			categories: ['park', 'garden', 'viewpoint', 'artwork'],
+			categories: expect.arrayContaining(['park', 'garden', 'monument']),
 			durationMinutes: 120,
 			route: true,
+			walk: true,
 		});
 		expect(scenarioFor('Хочу кофе на час\nТеперь хочу музей на 20 минут')).toMatchObject({
 			categories: ['museum', 'gallery'],
@@ -67,5 +68,63 @@ describe('scenarioFor', () => {
 
 	it('does not increase a short visit budget to the route minimum', () => {
 		expect(scenarioFor('У меня только 10 минут').durationMinutes).toBe(10);
+	});
+
+	it('parses a Cyrillic hour abbreviation', () => {
+		expect(scenarioFor('Хочу погулять на 2 ч').durationMinutes).toBe(120);
+		expect(scenarioFor('Есть 1 ч.').durationMinutes).toBe(60);
+		expect(scenarioFor('Построй маршрут на час').durationMinutes).toBe(60);
+		expect(scenarioFor('Есть полчаса').durationMinutes).toBe(30);
+	});
+
+	it('does not turn words of the location phrase into category filters', () => {
+		const scenario = scenarioFor('Я у музея Нур Алем, хочу что-то необычное на 1–2 часа');
+
+		expect(scenario.categories).toContain('attraction');
+		expect(scenario.categories).not.toEqual(['museum', 'gallery']);
+		expect(scenario.interests).toEqual(['необычное']);
+		expect(scenario.query).not.toContain('Нур Алем');
+		expect(scenarioFor('Я возле галереи, хочу кофе').categories).toEqual(['cafe', 'library']);
+		expect(scenarioFor('Я у Байтерека').categories).toBeUndefined();
+		// A time budget after «около» is not a location.
+		expect(scenarioFor('Хочу кофе, у меня около 2 часов').durationMinutes).toBe(120);
+	});
+
+	it('takes night and flight from the latest request, not from any earlier turn', () => {
+		expect(scenarioFor('Ищу ночную активность\nХочу кофе').night).toBe(false);
+		expect(scenarioFor('Ищу ночную активность\nА поближе?').night).toBe(true);
+		expect(scenarioFor('У меня 2 часа перед вылетом\nХочу в музей').flight).toBe(false);
+		expect(scenarioFor('У меня 2 часа перед вылетом\nА поближе?').flight).toBe(true);
+	});
+
+	it('derives the walking radius from the time budget unless the user set one', () => {
+		expect(scenarioFor('Хочу прогуляться 90 минут').maxWalkMinutes).toBe(23);
+		expect(scenarioFor('Хочу погулять на 2 часа').maxWalkMinutes).toBe(30);
+		expect(scenarioFor('Хочу кофе на 30 минут').maxWalkMinutes).toBe(10);
+		expect(scenarioFor('Хочу кофе').maxWalkMinutes).toBe(15);
+		expect(scenarioFor('Кафе в пределах 10 минут пешком на 2 часа').maxWalkMinutes).toBe(10);
+	});
+
+	it('defaults a walk or route without interests to sights and parks, never fast food', () => {
+		const route = scenarioFor('Построй маршрут на 90 минут');
+
+		const routeDefault = categoriesFor(route, { purpose: 'route' });
+
+		expect(routeDefault).toEqual(expect.arrayContaining(['monument', 'park', 'museum']));
+		expect(routeDefault).not.toContain('fast_food');
+		expect(routeDefault).not.toContain('cafe');
+		// The model may narrow a route the user left open...
+		expect(categoriesFor(route, { purpose: 'route', requested: ['museum'] })).toEqual(['museum']);
+		// ...but not replace an interest the user stated.
+		const walk = categoriesFor(scenarioFor('Хочу прогуляться'), { purpose: 'search', requested: ['fast_food'] });
+		expect(walk).toContain('park');
+		expect(walk).not.toContain('fast_food');
+		expect(categoriesFor(scenarioFor('Хочу кофе'), { purpose: 'search', requested: ['park'] })).toEqual([
+			'cafe',
+			'library',
+		]);
+		expect(categoriesFor(scenarioFor('Я у музея Нур Алем'), { purpose: 'search', requested: ['park'] })).toEqual([
+			'park',
+		]);
 	});
 });
