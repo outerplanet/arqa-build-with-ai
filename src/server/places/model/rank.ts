@@ -1,16 +1,19 @@
 import 'server-only';
 import { distanceM, walkMinutes } from './geo';
 import { openStatus } from './hours';
-import { type Candidate, type Category, type GeoPoint, type Place } from './places.schema';
+import { matchingTags } from './lexical';
+import { type Candidate, type Category, type GeoPoint, geoPointSchema, type Place } from './places.schema';
 
 export interface RankInput {
 	accessibleOnly?: boolean;
 	at: Date;
 	categories?: readonly Category[];
+	durationMinutes?: number;
 	limit: number;
 	maxWalkMinutes: number;
 	origin: GeoPoint;
 	places: readonly Place[];
+	query?: string;
 	semantic: ReadonlyMap<string, number>;
 }
 
@@ -47,9 +50,23 @@ function unit(value: number): number {
 }
 
 export function rankPlaces(input: RankInput): Candidate[] {
+	if (
+		!geoPointSchema.safeParse(input.origin).success ||
+		!Number.isFinite(input.at.getTime()) ||
+		!Number.isFinite(input.limit) ||
+		input.limit <= 0 ||
+		!Number.isFinite(input.maxWalkMinutes) ||
+		input.maxWalkMinutes < 0 ||
+		(input.durationMinutes !== undefined && (!Number.isFinite(input.durationMinutes) || input.durationMinutes < 0))
+	)
+		return [];
+	// Astana is UTC+5. Night requests must have positive evidence of opening.
+	const hour = (((Math.floor(input.at.getTime() / 3_600_000) + 5) % 24) + 24) % 24;
+	const night = hour >= 22 || hour < 6;
 	const candidates = input.places
 		.filter(
 			(place) =>
+				geoPointSchema.safeParse(place).success &&
 				(!input.categories?.length || input.categories.includes(place.category)) &&
 				(!input.accessibleOnly || place.wheelchair === 'yes'),
 		)
@@ -57,20 +74,21 @@ export function rankPlaces(input: RankInput): Candidate[] {
 			const meters = distanceM(input.origin, place);
 			const minutes = walkMinutes(meters);
 			const open = openStatus(place.openingHours, input.at);
+			const semantic = unit(input.semantic.get(place.id) ?? 0);
 			const why = {
 				distance: unit(input.maxWalkMinutes > 0 ? 1 - minutes / input.maxWalkMinutes : minutes === 0 ? 1 : 0),
 				open: open.status === 'open' ? 1 : open.status === 'unknown' ? 0.5 : 0,
 				popularity: unit(place.popularity ?? 0),
-				semantic: unit(input.semantic.get(place.id) ?? 0),
-				// RankInput has no requested tags or query. Do not invent tag matches.
-				tags: [] as string[],
+				// The usecase supplies retrieval relevance, including its lexical fallback.
+				semantic,
+				tags: input.query === undefined ? [] : matchingTags(input.query, place.tags),
 			};
 			const score = unit(
 				WEIGHTS.semantic * why.semantic +
 					WEIGHTS.distance * why.distance +
 					WEIGHTS.open * why.open +
 					WEIGHTS.popularity * why.popularity +
-					WEIGHTS.tags * 0,
+					WEIGHTS.tags * Number(why.tags.length > 0),
 			);
 			return {
 				distanceM: meters,
@@ -82,7 +100,13 @@ export function rankPlaces(input: RankInput): Candidate[] {
 				why,
 			};
 		})
-		.filter((candidate) => candidate.walkMinutes <= input.maxWalkMinutes);
+		.filter(
+			(candidate) =>
+				candidate.walkMinutes <= input.maxWalkMinutes &&
+				(input.durationMinutes === undefined ||
+					candidate.walkMinutes + candidate.visitMinutes <= input.durationMinutes) &&
+				(!night || candidate.open.status === 'open'),
+		);
 	return candidates
 		.sort(
 			(left, right) =>
@@ -90,5 +114,5 @@ export function rankPlaces(input: RankInput): Candidate[] {
 				right.score - left.score ||
 				(left.place.id < right.place.id ? -1 : left.place.id > right.place.id ? 1 : 0),
 		)
-		.slice(0, Math.max(0, input.limit));
+		.slice(0, Math.floor(input.limit));
 }

@@ -1,23 +1,11 @@
 import { DomainError } from '@server/kernel/errors';
-import {
-	type Candidate,
-	type Category,
-	type GeoPoint,
-	type Place,
-	type WalkPlan,
-} from '@server/places/model/places.schema';
+import { lexicalScores } from '@server/places/model/lexical';
+import { type Candidate, type GeoPoint, type Place, type WalkPlan } from '@server/places/model/places.schema';
+import { type RankInput, rankPlaces } from '@server/places/model/rank';
+import { planWalk } from '@server/places/model/route';
 import 'server-only';
 
-export interface RankInput {
-	accessibleOnly?: boolean;
-	at: Date;
-	categories?: Category[];
-	limit: number;
-	maxWalkMinutes: number;
-	origin: GeoPoint;
-	places: readonly Place[];
-	semantic: Map<string, number>;
-}
+export type { RankInput };
 
 export interface PlaceVectors {
 	byId: Map<string, Float32Array>;
@@ -25,7 +13,7 @@ export interface PlaceVectors {
 	model: string;
 }
 
-/** Replace the pending functions here with imports from the repo and algorithm lanes. */
+/** Algorithms are live; only the data repo lane remains pending. */
 export interface PlacesDependencies {
 	getPlaceById: (id: string) => Place | null;
 	lexicalScores: (query: string, places: readonly Place[]) => Map<string, number>;
@@ -47,9 +35,9 @@ function unavailable(): never {
 /** No sample or invented POIs: pending dependencies fail visibly until the team connects them. */
 export const placesDependencies: PlacesDependencies = {
 	getPlaceById: unavailable,
-	lexicalScores: unavailable,
-	planWalk: unavailable,
-	rankPlaces: unavailable,
+	lexicalScores,
+	planWalk,
+	rankPlaces,
 	readPlaces: unavailable,
 	readVectors: () => null,
 };
