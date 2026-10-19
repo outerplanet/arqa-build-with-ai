@@ -31,8 +31,8 @@ describe('real data and algorithm integration without an API key', () => {
 		expect(result.origin).toEqual({ label: null, point, source: 'browser' });
 	});
 
-	it('builds an actual two-stop route whose walking and visiting time fits the budget', async () => {
-		const result = await planWalk(ctx, { durationMinutes: 120, query: 'кофе', start: point });
+	it('builds an actual route whose walking and visiting time fits the budget', async () => {
+		const result = await planWalk(ctx, { durationMinutes: 120, query: 'прогулка', start: point });
 
 		expect(result.stops.length).toBeGreaterThanOrEqual(2);
 		expect(result.totalMinutes).toBeLessThanOrEqual(120);
