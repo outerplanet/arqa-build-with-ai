@@ -1,0 +1,197 @@
+{
+  "sourceUrl": "https://api.openstreetmap.org/api/0.6/way/454857501/history.json",
+  "retrievedAt": "2026-10-19T10:31:33.518Z",
+  "versions": [
+    {
+      "id": 454857501,
+      "version": 1,
+      "timestamp": "2016-11-21T10:53:24Z",
+      "tags": {
+        "building": "yes",
+        "name": "EXPO-2017"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 2,
+      "timestamp": "2016-11-22T03:53:01Z",
+      "tags": {
+        "building": "yes",
+        "name": "Павильон В1"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 3,
+      "timestamp": "2017-08-31T09:52:24Z",
+      "tags": {
+        "building": "yes",
+        "building:levels": "8",
+        "name": "Павильон В1"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 4,
+      "timestamp": "2017-10-28T05:54:48Z",
+      "tags": {
+        "addr:country": "KZ",
+        "building": "yes",
+        "building:levels": "8",
+        "name": "Павильон В1"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 5,
+      "timestamp": "2018-02-04T15:28:16Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:country": "KZ",
+        "building": "yes",
+        "building:levels": "8",
+        "name": "Павильон В1"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 6,
+      "timestamp": "2018-07-14T19:10:12Z",
+      "tags": {
+        "addr:housenumber": "В1",
+        "addr:street": "проспект Мангилик Ел",
+        "building": "yes",
+        "building:levels": "8"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 7,
+      "timestamp": "2019-05-31T04:34:07Z",
+      "tags": {
+        "addr:housenumber": "В1",
+        "addr:street": "проспект Мангилик Ел",
+        "building": "yes",
+        "building:levels": "8"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 8,
+      "timestamp": "2023-10-12T08:41:53Z",
+      "tags": {
+        "addr:housenumber": "В1",
+        "addr:street": "проспект Мангилик Ел",
+        "building": "office",
+        "building:levels": "8"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 9,
+      "timestamp": "2024-12-23T19:36:06Z",
+      "tags": {
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "office",
+        "building:levels": "8"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 10,
+      "timestamp": "2025-08-11T15:48:10Z",
+      "tags": {
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "office",
+        "building:levels": "8",
+        "height": "100"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 11,
+      "timestamp": "2025-12-26T11:12:14Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "museum",
+        "building:levels": "8",
+        "height": "100",
+        "museum": "future",
+        "name": "Нұр Әлем Мұражайы",
+        "name:kk": "Нұр Әлем Мұражайы",
+        "name:ru": "Музей Нур Алем",
+        "tourism": "museum"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 12,
+      "timestamp": "2025-12-26T12:14:38Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "museum",
+        "museum": "future",
+        "name": "Нұр Әлем Мұражайы",
+        "name:kk": "Нұр Әлем Мұражайы",
+        "name:ru": "Музей Нур Алем",
+        "tourism": "museum"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 13,
+      "timestamp": "2026-01-23T04:12:07Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "office",
+        "museum": "future",
+        "name": "Alem.ai ​Международный центр искусственного интеллекта",
+        "name:kk": "Alem.ai",
+        "name:ru": "Alem.ai",
+        "office": "yes"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 14,
+      "timestamp": "2026-01-23T04:22:09Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "office",
+        "museum": "future",
+        "name": "Alem.ai ​Международный центр искусственного интеллекта",
+        "name:kk": "Alem.ai",
+        "name:ru": "Alem.ai",
+        "office": "yes",
+        "website": "https://alem.ai/ru/"
+      }
+    },
+    {
+      "id": 454857501,
+      "version": 15,
+      "timestamp": "2026-03-08T06:02:41Z",
+      "tags": {
+        "addr:city": "Астана",
+        "addr:housenumber": "В1",
+        "addr:street": "Мәңгілік Ел даңғылы",
+        "building": "office",
+        "museum": "future",
+        "name": "Alem.ai",
+        "name:kk": "Alem.ai Халықаралық Жасанды Интеллект Орталығы",
+        "name:ru": "Alem.ai Международный центр искусственного интеллекта",
+        "office": "yes",
+        "website": "https://alem.ai/kk/"
+      }
+    }
+  ]
+}
