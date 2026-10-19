@@ -36,7 +36,17 @@ Three layers. Components use only layer 3.
 
 ## 2. Palette
 
-The palette is called **«Астана»**. It takes its two brand colours from the flag of Kazakhstan:
+> **Superseded 19.10, 18:30 — palette «Индиго и коралл».** The tech lead replaced the flag teal,
+> which read pale on screen. `src/app/globals.css` is the source of truth: brand ramp is indigo
+> (`--brand-500` `#6366F1`; light accent fill `--brand-600` `#4F46E5`, white text 6.29:1; dark
+> accent `--brand-400` `#818CF8` under near-black text), the highlight is coral (`--coral-500`
+> `#F97316` light, `--coral-400` dark, always under near-black text), neutrals carry a trace of
+> indigo, and place categories have their own tokens `--color-cat-<group>` (see
+> `src/entities/place/model/category.ts`), always paired with an icon and a label. The rules of
+> this section (accent vs. highlight, contrast floors, no colour alone) still hold; the teal and
+> gold values below are historical.
+
+The palette was called **«Астана»**. It takes its two brand colours from the flag of Kazakhstan:
 the sky teal of the field and the gold of the sun. **Light is the default theme** — the product is
 used outdoors, on a phone, next to a map — and dark is a full equal, chosen in the toggle or by
 the system.

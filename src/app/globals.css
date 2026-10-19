@@ -22,53 +22,50 @@
    ========================================================================== */
 
 :root {
-	/* «Астана». Sky teal, the blue of the Kazakhstan flag, and steppe gold.
+	/* «Индиго и коралл» (palette chosen by the tech lead, 19.10 18:30, over the earlier flag teal,
+	   which read pale on screen and in the video).
 
-	   The flag teal is #00AFCA (brand-500), and it is bright: white text on it measures 2.63:1 and
-	   fails AA. So it is never a filled background under white text. Filled accents in the light
-	   theme use brand-700, #007A8F, which measures 5.02:1 against white and still reads as the
-	   same hue. The bright teal stays for what is not text: decorative accents and map routes
-	   (`accent-bright`), and the dark theme, where it carries dark text at 6.05:1.
+	   Filled accents in the light theme use brand-600, #4F46E5: white on it measures 6.29:1.
+	   brand-700, #4338CA, is the accent as text on a light ground (7.9:1). In the dark theme the
+	   fill is brand-400, #818CF8, carrying near-black text (6.9:1). The focus ring is brand-600. */
+	--brand-50: #eef2ff;
+	--brand-100: #e0e7ff;
+	--brand-200: #c7d2fe;
+	--brand-300: #a5b4fc;
+	--brand-400: #818cf8;
+	--brand-500: #6366f1;
+	--brand-600: #4f46e5;
+	--brand-700: #4338ca;
+	--brand-800: #3730a3;
+	--brand-900: #312e81;
+	--brand-950: #1e1b4b;
 
-	   On a white page even the focus ring cannot be the flag teal — 2.63:1 is under the 3:1 a
-	   boundary needs — so the light ring steps down one to brand-600 (3.83:1). */
-	--brand-50: #e6f8fb;
-	--brand-100: #c6eef5;
-	--brand-200: #94dfec;
-	--brand-300: #5ccde0;
-	--brand-400: #22bcd5;
-	--brand-500: #00afca;
-	--brand-600: #008fa6;
-	--brand-700: #007a8f;
-	--brand-800: #005f70;
-	--brand-900: #034a57;
-	--brand-950: #022e36;
+	/* Coral highlight: the chosen place, a "recommended" badge. A fill, never text on a light
+	   ground: what sits on it is near-black (7.2:1 on coral-500). */
+	--coral-400: #fb8c3c;
+	--coral-500: #f97316;
 
-	/* Gold, from the sun and the steppe eagle on the same flag. A highlight, never text on a
-	   light ground (1.59:1 on white): it is a fill, and what sits on it is near-black. */
-	--gold-400: #fec50c;
-
-	/* Neutrals carry a trace of the teal, or pure grey next to it reads dirty. Cool, with the
-	   lightest steps close to white so the light theme stays airy outdoors on a phone. */
+	/* Neutrals carry a trace of the indigo, or pure grey next to it reads dirty. The lightest
+	   steps stay close to white so the light theme stays airy outdoors on a phone. */
 	--neutral-0: #ffffff;
-	--neutral-25: #f7fafb;
-	--neutral-50: #f0f5f7;
-	--neutral-100: #e8eff2;
-	--neutral-150: #dde6ea;
-	--neutral-200: #d0dbe0;
-	--neutral-300: #b5c3c9;
-	--neutral-400: #93a3aa;
+	--neutral-25: #f8f8fc;
+	--neutral-50: #f2f2f9;
+	--neutral-100: #eaeaf4;
+	--neutral-150: #e0e0ee;
+	--neutral-200: #d2d2e4;
+	--neutral-300: #b7b7cf;
+	--neutral-400: #9696b2;
 	/* A half-step, added for `fg-subtle`. See the note on that token below. */
-	--neutral-450: #7e8f97;
-	--neutral-500: #66777f;
-	--neutral-600: #4d5d65;
-	--neutral-700: #3a4950;
-	--neutral-800: #26343a;
-	--neutral-900: #18262c;
-	--neutral-950: #0f1e24;
-	--neutral-1000: #081115;
+	--neutral-450: #7c7c9b;
+	--neutral-500: #6a6a88;
+	--neutral-600: #51516e;
+	--neutral-700: #3d3d58;
+	--neutral-800: #29293f;
+	--neutral-900: #1b1b2e;
+	--neutral-950: #111122;
+	--neutral-1000: #09091a;
 
-	--canvas-dark: #0b1418;
+	--canvas-dark: #0c0b1a;
 }
 
 /* ==========================================================================
@@ -90,7 +87,7 @@
 	/* The ground behind a modal dialog. Darker in the light theme than in the dark one, and not
      the same black at the same opacity in both: over a near-black canvas a 40% black scrim is
      nearly invisible, which is the one thing an overlay must not be. */
-	--color-overlay: oklch(0.2 0.02 220 / 45%);
+	--color-overlay: oklch(0.2 0.03 280 / 45%);
 
 	--color-border: var(--neutral-150);
 	--color-border-strong: var(--neutral-300);
@@ -108,20 +105,18 @@
 	--color-fg-subtle: var(--neutral-450);
 	--color-fg-on-accent: #ffffff;
 
-	/* The fill is the deep teal, not the flag teal: white on `brand-700` is 5.02:1, white on
-	   `brand-500` is 2.63:1. `accent-fg` is the same deep teal as text on a light ground. */
-	--color-accent: var(--brand-700);
-	--color-accent-hover: var(--brand-800);
-	--color-accent-active: var(--brand-900);
+	/* White on `brand-600` is 6.29:1; `accent-fg` is the deeper brand-700 as text on light. */
+	--color-accent: var(--brand-600);
+	--color-accent-hover: var(--brand-700);
+	--color-accent-active: var(--brand-800);
 	--color-accent-subtle: var(--brand-50);
 	--color-accent-fg: var(--brand-700);
-	/* The flag teal itself, for things that are not text: a route line on the map, a marker, a
-	   decorative rule. Never a background under text in the light theme. */
+	/* For things that are not text: a route line on the map, a marker, a decorative rule. */
 	--color-accent-bright: var(--brand-500);
 
-	/* Gold highlight: a "recommended" marker, the chosen place, a badge that should catch the
+	/* Coral highlight: a "recommended" marker, the chosen place, a badge that should catch the
 	   eye. Always a fill with `on-highlight` text on it, in both themes. */
-	--color-highlight: var(--gold-400);
+	--color-highlight: var(--coral-500);
 	--color-fg-on-highlight: var(--neutral-950);
 
 	--color-success: #15803d;
@@ -138,13 +133,13 @@
 	   chat cards and map markers. Always paired with an icon and a text label, never colour alone. */
 	--color-cat-food: #c2410c;
 	--color-cat-culture: #7c3aed;
-	--color-cat-sights: #1d4ed8;
+	--color-cat-sights: #0e7490;
 	--color-cat-nature: #15803d;
 	--color-cat-kids: #db2777;
-	--color-cat-night: #4338ca;
+	--color-cat-night: #475569;
 	--color-cat-shopping: #0f766e;
 	--color-cat-sport: #0369a1;
-	--color-cat-other: #475569;
+	--color-cat-other: #78716c;
 
 	/* Identity — the avatar palette. Eight slots, picked by a hash of a row's id and never by a
      name: a woman who marries changes her surname and must not change colour in the list.
@@ -167,9 +162,9 @@
 	--color-identity-8: #334155;
 	--color-identity-8-bg: #e2e8f0;
 
-	--shadow-sm: 0 1px 2px rgb(15 30 36 / 0.06);
-	--shadow-md: 0 4px 12px rgb(15 30 36 / 0.08);
-	--shadow-lg: 0 12px 32px rgb(15 30 36 / 0.12);
+	--shadow-sm: 0 1px 2px rgb(17 17 34 / 0.06);
+	--shadow-md: 0 4px 12px rgb(17 17 34 / 0.08);
+	--shadow-lg: 0 12px 32px rgb(17 17 34 / 0.12);
 
 	color-scheme: light;
 }
@@ -178,30 +173,30 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
 		--color-canvas: var(--canvas-dark);
-		--color-surface: #13222a;
-		--color-surface-raised: #1a2b34;
-		--color-surface-sunken: #0e1a20;
-		--color-surface-hover: #263842;
+		--color-surface: #14132a;
+		--color-surface-raised: #1b1a36;
+		--color-surface-sunken: #0f0e21;
+		--color-surface-hover: #272548;
 		--color-overlay: oklch(0 0 0 / 65%);
 
-		--color-border: #22343d;
-		--color-border-strong: #33474f;
-		--color-border-hover: #4f646d;
+		--color-border: #262444;
+		--color-border-strong: #36345a;
+		--color-border-hover: #545277;
 		--color-border-focus: var(--brand-500);
 
-		--color-fg: #e6f2f5;
-		--color-fg-muted: #9db1b9;
-		--color-fg-subtle: #6f848c;
-		--color-fg-on-accent: #04262d;
+		--color-fg: #ecebfa;
+		--color-fg-muted: #a9a8c7;
+		--color-fg-subtle: #7f7da3;
+		--color-fg-on-accent: #0d0b1f;
 
-		--color-accent: var(--brand-500);
-		--color-accent-hover: var(--brand-400);
-		--color-accent-active: var(--brand-300);
-		--color-accent-subtle: #0a3640;
+		--color-accent: var(--brand-400);
+		--color-accent-hover: var(--brand-300);
+		--color-accent-active: var(--brand-200);
+		--color-accent-subtle: #1e1d4a;
 		--color-accent-fg: var(--brand-300);
 		--color-accent-bright: var(--brand-500);
 
-		--color-highlight: var(--gold-400);
+		--color-highlight: var(--coral-400);
 		--color-fg-on-highlight: var(--canvas-dark);
 
 		--color-success: #5bd68c;
@@ -216,13 +211,13 @@
 
 		--color-cat-food: #fb923c;
 		--color-cat-culture: #c4b5fd;
-		--color-cat-sights: #93c5fd;
+		--color-cat-sights: #67e8f9;
 		--color-cat-nature: #86efac;
 		--color-cat-kids: #f9a8d4;
-		--color-cat-night: #a5b4fc;
+		--color-cat-night: #cbd5e1;
 		--color-cat-shopping: #5eead4;
 		--color-cat-sport: #7dd3fc;
-		--color-cat-other: #cbd5e1;
+		--color-cat-other: #d6d3d1;
 
 		--color-identity-1: #93c5fd;
 		--color-identity-1-bg: #17294d;
@@ -252,30 +247,30 @@
 /* Explicit choice wins in both directions. */
 :root[data-theme='dark'] {
 	--color-canvas: var(--canvas-dark);
-	--color-surface: #13222a;
-	--color-surface-raised: #1a2b34;
-	--color-surface-sunken: #0e1a20;
-	--color-surface-hover: #263842;
+	--color-surface: #14132a;
+	--color-surface-raised: #1b1a36;
+	--color-surface-sunken: #0f0e21;
+	--color-surface-hover: #272548;
 	--color-overlay: oklch(0 0 0 / 65%);
 
-	--color-border: #22343d;
-	--color-border-strong: #33474f;
-	--color-border-hover: #4f646d;
+	--color-border: #262444;
+	--color-border-strong: #36345a;
+	--color-border-hover: #545277;
 	--color-border-focus: var(--brand-500);
 
-	--color-fg: #e6f2f5;
-	--color-fg-muted: #9db1b9;
-	--color-fg-subtle: #6f848c;
-	--color-fg-on-accent: #04262d;
+	--color-fg: #ecebfa;
+	--color-fg-muted: #a9a8c7;
+	--color-fg-subtle: #7f7da3;
+	--color-fg-on-accent: #0d0b1f;
 
-	--color-accent: var(--brand-500);
-	--color-accent-hover: var(--brand-400);
-	--color-accent-active: var(--brand-300);
-	--color-accent-subtle: #0a3640;
+	--color-accent: var(--brand-400);
+	--color-accent-hover: var(--brand-300);
+	--color-accent-active: var(--brand-200);
+	--color-accent-subtle: #1e1d4a;
 	--color-accent-fg: var(--brand-300);
 	--color-accent-bright: var(--brand-500);
 
-	--color-highlight: var(--gold-400);
+	--color-highlight: var(--coral-400);
 	--color-fg-on-highlight: var(--canvas-dark);
 
 	--color-success: #5bd68c;
@@ -290,13 +285,13 @@
 
 	--color-cat-food: #fb923c;
 	--color-cat-culture: #c4b5fd;
-	--color-cat-sights: #93c5fd;
+	--color-cat-sights: #67e8f9;
 	--color-cat-nature: #86efac;
 	--color-cat-kids: #f9a8d4;
-	--color-cat-night: #a5b4fc;
+	--color-cat-night: #cbd5e1;
 	--color-cat-shopping: #5eead4;
 	--color-cat-sport: #7dd3fc;
-	--color-cat-other: #cbd5e1;
+	--color-cat-other: #d6d3d1;
 
 	--color-identity-1: #93c5fd;
 	--color-identity-1-bg: #17294d;
