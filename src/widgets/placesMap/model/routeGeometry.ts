@@ -1,14 +1,11 @@
-import { type WalkPlan } from '@server/places/model/places.schema';
+import { type WalkingRoute } from '@server/places/model/walkingRoute.schema';
 
 /** Each returned leg is independent: never invent connections between stops. */
-export function routeGeometry(plan?: WalkPlan | null) {
+export function routeGeometry(route?: WalkingRoute | null) {
 	return {
-		features: (plan?.legs ?? []).map((leg) => ({
+		features: (route?.status === 'available' ? route.legs : []).map((leg) => ({
 			geometry: {
-				coordinates: [
-					[leg.from.lon, leg.from.lat],
-					[leg.to.lon, leg.to.lat],
-				],
+				coordinates: leg.geometry.coordinates,
 				type: 'LineString' as const,
 			},
 			properties: {},

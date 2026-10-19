@@ -34,11 +34,14 @@ export function ChatScreen({
 	const { error, location, messages, recommendedPlaceIds, retry, send, setLocation, status, toolCalls } = useChat();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const pending = status === 'sending';
-	const { candidates, plan, search } = useMemo(
+	const { candidates, plan, search, walkingRoute } = useMemo(
 		() => readPlacesResults(toolCalls, recommendedPlaceIds),
 		[recommendedPlaceIds, toolCalls],
 	);
-	const origin = search?.origin.point ?? plan?.legs[0]?.from ?? null;
+	const origin =
+		walkingRoute?.status === 'available'
+			? (walkingRoute.legs[0]?.from ?? null)
+			: (search?.origin.point ?? plan?.legs[0]?.from ?? null);
 	const activeId = candidates.some((candidate) => candidate.place.id === selectedId) ? selectedId : null;
 
 	return (
@@ -124,6 +127,7 @@ export function ChatScreen({
 						pending={pending}
 						plan={plan}
 						selectedId={activeId}
+						walkingRoute={walkingRoute}
 					/>
 					{search && (
 						<div className="text-fg-muted text-xs">
@@ -149,10 +153,19 @@ export function ChatScreen({
 					{plan !== null && plan.stops.length > 0 && (
 						<Callout>
 							<p className="font-medium">
-								Маршрут: {plan.stops.length} {plan.stops.length === 1 ? 'остановка' : 'остановки'} · ≈{' '}
-								{plan.totalMinutes} мин
+								{walkingRoute?.status === 'available' ? 'Маршрут' : 'Предварительная оценка'}:{' '}
+								{plan.stops.length} {plan.stops.length === 1 ? 'остановка' : 'остановки'} · ≈{' '}
+								{Math.ceil(
+									walkingRoute?.status === 'available' ? walkingRoute.totalMinutes : plan.totalMinutes,
+								)}{' '}
+								мин
 							</p>
 							<p className="mt-1 text-sm">Включая переходы и посещения. {plan.note}</p>
+							<p className="mt-1 text-sm">
+								{walkingRoute?.status === 'available'
+									? `${Math.round(walkingRoute.distanceM)} м по дорожкам · ≈ ${Math.ceil(walkingRoute.walkMinutes)} мин пешком.`
+									: 'Пешеходный путь не проверен; навигационная линия не показана.'}
+							</p>
 						</Callout>
 					)}
 					<div className="hidden xl:block">
@@ -163,6 +176,7 @@ export function ChatScreen({
 							onSelect={setSelectedId}
 							pending={pending}
 							selectedId={activeId}
+							walkingRoute={walkingRoute}
 						/>
 					</div>
 				</div>
@@ -174,6 +188,7 @@ export function ChatScreen({
 						onSelect={setSelectedId}
 						pending={pending}
 						selectedId={activeId}
+						walkingRoute={walkingRoute}
 					/>
 				</div>
 			</div>

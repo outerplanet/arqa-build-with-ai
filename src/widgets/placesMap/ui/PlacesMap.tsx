@@ -1,6 +1,7 @@
 'use client';
 
 import { type Candidate, type GeoPoint, type WalkPlan } from '@server/places/model/places.schema';
+import { type WalkingRoute } from '@server/places/model/walkingRoute.schema';
 import { Button } from '@shared/ui/Button';
 import { type Map as LibreMap, type Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -16,6 +17,7 @@ export interface PlacesMapProps {
 	pending: boolean;
 	plan: WalkPlan | null;
 	selectedId: string | null;
+	walkingRoute: WalkingRoute | null;
 }
 
 function routeColor(container: HTMLElement) {
@@ -34,7 +36,16 @@ function mapStyle(): string {
 }
 
 /** Receives only parsed tool results; it never resolves locations or invents route geometry. */
-export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, selectedId }: PlacesMapProps) {
+export function PlacesMap({
+	candidates,
+	error,
+	onSelect,
+	origin,
+	pending,
+	plan,
+	selectedId,
+	walkingRoute,
+}: PlacesMapProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<LibreMap | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -142,28 +153,28 @@ export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, 
 					markers.push(new libre.Marker({ element: button }).setLngLat([place.lon, place.lat]).addTo(map));
 					bounds.extend([place.lon, place.lat]);
 				}
-				if (origin) {
+				const start = walkingRoute?.status === 'available' ? (walkingRoute.legs[0]?.from ?? null) : origin;
+				if (start) {
 					const label = document.createElement('span');
 					label.className = 'places-map-origin';
 					label.textContent = 'Старт';
 					label.setAttribute('aria-label', 'Начало прогулки');
-					markers.push(new libre.Marker({ element: label }).setLngLat([origin.lon, origin.lat]).addTo(map));
-					bounds.extend([origin.lon, origin.lat]);
+					markers.push(new libre.Marker({ element: label }).setLngLat([start.lon, start.lat]).addTo(map));
+					bounds.extend([start.lon, start.lat]);
 				}
 				if (map.getLayer('walk-route')) map.removeLayer('walk-route');
 				if (map.getSource('walk-route')) map.removeSource('walk-route');
-				if (plan && plan.legs.length > 0) {
-					for (const leg of plan.legs) {
-						bounds.extend([leg.from.lon, leg.from.lat]);
-						bounds.extend([leg.to.lon, leg.to.lat]);
+				if (walkingRoute?.status === 'available') {
+					for (const leg of walkingRoute.legs) {
+						for (const coordinate of leg.geometry.coordinates) bounds.extend(coordinate);
 					}
 					map.addSource('walk-route', {
-						data: routeGeometry(plan),
+						data: routeGeometry(walkingRoute),
 						type: 'geojson',
 					});
 					map.addLayer({
 						id: 'walk-route',
-						paint: { 'line-color': routeColor(container), 'line-dasharray': [2, 2], 'line-width': 4 },
+						paint: { 'line-color': routeColor(container), 'line-width': 4 },
 						source: 'walk-route',
 						type: 'line',
 					});
@@ -177,7 +188,7 @@ export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, 
 			cancelled = true;
 			for (const marker of markers) marker.remove();
 		};
-	}, [candidates, onSelect, origin, plan, ready, selectedId]);
+	}, [candidates, onSelect, origin, ready, selectedId, walkingRoute]);
 
 	const retry = useCallback(() => {
 		setFailed(false);
@@ -214,8 +225,24 @@ export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, 
 					</div>
 				) : null}
 			</div>
-			{plan && plan.legs.length > 0 && (
-				<p className="border-border text-fg-muted border-t px-3 py-2 text-xs">Приблизительный маршрут по прямой</p>
+			{plan && (
+				<div className="border-border text-fg-muted border-t px-3 py-2 text-xs">
+					{walkingRoute?.status === 'available' ? (
+						<>
+							<p>Пешеходный путь по дорожкам OpenStreetMap</p>
+							<p className="mt-1">{walkingRoute.note}</p>
+							<p className="mt-1">
+								Начало и конец пути привязаны к ближайшим дорожкам; входы и проходы проверьте на месте.
+							</p>
+							<p className="mt-1">Снимок OpenStreetMap: {walkingRoute.collectedAt}</p>
+						</>
+					) : (
+						<p>
+							Пешеходный путь не подтверждён, линия не показана.{' '}
+							{walkingRoute?.note ?? 'Проверьте путь и входы перед выходом.'}
+						</p>
+					)}
+				</div>
 			)}
 			<p className="border-border text-fg-muted flex flex-wrap gap-x-2 border-t px-3 py-2 text-xs">
 				<a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">

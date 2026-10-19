@@ -6,11 +6,13 @@ import {
 	type WalkPlan,
 	walkPlanSchema,
 } from '@server/places/model/places.schema';
+import { type WalkingRoute } from '@server/places/model/walkingRoute.schema';
 import 'server-only';
 import { type z } from 'zod';
 import { dependencies, type PlacesContext } from './context';
 import { searchPlaces } from './findPlaces';
 import { assertOrigin, origin, roundLocation } from './origin';
+import { walkingCalculator } from './walking';
 
 function validatePlan(
 	plan: WalkPlan,
@@ -49,7 +51,10 @@ function validatePlan(
 	if (Math.abs(plan.totalMinutes - elapsed) > 0.01 || elapsed > input.durationMinutes) invalid();
 }
 
-export async function planWalk(ctx: PlacesContext, input: z.input<typeof planWalkInputSchema>): Promise<WalkPlan> {
+export async function planWalk(
+	ctx: PlacesContext,
+	input: z.input<typeof planWalkInputSchema>,
+): Promise<WalkPlan & { walkingRoute: WalkingRoute }> {
 	const parsed = planWalkInputSchema.parse(input);
 
 	assertOrigin(ctx, parsed.start);
@@ -62,12 +67,14 @@ export async function planWalk(ctx: PlacesContext, input: z.input<typeof planWal
 			query: parsed.query ?? 'прогулка',
 		},
 	});
+	const walking = walkingCalculator(ctx);
 	const result = walkPlanSchema.parse(
 		dependencies(ctx).planWalk({
 			candidates: found.candidates,
 			durationMinutes: parsed.durationMinutes,
 			maxStops: parsed.maxStops,
 			start: origin(ctx).point,
+			...(walking ? { measureLeg: walking.measureLeg } : {}),
 		}),
 	);
 
@@ -78,5 +85,18 @@ export async function planWalk(ctx: PlacesContext, input: z.input<typeof planWal
 		start: origin(ctx).point,
 	});
 
-	return { ...result, note: [result.note, found.note].filter(Boolean).join(' ') };
+	const walkingRoute = walking?.routeFor(result) ?? {
+		note: 'Пешеходная сеть недоступна. Расстояния и время предварительные; подтверждённый путь на карте не показываем.',
+		status: 'unavailable' as const,
+	};
+	return {
+		...result,
+		note: [
+			walkingRoute.status === 'available' ? walkingRoute.note : `${result.note} ${walkingRoute.note}`,
+			found.note,
+		]
+			.filter(Boolean)
+			.join(' '),
+		walkingRoute,
+	};
 }
