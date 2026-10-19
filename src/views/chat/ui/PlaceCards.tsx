@@ -128,13 +128,11 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 										{status}
 									</Badge>
 								</div>
-								{open.note && <p className="text-fg-muted mt-1 text-xs">{open.note}</p>}
-								{open.confidence !== 'high' && (
-									<p className="text-fg-muted mt-1 text-xs">
-										{open.confidence === 'low'
-											? 'Низкая уверенность в часах работы.'
-											: 'Нет подтверждённых данных о часах работы.'}
-									</p>
+								{open.note && open.note.toLocaleLowerCase('ru') !== status.toLocaleLowerCase('ru') && (
+									<p className="text-fg-muted mt-1 text-xs">{open.note}</p>
+								)}
+								{open.confidence === 'low' && (
+									<p className="text-fg-muted mt-1 text-xs">Низкая уверенность в часах работы.</p>
 								)}
 								{place.description && (
 									<p className="text-fg mt-3 text-sm">

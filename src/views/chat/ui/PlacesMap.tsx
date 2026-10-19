@@ -1,10 +1,10 @@
 'use client';
 
-import type { Candidate, GeoPoint, WalkPlan } from '@server/places/model/places.schema';
+import { type Candidate, type GeoPoint, type WalkPlan } from '@server/places/model/places.schema';
 import { Button } from '@shared/ui/Button';
-import type { Map as LibreMap, Marker } from 'maplibre-gl';
+import { type Map as LibreMap, type Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import './PlacesMap.css';
 
 interface PlacesMapProps {
@@ -21,7 +21,7 @@ function routeColor(container: HTMLElement) {
 	const sample = document.createElement('span');
 	sample.style.color = 'var(--color-accent-bright)';
 	container.append(sample);
-	const color = getComputedStyle(sample).color;
+	const { color } = getComputedStyle(sample);
 	sample.remove();
 	return color;
 }
@@ -55,6 +55,8 @@ export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, 
 				if (cancelled) return;
 				setReady(false);
 				libre.setWorkerCount(1);
+				// Emit the worker as a local asset; bundled module URLs cannot locate it implicitly.
+				libre.setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
 				map = new libre.Map({
 					attributionControl: false,
 					container,
@@ -176,11 +178,11 @@ export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, 
 		};
 	}, [candidates, onSelect, origin, plan, ready, selectedId]);
 
-	function retry() {
+	const retry = useCallback(() => {
 		setFailed(false);
 		setReady(false);
 		setAttempt((value) => value + 1);
-	}
+	}, []);
 
 	return (
 		<section aria-label="Карта прогулки" className="border-border bg-surface overflow-hidden rounded-lg border">

@@ -38,15 +38,15 @@ export function useChat(): UseChat {
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
-	const [location, updateLocation] = useState<GeoPoint | null>(null);
+	const [location, setLocation] = useState<GeoPoint | null>(null);
 	const locationRef = useRef<GeoPoint | null>(null);
 	const lastRequest = useRef<ChatRequest | null>(null);
 	const inFlight = useRef(false);
 
-	const setLocation = useCallback((point: GeoPoint | null) => {
+	const updateLocation = useCallback((point: GeoPoint | null) => {
 		const rounded = normalizeLocation(point);
 		locationRef.current = rounded;
-		updateLocation(rounded);
+		setLocation(rounded);
 		// Revoking location also prevents a failed request from sending it again on retry.
 		if (rounded === null && lastRequest.current !== null) {
 			lastRequest.current = createChatRequest(lastRequest.current.messages, null);
@@ -113,5 +113,5 @@ export function useChat(): UseChat {
 		if (lastRequest.current !== null) void exchange(lastRequest.current);
 	}, [exchange]);
 
-	return { error, location, messages, retry, send, setLocation, status, toolCalls };
+	return { error, location, messages, retry, send, setLocation: updateLocation, status, toolCalls };
 }

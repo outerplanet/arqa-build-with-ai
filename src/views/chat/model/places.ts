@@ -16,8 +16,7 @@ export interface PlacesView {
 /** Markers and route geometry come only from successful, validated server reports. */
 export function placesFromToolCalls(calls: readonly ToolCall[]): PlacesView {
 	let view: PlacesView = { candidates: [], origin: null, plan: null };
-	for (const call of calls) {
-		if (call.status !== 'ok') continue;
+	for (const call of calls.filter((entry) => entry.status === 'ok')) {
 		if (call.name === 'find_places') {
 			const parsed = findPlacesResultSchema.safeParse(call.result);
 			if (parsed.success) {

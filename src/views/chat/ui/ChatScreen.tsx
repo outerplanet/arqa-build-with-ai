@@ -4,7 +4,7 @@ import { MapPinIcon } from '@heroicons/react/24/outline';
 import { Button } from '@shared/ui/Button';
 import { Callout } from '@shared/ui/Callout';
 import { Card } from '@shared/ui/Card';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { placesFromToolCalls } from '../model/places';
 import { useChat } from '../model/useChat';
 import { AgentActivity } from './AgentActivity';
@@ -39,7 +39,7 @@ export function ChatScreen({
 	const { error, location, messages, retry, send, setLocation, status, toolCalls } = useChat();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const pending = status === 'sending';
-	const { candidates, origin, plan } = placesFromToolCalls(toolCalls);
+	const { candidates, origin, plan } = useMemo(() => placesFromToolCalls(toolCalls), [toolCalls]);
 	const activeId = candidates.some((candidate) => candidate.place.id === selectedId) ? selectedId : null;
 
 	return (
@@ -100,7 +100,7 @@ export function ChatScreen({
 						candidates={candidates}
 						error={error}
 						onSelect={setSelectedId}
-						origin={origin ?? location}
+						origin={origin}
 						pending={pending}
 						plan={plan}
 						selectedId={activeId}
@@ -108,7 +108,8 @@ export function ChatScreen({
 					{plan !== null && plan.stops.length > 0 && (
 						<Callout>
 							<p className="font-medium">
-								Маршрут: {plan.stops.length} остановки · ≈ {plan.totalMinutes} мин
+								Маршрут: {plan.stops.length} {plan.stops.length === 1 ? 'остановка' : 'остановки'} · ≈{' '}
+								{plan.totalMinutes} мин
 							</p>
 							<p className="mt-1 text-sm">Включая переходы и посещения. {plan.note}</p>
 						</Callout>

@@ -2,7 +2,7 @@
 
 import { type GeoPoint } from '@server/places/model/places.schema';
 import { Button } from '@shared/ui/Button';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export interface LocationControlProps {
 	disabled?: boolean;
@@ -14,9 +14,9 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	function locate() {
+	const locate = useCallback(() => {
 		setError(null);
-		const geolocation = (navigator as { geolocation?: Geolocation }).geolocation;
+		const { geolocation } = navigator as { geolocation?: Geolocation };
 		if (geolocation === undefined) {
 			setError('Браузер не поддерживает геолокацию. Напишите ориентир в сообщении.');
 			return;
@@ -42,12 +42,12 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 			},
 			{ enableHighAccuracy: false, maximumAge: 0, timeout: 10000 },
 		);
-	}
+	}, [onChange]);
 
-	function clearLocation() {
+	const clearLocation = useCallback(() => {
 		setError(null);
 		onChange(null);
-	}
+	}, [onChange]);
 
 	return (
 		<div className="flex flex-col gap-2">

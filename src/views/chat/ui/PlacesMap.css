@@ -39,14 +39,14 @@
 }
 
 .places-map-marker {
-	width: 36px;
-	height: 36px;
+	width: 40px;
+	height: 40px;
 	border: 2px solid var(--color-surface);
 	border-radius: 50%;
 	background: var(--color-accent);
 	color: var(--color-fg-on-accent);
 	font: inherit;
-	font-weight: 700;
+	font-weight: 600;
 	cursor: pointer;
 }
 

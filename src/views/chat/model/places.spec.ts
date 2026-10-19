@@ -42,7 +42,7 @@ const plan: WalkPlan = {
 	stops: [{ arriveAtMinute: 3, candidate, order: 1 }],
 	totalMinutes: 18,
 };
-function call(name: string, result: unknown, status: ToolCall['status'] = 'ok'): ToolCall {
+function call(name: string, ...[result, status = 'ok']: [unknown, ToolCall['status']?]): ToolCall {
 	return { arguments: {}, durationMs: 1, label: 'Поиск', name, result, status };
 }
 
