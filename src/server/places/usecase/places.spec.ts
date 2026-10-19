@@ -17,7 +17,7 @@ const place: Place = {
 	category: 'museum',
 	description: null,
 	descriptionSource: null,
-	id: 'osm:node/1',
+	id: 'osm:way/454857501',
 	lat: 51.123456,
 	lon: 71.456789,
 	name: 'Нур Алем',
@@ -144,13 +144,17 @@ describe('places usecases', () => {
 	});
 	it('resolves aliases using dataset coordinates without guessing ambiguous places', () => {
 		const { ctx, deps } = fixture();
-		expect(resolveLocation(ctx, { text: 'Я у Экспо 2017' })).toMatchObject({
+		expect(resolveLocation(ctx, { text: 'Я у Нур Алем' })).toMatchObject({
 			found: true,
 			matchedPlaceId: place.id,
 			point: { lat: 51.123, lon: 71.457 },
 		});
-		vi.mocked(deps.readPlaces).mockReturnValue([place, { ...place, id: 'osm:node/2' }]);
-		expect(resolveLocation(ctx, { text: 'Я у Экспо' }).found).toBe(false);
+		vi.mocked(deps.readPlaces).mockReturnValue([
+			{ ...place, id: 'osm:node/2', name: 'Кофейня' },
+			{ ...place, id: 'osm:node/3', name: 'Кофейня' },
+		]);
+		expect(resolveLocation(ctx, { text: 'Я у Кофейни Кофейня' }).found).toBe(false);
+		expect(resolveLocation(ctx, { text: 'Я у Нур Алем' }).found).toBe(false);
 	});
 	it('only returns a requested POI that exists in the dataset', () => {
 		const { ctx } = fixture();
@@ -164,12 +168,15 @@ describe('places usecases', () => {
 			constraint: 'invalid_walk_plan',
 		});
 	});
-	it('returns a visible error rather than fake recommendations while dependencies are pending', async () => {
-		const { ctx } = fixture();
-		ctx.places = undefined;
+	it('returns a visible error when reading the dataset fails', async () => {
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.readPlaces).mockImplementation(() => {
+			throw new Error('Dataset unavailable');
+		});
 		const result = await executeTool(ctx, { args: { query: 'музей' }, name: 'find_places' });
 		expect(result.status).toBe('error');
-		expect(result.result).toContain('ещё не подключены');
+		expect(typeof result.result).toBe('string');
+		expect(result.result).not.toContain('Dataset unavailable');
 	});
 });
 
@@ -188,9 +195,11 @@ describe('mock scenarios use the real dispatcher', () => {
 		expect(result.reply).toContain('геолокация браузера');
 		expect(result.reply).not.toContain('открыто по данным');
 	});
-	it('resolves Expo from actual user text and reports the text source', async () => {
+	it('resolves a landmark from actual user text and reports the text source', async () => {
 		const { ctx } = fixture();
-		const result = await runAgent(ctx, { messages: [{ content: 'Я у Экспо, хочу что-то необычное', role: 'user' }] });
+		const result = await runAgent(ctx, {
+			messages: [{ content: 'Я у Нур Алем, хочу что-то необычное', role: 'user' }],
+		});
 		expect(result.toolCalls.map((call) => call.name)).toEqual(['resolve_location', 'find_places']);
 		expect(result.reply).toContain('из ваших слов');
 		expect(ctx.resolvedLocation).toBeUndefined();

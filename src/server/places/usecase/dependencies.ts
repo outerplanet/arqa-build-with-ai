@@ -1,4 +1,4 @@
-import { DomainError } from '@server/kernel/errors';
+import { lexicalScores } from '@server/places/model/lexical';
 import {
 	type Candidate,
 	type Category,
@@ -6,6 +6,10 @@ import {
 	type Place,
 	type WalkPlan,
 } from '@server/places/model/places.schema';
+import { rankPlaces } from '@server/places/model/rank';
+import { planWalk } from '@server/places/model/route';
+import { getPlaceById, readPlaces } from '@server/places/repo/places';
+import { readVectors } from '@server/places/repo/vectors';
 import 'server-only';
 
 export interface RankInput {
@@ -25,7 +29,7 @@ export interface PlaceVectors {
 	model: string;
 }
 
-/** Replace the pending functions here with imports from the repo and algorithm lanes. */
+/** Explicit seams for isolated usecase tests; production always uses the real modules below. */
 export interface PlacesDependencies {
 	getPlaceById: (id: string) => Place | null;
 	lexicalScores: (query: string, places: readonly Place[]) => Map<string, number>;
@@ -40,16 +44,11 @@ export interface PlacesDependencies {
 	readVectors: () => PlaceVectors | null;
 }
 
-function unavailable(): never {
-	throw new DomainError('conflict', { constraint: 'places_unavailable' });
-}
-
-/** No sample or invented POIs: pending dependencies fail visibly until the team connects them. */
 export const placesDependencies: PlacesDependencies = {
-	getPlaceById: unavailable,
-	lexicalScores: unavailable,
-	planWalk: unavailable,
-	rankPlaces: unavailable,
-	readPlaces: unavailable,
-	readVectors: () => null,
+	getPlaceById,
+	lexicalScores,
+	planWalk,
+	rankPlaces,
+	readPlaces,
+	readVectors,
 };

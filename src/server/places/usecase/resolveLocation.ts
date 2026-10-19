@@ -7,7 +7,7 @@ import {
 import 'server-only';
 import { type z } from 'zod';
 import { dependencies, type PlacesContext } from './context';
-import { LANDMARKS, mentions, normalizeLocation } from './landmarks';
+import { LANDMARK_IDS, LANDMARKS, mentions, normalizeLocation } from './landmarks';
 import { roundLocation } from './origin';
 
 export function resolveLocation(
@@ -19,18 +19,26 @@ export function resolveLocation(
 		throw new DomainError('validation', { constraint: 'location_unconfirmed' });
 	}
 	const groups = LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
-	const matches = dependencies(ctx)
-		.readPlaces()
-		.filter((place) => {
-			const names = [place.name, place.nameEn ?? ''].filter(Boolean);
+	const places = dependencies(ctx).readPlaces();
+	const anchorIds = groups.map((group) => LANDMARK_IDS.get(group)).filter((id) => id !== undefined);
+	if (groups.includes(LANDMARKS[0]!) && /квартал|территори/iu.test(text)) {
+		anchorIds.splice(anchorIds.indexOf('osm:way/454853233'), 1, 'osm:way/1456208623');
+	}
+	const anchored = places.filter((place) => anchorIds.includes(place.id));
+	const matches = anchorIds.length
+		? anchorIds.length === 1
+			? anchored
+			: []
+		: places.filter((place) => {
+				const names = [place.name, place.nameEn ?? ''].filter(Boolean);
 
-			return (
-				names.some((name) => mentions(text, name)) ||
-				groups.some((aliases) =>
-					names.some((name) => aliases.some((alias) => normalizeLocation(name) === normalizeLocation(alias))),
-				)
-			);
-		});
+				return (
+					names.some((name) => mentions(text, name)) ||
+					groups.some((aliases) =>
+						names.some((name) => aliases.some((alias) => normalizeLocation(name) === normalizeLocation(alias))),
+					)
+				);
+			});
 	// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
 	if (matches.length !== 1) {
 		return { confidence: 'low', found: false, label: null, matchedPlaceId: null, point: null };
