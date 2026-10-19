@@ -63,6 +63,8 @@ export function replyForTools(ctx: PlacesContext, input: ReplyInput): string {
 		.safeParse(successful.findLast((call) => call.name === 'get_current_time')?.result);
 
 	if (clock.success) return `По серверным часам: ${clock.data.local} (${clock.data.timeZone}).`;
+	if (ctx.browserLocation === undefined && ctx.resolvedLocation?.found === false)
+		return 'Не удалось однозначно определить ориентир. Уточните название здания или музея либо передайте геолокацию.';
 	return ctx.browserLocation === undefined && ctx.resolvedLocation?.found !== true
 		? `Где вы сейчас находитесь? Назовите ориентир или передайте геолокацию.${scenario.flight ? ' Уточните также, сколько времени осталось с учётом дороги в аэропорт, регистрации и досмотра.' : ''}`
 		: 'Какие места вам интересны и сколько времени есть на прогулку?';

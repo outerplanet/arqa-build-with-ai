@@ -14,6 +14,7 @@ import { planWalk } from '@server/places/usecase/planWalk';
 import { resolveLocation } from '@server/places/usecase/resolveLocation';
 import 'server-only';
 import { z } from 'zod';
+import { scenarioFor } from './scenario';
 
 /**
  * The tool registry: one place that knows what the agent can do.
@@ -92,7 +93,7 @@ export const TOOLS: readonly ToolSpec[] = [
 	}),
 	defineTool({
 		description:
-			'Определяет локацию из слов пользователя по названиям и ориентирам датасета. Вызови перед поиском, если пользователь назвал место. При неоднозначности уточни локацию, не угадывай координаты.',
+			'Определяет локацию из слов пользователя по названиям и ориентирам датасета. В text скопируй ДОСЛОВНО всё сообщение пользователя с ориентиром, ничего не добавляй (в том числе «Астана»), не переводи и не изменяй названия. Вызови перед поиском, если пользователь назвал место. При неоднозначности уточни локацию, не угадывай координаты.',
 		handler: (ctx, args) => {
 			const result = resolveLocation(ctx, args);
 
@@ -106,7 +107,17 @@ export const TOOLS: readonly ToolSpec[] = [
 	defineTool({
 		description:
 			'Ищет места рядом с локацией браузера или результатом resolve_location. Укажи пожелания, категории и предел ходьбы. Не выдумывай near: это должна быть подтверждённая точка пользователя. Данные о часах, источниках и расстояниях бери только из результата.',
-		handler: findPlaces,
+		handler: (ctx, args) => {
+			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
+			return findPlaces(ctx, {
+				...args,
+				accessibleOnly: preferences.accessibleOnly ?? args.accessibleOnly,
+				// This product answers "now"; the model cannot invent a different checking time.
+				at: ctx.now.toISOString(),
+				categories: preferences.categories ?? args.categories,
+				maxWalkMinutes: Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes),
+			});
+		},
 		label: 'Поиск мест',
 		name: 'find_places',
 		parameters: findPlacesInputSchema,
@@ -122,7 +133,15 @@ export const TOOLS: readonly ToolSpec[] = [
 	defineTool({
 		description:
 			'Подбирает прогулку из 2–3 остановок в пределах бюджета времени. start должен совпадать с подтверждённой локацией пользователя. Расстояния приблизительные, не по пешеходному графу. Не используй всё время перед вылетом на прогулку: уточни запас на аэропорт.',
-		handler: planWalk,
+		handler: (ctx, args) => {
+			const preferences = scenarioFor(ctx.userMessages?.join('\n') ?? '');
+			return planWalk(ctx, {
+				...args,
+				categories: preferences.categories ?? args.categories,
+				durationMinutes: Math.min(args.durationMinutes, preferences.durationMinutes ?? args.durationMinutes),
+				query: args.query ?? (preferences.query || undefined),
+			});
+		},
 		label: 'Планирование прогулки',
 		name: 'plan_walk',
 		parameters: planWalkInputSchema,
