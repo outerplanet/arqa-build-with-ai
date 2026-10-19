@@ -7,24 +7,30 @@ import { dependencies, type PlacesContext } from './context';
 export const EMBEDDING_MODEL = 'text-embedding-3-small';
 export const EMBEDDING_DIMENSIONS = 256;
 
-function cosine(query: readonly number[], vector: Float32Array): number | null {
-	if (query.length !== vector.length || vector.length !== EMBEDDING_DIMENSIONS) return null;
+function normalize(vector: Float32Array | readonly number[]): number[] | null {
+	if (vector.length !== EMBEDDING_DIMENSIONS) return null;
+	let scale = 0;
+
+	for (const value of vector) {
+		if (!Number.isFinite(value)) return null;
+		scale = Math.max(scale, Math.abs(value));
+	}
+	if (scale === 0) return null;
+	// Scale first: squaring very large or small finite coordinates can overflow or underflow.
+	const scaled = Array.from(vector, (value) => value / scale);
+	const norm = Math.hypot(...scaled);
+
+	return scaled.map((value) => value / norm);
+}
+
+function cosine(query: readonly number[], vector: readonly number[]): number {
 	let dot = 0;
-	let queryNorm = 0;
-	let vectorNorm = 0;
 
 	for (let index = 0; index < query.length; index += 1) {
-		const left = query[index]!;
-		const right = vector[index]!;
-
-		if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
-		dot += left * right;
-		queryNorm += left * left;
-		vectorNorm += right * right;
+		dot += query[index]! * vector[index]!;
 	}
-	if (queryNorm === 0 || vectorNorm === 0) return null;
 
-	return Math.max(0, Math.min(1, dot / Math.sqrt(queryNorm * vectorNorm)));
+	return Math.max(0, Math.min(1, dot));
 }
 
 export async function semanticScores(
@@ -49,6 +55,16 @@ export async function semanticScores(
 		const vectors = deps.readVectors();
 
 		if (vectors?.model !== EMBEDDING_MODEL || vectors.dims !== EMBEDDING_DIMENSIONS) return lexical();
+		const normalizedVectors = new Map<string, number[]>();
+
+		for (const place of input.places) {
+			const vector = vectors.byId.get(place.id);
+			const normalized = vector === undefined ? null : normalize(vector);
+
+			if (normalized !== null) normalizedVectors.set(place.id, normalized);
+		}
+		// There is nothing to compare to; do not disclose a query for an unusable dataset.
+		if (normalizedVectors.size === 0) return lexical();
 		const client = createClient();
 		const response = await withRetry(() =>
 			client.embeddings.create(
@@ -61,14 +77,17 @@ export async function semanticScores(
 				{ maxRetries: 0, timeout: 8000 },
 			),
 		);
-		const query = response.data[0]?.embedding;
+		const embedding = response.data[0]?.embedding;
 
-		if (query === undefined || response.model !== EMBEDDING_MODEL) return lexical();
+		if (!Array.isArray(embedding) || response.model !== EMBEDDING_MODEL) return lexical();
+		const query = normalize(embedding);
+
+		if (query === null) return lexical();
 		const scores = deps.lexicalScores(input.query, input.places);
 		let matched = 0;
 
 		for (const place of input.places) {
-			const vector = vectors.byId.get(place.id);
+			const vector = normalizedVectors.get(place.id);
 			const score = vector === undefined ? null : cosine(query, vector);
 
 			if (score !== null) {
