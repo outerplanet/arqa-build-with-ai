@@ -13,17 +13,15 @@ async function main() {
 	// Deliberately read a local .env only: never inherit a third-party endpoint or its key.
 	const localEnv: Record<string, string> = {};
 	loadEnv({ path: '.env', processEnv: localEnv, quiet: true });
-	const apiKey = localEnv.OPENAI_API_KEY?.trim() || localEnv.LLM_API_KEY?.trim();
+	const apiKey = localEnv.LLM_API_KEY?.trim();
 	if (!apiKey) {
-		console.error(
-			'Эмбеддинги не созданы: добавьте OPENAI_API_KEY или LLM_API_KEY в локальный .env. Файлы не изменены.',
-		);
+		console.error('Эмбеддинги не созданы: добавьте LLM_API_KEY (ключ OpenAI) в локальный .env. Файлы не изменены.');
 		process.exitCode = 1;
 		return;
 	}
-	if (!localEnv.OPENAI_API_KEY?.trim() && localEnv.LLM_BASE_URL?.trim()) {
+	if (localEnv.LLM_BASE_URL?.trim()) {
 		console.error(
-			'Эмбеддинги не созданы: LLM_API_KEY настроен для другого сервиса. Укажите официальный OPENAI_API_KEY в .env.',
+			'Эмбеддинги не созданы: LLM_API_KEY настроен для другого сервиса (задан LLM_BASE_URL). Нужен прямой ключ OpenAI.',
 		);
 		process.exitCode = 1;
 		return;

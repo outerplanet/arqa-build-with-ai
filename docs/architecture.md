@@ -36,27 +36,23 @@ algorithms. Landmark aliases reference dataset IDs rather than embedding their o
 The historical Nur Alem alias points to Alem.ai (`osm:way/454857501`), supported by OSM history;
 the EXPO building and EXPO quarter remain separate, ambiguous objects.
 
-`scripts/embed.py` builds the static `data/poi.vectors.json` with
-`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`: 1,091 normalized 384-dimensional
-vectors. `data/vector_summary.json` records the source fingerprint and indexing time.
-There is no vector database or Python web server. A request spawns the configured Python
-interpreter, sends query text on stdin, loads cached model weights offline and returns a query
-vector. No query text or coordinates are persisted or logged. This works with mock chat and
-requires neither an API key nor a network connection after model setup.
+`scripts/embed.ts` (`pnpm embed`) builds the static, committed `data/poi.vectors.json` with
+OpenAI `text-embedding-3-small` at 256 dimensions: one vector per place, rounded to 4 decimals,
+with the model, the dimensions and the SHA-256 of `data/poi.json` in the same file. It reads
+`LLM_API_KEY` from the local `.env`, refuses a key configured for a custom `LLM_BASE_URL`, always
+calls the official endpoint and writes atomically. There is no vector database and no second
+runtime: the product is TypeScript only.
 
-`kernel/embeddingConfig.ts` reads provider, model, interpreter and cache settings; the repository
-reads the configured index path and verifies its SHA-256 against the real application dataset.
-`semantic.ts` computes exact cosine similarity in memory. Raw similarity is in [-1, 1]; ranking
-clips negative semantic scores to zero. `vectorSearch.ts` validates query/topK and returns source
-texts, metadata and raw similarity. Missing, stale or invalid vectors and inference errors produce
-an explicit lexical-fallback note instead of failing the chat. The optional OpenAI backend uses
-`text-embedding-3-small` with 256 dimensions and requires direct Responses credentials; mock chat
-does not send queries to that backend. Indices from different models are never mixed.
-
-Python CLI `scripts/vector_search.py` also exposes `vector_search(query, top_k=5)` and rejects
-stale indices. Only explicit indexing may download model weights; query execution is offline.
-The model cache and virtual environments are ignored by git. Regenerate vectors after collection
-and restart the application to reload cached repositories.
+`places/repo/vectors.ts` reads that file from a fixed path — a path computed from an environment
+variable makes the Next.js file tracer pull the whole project into the server bundle — validates
+model, dimensions, finite nonzero numbers and the dataset hash, and returns `null` on any mismatch.
+`places/usecase/semantic.ts` embeds the query through the shared `createClient()`/`withRetry`
+only when `LLM_PROVIDER=responses`, `LLM_API_KEY` is set and `LLM_BASE_URL` is empty, then
+computes exact cosine similarity in memory. Raw similarity is in [-1, 1]; ranking clips semantic
+scores to [0, 1]. Mock chat, third-party endpoints, missing or stale vectors and API errors
+produce an explicit lexical-fallback note instead of failing the chat, and never send the query
+anywhere. Query text and coordinates are never logged or cached, and provider errors never leave
+the server. Regenerate vectors after collection and restart the application to reload them.
 
 `scripts/export_pdf.py` reads the actual Markdown sources through Pandoc's JSON AST and renders
 them with ReportLab. Presentation H1 headings delimit slides; speaker comments are omitted.

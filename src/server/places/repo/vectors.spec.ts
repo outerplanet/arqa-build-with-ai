@@ -27,15 +27,21 @@ function files(payload: unknown) {
 }
 
 describe('optional place vectors', () => {
-	it('loads multilingual local vectors without confusing their dimensions with OpenAI', async () => {
+	it('reads the committed file at a fixed path', async () => {
+		files(valid());
+		const { readVectors } = await import('./vectors');
+		expect(readVectors()?.dims).toBe(256);
+		expect(String(vi.mocked(existsSync).mock.calls[0]?.[0])).toMatch(/data[\\/]poi\.vectors\.json$/);
+	});
+	it('rejects vectors from any model other than text-embedding-3-small at 256 dimensions', async () => {
 		files({
 			...valid(),
 			byId: { 'osm:node/1': [1, ...Array<number>(383).fill(0)] },
 			dims: 384,
-			model: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+			model: 'some-other-384-dimension-model',
 		});
 		const { readVectors } = await import('./vectors');
-		expect(readVectors()?.dims).toBe(384);
+		expect(readVectors()).toBeNull();
 	});
 	it('caches absence without repeatedly checking the filesystem', async () => {
 		vi.mocked(existsSync).mockReturnValue(false);
