@@ -17,6 +17,20 @@ afterEach(() => {
 });
 
 describe('committed dataset integration without injected dependencies', () => {
+	it.each(['Я между Нур Алем и AITU', 'Я на станции Байтерек'])(
+		'does not replace conflicting or typed locations with an anchor: %s',
+		(text) => {
+			expect(resolveLocation({ now: new Date('2026-10-19T08:00:00Z') }, { text }).found).toBe(false);
+		},
+	);
+	it('honours an explicitly named full POI instead of its nested Expo alias', () => {
+		expect(resolveLocation({ now: new Date('2026-10-19T08:00:00Z') }, { text: 'Я у Астана-Экспо КС' })).toMatchObject(
+			{
+				found: true,
+				matchedPlaceId: 'osm:node/2388707906',
+			},
+		);
+	});
 	it('asks rather than choosing between two different landmarks', () => {
 		expect(
 			resolveLocation(

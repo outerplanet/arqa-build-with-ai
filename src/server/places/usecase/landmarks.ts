@@ -2,7 +2,7 @@ import 'server-only';
 
 /** Aliases, not a second POI database: coordinates and sources always come from the dataset. */
 export const LANDMARKS: readonly (readonly string[])[] = [
-	['экспо', 'expo'],
+	['экспо', 'expo', 'экспо 2017', 'expo 2017'],
 	['нур алем', 'нуралем', 'нуралема', 'нур алема', 'нұр әлем', 'nur alem', 'alem.ai'],
 	['байтерек', 'байтерека', 'бәйтерек', 'baiterek', 'bayterek'],
 	['хан шатыр', 'хан шатыра', 'khan shatyr'],

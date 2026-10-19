@@ -19,29 +19,60 @@ export function resolveLocation(
 		throw new DomainError('validation', { constraint: 'location_unconfirmed' });
 	}
 	const groups = LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
+	const unresolved: ResolvedLocation = {
+		confidence: 'low',
+		found: false,
+		label: null,
+		matchedPlaceId: null,
+		point: null,
+	};
+	// Even a group without a canonical ID is a second location, not permission to pick the first.
+	if (groups.length > 1) return unresolved;
 	const places = dependencies(ctx).readPlaces();
+	const explicit = places.filter((place) =>
+		[place.name, place.nameEn ?? ''].some(
+			(name) =>
+				name &&
+				mentions(text, name) &&
+				groups.some((aliases) => aliases.some((alias) => mentions(name, alias))) &&
+				!groups.some((aliases) => aliases.some((alias) => normalizeLocation(alias) === normalizeLocation(name))),
+		),
+	);
+	// A short alias embedded in a full POI name must not replace that explicitly named object.
+	const explicitContainsAlias =
+		explicit.length === 1 &&
+		groups.some((aliases) =>
+			aliases.some((alias) => mentions(explicit[0]!.name, alias) || mentions(explicit[0]!.nameEn ?? '', alias)),
+		);
+	if (groups.length && explicit.length && !explicitContainsAlias) return unresolved;
 	const anchorIds = groups.map((group) => LANDMARK_IDS.get(group)).filter((id) => id !== undefined);
 	if (groups.includes(LANDMARKS[0]!) && /квартал|территори/iu.test(text)) {
 		anchorIds.splice(anchorIds.indexOf('osm:way/454853233'), 1, 'osm:way/1456208623');
 	}
+	// The monument and shopping-centre anchors cannot stand in for a requested rail station.
+	if (anchorIds.length && /станци|вокзал/iu.test(text) && !explicitContainsAlias) return unresolved;
 	const anchored = places.filter((place) => anchorIds.includes(place.id));
-	const matches = anchorIds.length
-		? anchorIds.length === 1
-			? anchored
-			: []
-		: places.filter((place) => {
-				const names = [place.name, place.nameEn ?? ''].filter(Boolean);
+	const matches = explicitContainsAlias
+		? explicit
+		: anchorIds.length
+			? anchorIds.length === 1
+				? anchored
+				: []
+			: places.filter((place) => {
+					const names = [place.name, place.nameEn ?? ''].filter(Boolean);
 
-				return (
-					names.some((name) => mentions(text, name)) ||
-					groups.some((aliases) =>
-						names.some((name) => aliases.some((alias) => normalizeLocation(name) === normalizeLocation(alias))),
-					)
-				);
-			});
+					return (
+						names.some((name) => mentions(text, name)) ||
+						groups.some((aliases) =>
+							names.some((name) =>
+								aliases.some((alias) => normalizeLocation(name) === normalizeLocation(alias)),
+							),
+						)
+					);
+				});
 	// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
 	if (matches.length !== 1) {
-		return { confidence: 'low', found: false, label: null, matchedPlaceId: null, point: null };
+		return unresolved;
 	}
 	const [place] = matches;
 
