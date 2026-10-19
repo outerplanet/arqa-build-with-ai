@@ -93,6 +93,12 @@ function fallbackReply(
 		.safeParse(successful.findLast((call) => call.name === 'get_current_time')?.result);
 
 	if (clock.success) return `По серверным часам: ${clock.data.local} (${clock.data.timeZone}).`;
+	const unresolved = ctx.browserLocation === undefined ? ctx.resolvedLocation : undefined;
+	const candidates = unresolved?.found === false ? (unresolved.candidates ?? []) : [];
+	if (candidates.length >= 2)
+		return `Вы про ${candidates.slice(0, -1).join(', ')} или ${candidates.at(-1)}? Уточните ориентир или нажмите «Использовать мою геолокацию».`;
+	if (unresolved?.found === false && unresolved.missing)
+		return `Не нашёл «${unresolved.missing}» в данных OpenStreetMap — назовите ближайший ориентир (например, Хан Шатыр, Байтерек) или нажмите «Использовать мою геолокацию».`;
 	if (ctx.browserLocation === undefined && ctx.resolvedLocation?.found === false)
 		return 'Не удалось однозначно определить ориентир. Уточните название здания или музея либо передайте геолокацию.';
 	return ctx.browserLocation === undefined && ctx.resolvedLocation?.found !== true

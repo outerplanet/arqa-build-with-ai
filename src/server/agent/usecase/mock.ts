@@ -8,6 +8,9 @@ import { answerForTools } from './reply';
 import { categoriesFor, scenarioFor } from './scenario';
 import { type CurrentTime, executeTool } from './tools';
 
+/** The user says where they are («я на набережной»), not how long or how they travel («я на час»). */
+const AT_PLACE = /возле|около|нахожусь|я у |я (?:сейчас )?на (?!\d|час|полчаса|пару|машин|такси)|рядом с |на улице/iu;
+
 export async function runMock(ctx: PlacesContext, input: { messages: readonly ChatMessage[] }): Promise<ChatResponse> {
 	const userMessages = input.messages.filter((message) => message.role === 'user');
 	const latest = userMessages.at(-1)?.content ?? '';
@@ -28,7 +31,7 @@ export async function runMock(ctx: PlacesContext, input: { messages: readonly Ch
 			.find(
 				(message) =>
 					LANDMARKS.some((aliases) => aliases.some((alias) => mentions(message.content, alias))) ||
-					/возле|около|нахожусь|я у |рядом с |на улице/iu.test(message.content),
+					AT_PLACE.test(message.content),
 			);
 
 		if (locationMessage !== undefined) {
