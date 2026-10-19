@@ -44,13 +44,23 @@ const responseSchema = z.object({
 type Tags = Record<string, string>;
 
 function allowedAccess(tags: Tags): boolean {
-	if (Object.keys(tags).some((key) => /^(access|foot|oneway:foot|opening_hours):conditional$/.test(key))) return false;
+	if (
+		Object.keys(tags).some(
+			(key) =>
+				key.startsWith('access:') ||
+				key.startsWith('foot:') ||
+				key === 'oneway:foot:conditional' ||
+				key === 'opening_hours:conditional',
+		)
+	)
+		return false;
 	if (tags.access !== undefined && !ALLOWED.has(tags.access)) return false;
 	if (tags.foot !== undefined && !ALLOWED.has(tags.foot)) return false;
 	if (tags.indoor !== undefined && tags.indoor !== 'no') return false;
 	if (tags.locked !== undefined && tags.locked !== 'no') return false;
 	if (tags.opening_hours !== undefined && tags.opening_hours !== '24/7') return false;
 	if (tags.construction !== undefined || tags.proposed !== undefined || tags.disused === 'yes') return false;
+	if (tags.ford !== undefined && tags.ford !== 'no') return false;
 	return true;
 }
 
@@ -69,7 +79,7 @@ export function buildWalkingGraph(input: unknown, collectedAt: string): WalkingG
 		const node = sourceNodes.get(osmId);
 		if (node?.lat === undefined || node.lon === undefined || !allowedAccess(node.tags)) return null;
 		if (node.tags.barrier !== undefined && !PASSABLE_BARRIERS.has(node.tags.barrier)) return null;
-		if (node.tags.highway === 'elevator' || node.tags.ford === 'yes') return null;
+		if (node.tags.highway === 'elevator' || node.tags.highway === 'ford') return null;
 		let found = indices.get(osmId);
 		if (found === undefined) {
 			found = nodes.length;
@@ -82,7 +92,7 @@ export function buildWalkingGraph(input: unknown, collectedAt: string): WalkingG
 		if (way.type !== 'way' || way.nodes === undefined || !allowedAccess(way.tags)) continue;
 		const highway = way.tags.highway ?? '';
 		if (!NORMAL.has(highway) && !(EXPLICIT.has(highway) && ALLOWED.has(way.tags.foot ?? ''))) continue;
-		if (way.tags.area === 'yes' || way.tags.motorroad === 'yes' || way.tags.ford === 'yes') continue;
+		if (way.tags.area === 'yes' || way.tags.motorroad === 'yes') continue;
 		const direction = way.tags['oneway:foot'] ?? 'no';
 		if (!['-1', '0', '1', 'false', 'no', 'true', 'yes'].includes(direction)) continue;
 		for (let i = 1; i < way.nodes.length; i += 1) {
@@ -171,7 +181,7 @@ async function main() {
 		nodes: graph.nodes.length,
 		osmTimestamp: response.osm3s.timestamp_osm_base,
 		policy:
-			'Conservative public pedestrian access; unknown/conditional access, gates, indoor paths, motorways and motorroads excluded. Shared OSM nodes only; no inferred connections or endpoint connectors. Steps allowed; wheelchair routing unsupported.',
+			'Conservative public pedestrian access; unknown, directional and conditional foot/access restrictions, gates, indoor paths, fords, motorways and motorroads excluded. Shared OSM nodes only; no inferred connections or endpoint connectors. Steps allowed; wheelchair routing unsupported.',
 		query: WALKING_QUERY,
 		querySha256: createHash('sha256').update(WALKING_QUERY).digest('hex'),
 		source: 'OpenStreetMap',

@@ -79,3 +79,53 @@ void test('does not invent connections for crossing lines or merge separate leve
 		[3, 2, 43],
 	]);
 });
+
+void test('rejects unsupported directional and conditional pedestrian access', () => {
+	for (const tags of [
+		{ 'foot:forward': 'no' },
+		{ 'foot:backward': 'no' },
+		{ 'foot:forward:conditional': 'no @ (Mo-Fr)' },
+		{ 'foot:backward:conditional': 'private @ (Mo-Fr)' },
+		{ 'access:forward': 'private' },
+		{ 'access:backward': 'customers' },
+		{ 'access:forward:conditional': 'no @ (Mo-Fr)' },
+		{ 'oneway:foot:conditional': 'yes @ (Mo-Fr)' },
+	])
+		assert.throws(() => graph([...nodes, way(tags)]), /empty/i);
+});
+
+void test('explicit foot permission never overrides a blocked barrier node', () => {
+	assert.throws(
+		() =>
+			graph([
+				...nodes.filter((node) => node.id !== 2),
+				{ ...nodes[1], tags: { access: 'private', barrier: 'bollard', foot: 'yes' } },
+				way({}),
+			]),
+		/empty/i,
+	);
+	assert.throws(
+		() =>
+			graph([
+				...nodes.filter((node) => node.id !== 2),
+				{ ...nodes[1], tags: { barrier: 'gate', foot: 'yes' } },
+				way({}),
+			]),
+		/empty/i,
+	);
+});
+
+void test('rejects all unverified ford variants on ways and nodes', () => {
+	for (const ford of ['yes', 'stepping_stones', 'unknown']) {
+		assert.throws(() => graph([...nodes, way({ ford })]), /empty/i);
+		assert.throws(
+			() => graph([...nodes.filter((node) => node.id !== 2), { ...nodes[1], tags: { ford } }, way({})]),
+			/empty/i,
+		);
+	}
+	assert.throws(
+		() => graph([...nodes.filter((node) => node.id !== 2), { ...nodes[1], tags: { highway: 'ford' } }, way({})]),
+		/empty/i,
+	);
+	assert.equal(graph([...nodes, way({ ford: 'no' })]).edges.length, 4);
+});
