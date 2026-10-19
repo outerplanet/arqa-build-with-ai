@@ -1,6 +1,24 @@
 {
-  "collectedAt": "2026-10-19T12:44:19.085Z",
-  "endpoint": "https://overpass-api.de/api/interpreter",
+  "collectedAt": "2026-10-19T13:22:24.814Z",
+  "commonsFiles": {
+    "osm:way/460703779": "File:Khan Shatyr.jpg",
+    "osm:way/762780007": "File:AbuDhabiPlaza.jpg",
+    "osm:relation/13009591": "File:L.N.Gumilyov Eurasian National University.JPG",
+    "osm:way/240860325": "File:Rustam Minnikhanov on Expo 2017 72.jpg",
+    "osm:way/230401645": "File:Night at Esil District, Astana (P1190721).jpg",
+    "osm:way/1460537088": "File:Казахстан ЦКЗ 2011 02.jpg",
+    "osm:way/1460088073": "File:Astana Arena (inside interior).JPG",
+    "osm:way/1196402246": "File:A view of Nur-Sultan's Botanical Garden.jpg",
+    "osm:way/166265821": "File:Saryarka Velodrome (inside).JPG",
+    "osm:way/663143306": "File:Barys Arena 2014-03-15.JPG",
+    "osm:way/917478479": "File:Inside Astana's New Opera House (8282915665).jpg",
+    "osm:way/424980293": "File:Астана, вокзал Нурлы Жол, сферопанорама (cropped).jpg",
+    "osm:node/4902164954": "File:Beit Rachel Synagogue, Astana.jpg",
+    "osm:way/69232075": "File:Improvisation of Charyn Canyon in Jetisy park.jpg",
+    "osm:way/1460700597": "File:Этно-мемориальный комплекс «Карта Казахстана Атамекен».JPG"
+  },
+  "commonsSkipped": [],
+  "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
   "generatedNames": [
     {
       "distanceM": null,
@@ -22040,14 +22058,77 @@
       }
     ],
     "osm3s": {
-      "timestamp_osm_base": "2026-10-19T12:42:36Z"
+      "timestamp_osm_base": "2026-10-19T13:20:21Z"
     }
   },
   "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university|arts_centre|planetarium|exhibition_centre)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[museum][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium|water_park)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[place=quarter][name~\"^(ЭКСПО-2017|EXPO-2017)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure=playground](51.03,71.25,51.25,71.65);nwr[tourism=viewpoint](51.03,71.25,51.25,71.65););out center tags;",
+  "rejectedWikidataMatches": [
+    {
+      "distanceM": null,
+      "id": "osm:node/5766102030",
+      "kind": "brand",
+      "label": "Макдональдс",
+      "name": "Фуд Солюшн",
+      "wikidata": "Q38076"
+    },
+    {
+      "distanceM": null,
+      "id": "osm:node/9047285104",
+      "kind": "brand",
+      "label": "Макдональдс",
+      "name": "Фуд Солюшн",
+      "wikidata": "Q38076"
+    },
+    {
+      "distanceM": null,
+      "id": "osm:node/9629148688",
+      "kind": "brand",
+      "label": "Макдональдс",
+      "name": "Фуд Солюшн",
+      "wikidata": "Q38076"
+    },
+    {
+      "distanceM": 30,
+      "id": "osm:node/4916060859",
+      "kind": "own",
+      "label": "Министерство сельского хозяйства Республики Казахстан",
+      "name": "Казахстанский филиал московского государственного университета имени М. В. Ломоносова",
+      "wikidata": "Q1804795"
+    }
+  ],
   "streetEndpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
   "streetQuery": "[out:json][timeout:90];(nwr[leisure=playground](51.03,71.25,51.25,71.65);nwr[tourism=viewpoint](51.03,71.25,51.25,71.65););way(around:150)[highway~\"^(primary|secondary|tertiary|residential|living_street|pedestrian|unclassified)$\"][\"name\"];out tags geom;",
   "wikidata": {
     "Q671484": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Khan Shatyr.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.132222222222,
+                  "longitude": 71.403888888889,
+                  "altitude": null,
+                  "precision": null,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "building"
@@ -22059,6 +22140,9 @@
       "labels": {
         "en": {
           "value": "Khan Shatyr Entertainment Center"
+        },
+        "kk": {
+          "value": "Хан Шатыр"
         },
         "ru": {
           "value": "Хан Шатыр"
@@ -22172,6 +22256,43 @@
       }
     },
     "Q1073433": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Abu Dhabi Plaza 10.2015.jpg"
+              }
+            },
+            "rank": "normal"
+          },
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "AbuDhabiPlaza.jpg"
+              }
+            },
+            "rank": "preferred"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.122222222222,
+                  "longitude": 71.427777777778,
+                  "altitude": null,
+                  "precision": 0.00027777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "building complex in Kazakhstan"
@@ -22186,6 +22307,9 @@
         },
         "en": {
           "value": "Abu Dhabi Plaza"
+        },
+        "kk": {
+          "value": "Абу-Даби Плаза"
         }
       },
       "sitelinks": {
@@ -22248,17 +22372,74 @@
       }
     },
     "Q524757": {
+      "aliases": {
+        "en": [
+          {
+            "value": "KFC Corporation"
+          },
+          {
+            "value": "Kentucky Fried Chicken"
+          },
+          {
+            "value": "KFC Restaurant"
+          }
+        ],
+        "kk": [
+          {
+            "value": "KFC"
+          }
+        ],
+        "ru": [
+          {
+            "value": "KFC"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "A modern KFC restaurant in Murphy, North Carolina.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 38.198055555555555,
+                  "longitude": -85.69572222222223,
+                  "altitude": null,
+                  "precision": 0.00002777777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "American fast food restaurant chain specializing in fried chicken"
         },
         "ru": {
           "value": "сеть ресторанов быстрого питания курицей"
+        },
+        "kk": {
+          "value": "американдық тез тамақтану желісі"
         }
       },
       "labels": {
         "en": {
           "value": "KFC"
+        },
+        "kk": {
+          "value": "Kentucky Fried Chicken"
         },
         "ru": {
           "value": "Kentucky Fried Chicken"
@@ -22660,6 +22841,36 @@
       }
     },
     "Q37158": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Starbucks Coffee"
+          },
+          {
+            "value": "Starbucks Coffee Company"
+          }
+        ],
+        "ru": [
+          {
+            "value": "Старбакс"
+          },
+          {
+            "value": "Starbucks Coffee Company"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Starbuckscenter.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "American multinational coffee company"
@@ -23052,6 +23263,50 @@
       }
     },
     "Q38076": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "McDonald’s Corporation"
+          },
+          {
+            "value": "McDonald`s"
+          }
+        ],
+        "kk": [
+          {
+            "value": "Макдональдс"
+          }
+        ],
+        "en": [
+          {
+            "value": "McDonald's Restaurant"
+          },
+          {
+            "value": "Mickey D's"
+          },
+          {
+            "value": "McDo"
+          },
+          {
+            "value": "Macca's"
+          },
+          {
+            "value": "Maccas"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "New-McDonald-HU-lg (43261171540).jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "American fast food restaurant chain"
@@ -23061,6 +23316,9 @@
         }
       },
       "labels": {
+        "kk": {
+          "value": "McDonalds"
+        },
         "en": {
           "value": "McDonald's"
         },
@@ -23620,6 +23878,19 @@
       }
     },
     "Q118149812": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Food Solutions"
+          }
+        ],
+        "kk": [
+          {
+            "value": "І'м"
+          }
+        ]
+      },
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "Kazakh fast food restaurant chain"
@@ -23628,11 +23899,60 @@
       "labels": {
         "en": {
           "value": "I'm"
+        },
+        "kk": {
+          "value": "I'm"
         }
       },
       "sitelinks": {}
     },
     "Q127745": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Eurasian National University"
+          },
+          {
+            "value": "L.N. Gumilyov Eurasian National University"
+          }
+        ],
+        "ru": [
+          {
+            "value": "Евразийский национальный университет им Л.Н. Гумилева"
+          },
+          {
+            "value": "Евразийский национальный университет"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "L.N.Gumilyov Eurasian National University.JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.1602,
+                  "longitude": 71.4648,
+                  "altitude": null,
+                  "precision": 0.014323884509476,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "university in Kazakhstan"
@@ -23641,6 +23961,9 @@
       "labels": {
         "en": {
           "value": "L. N. Gumilyov Eurasian National University"
+        },
+        "kk": {
+          "value": "Еуразия ұлттық университеті"
         },
         "ru": {
           "value": "Евразийский национальный университет имени Л. Н. Гумилёва"
@@ -23730,6 +24053,19 @@
       }
     },
     "Q66088063": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Yakitoriya"
+          }
+        ],
+        "en": [
+          {
+            "value": "Yakitoria"
+          }
+        ]
+      },
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "Russian restaurant chain"
@@ -23746,6 +24082,8 @@
       "sitelinks": {}
     },
     "Q55662627": {
+      "aliases": {},
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "Russian coffee to go company"
@@ -23775,6 +24113,31 @@
       }
     },
     "Q3370417": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Boulangeries Paul SAS"
+          },
+          {
+            "value": "Paul Coffee Shop"
+          },
+          {
+            "value": "Paul bakery"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Praha Vinohrady Jugoslavska 6 Paul.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "French bakery chain"
@@ -23845,6 +24208,8 @@
       }
     },
     "Q129419587": {
+      "aliases": {},
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "Russian fast food chain"
@@ -23861,6 +24226,28 @@
       "sitelinks": {}
     },
     "Q608845": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Costa Limited"
+          },
+          {
+            "value": "Costa"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Costa Coffee, The Outlet, December 2009.JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "British multinational coffeehouse company"
@@ -24001,6 +24388,25 @@
       }
     },
     "Q1585088": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Hardee's"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Original Hardee's franchise.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "American-based fast-food restaurant chain"
@@ -24012,6 +24418,9 @@
         },
         "en": {
           "value": "Hardee's"
+        },
+        "kk": {
+          "value": "“Hardee’s” ресторандар желісі"
         }
       },
       "sitelinks": {
@@ -24210,6 +24619,28 @@
       }
     },
     "Q2666365": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Gloria Jean's"
+          },
+          {
+            "value": "Gloria Jean's Coffees"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Gloria Jean's Coffee.JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "American-Australian retail coffeehouse chain"
@@ -24295,6 +24726,31 @@
       }
     },
     "Q1813417": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Нур Астана"
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.126561,
+                  "longitude": 71.415737,
+                  "altitude": null,
+                  "precision": 0.000001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "Mosque in Astana, Kazakhstan"
@@ -24309,6 +24765,9 @@
         },
         "en": {
           "value": "Nur-Astana Mosque"
+        },
+        "kk": {
+          "value": "Нұр-Астана мешіті"
         }
       },
       "sitelinks": {
@@ -24435,6 +24894,49 @@
       }
     },
     "Q4494668": {
+      "aliases": {
+        "kk": [
+          {
+            "value": "Хазрет Сұлтан мешіті"
+          },
+          {
+            "value": "Хазірет Сұлтан мешіті"
+          }
+        ],
+        "ru": [
+          {
+            "value": "Мечеть Хазрет Султан"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Rustam Minnikhanov on Expo 2017 72.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.125,
+                  "longitude": 71.472222222222,
+                  "altitude": null,
+                  "precision": 0.00027777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "ru": {
           "value": "соборная мечеть в Астане"
@@ -24444,6 +24946,9 @@
         }
       },
       "labels": {
+        "kk": {
+          "value": "Әзірет Сұлтан мешіті"
+        },
         "ru": {
           "value": "Хазрет Султан"
         },
@@ -24555,6 +25060,55 @@
       }
     },
     "Q804210": {
+      "aliases": {
+        "kk": [
+          {
+            "value": "БӘЙТЕРЕК"
+          },
+          {
+            "value": "Бәйтерек (Астана)"
+          },
+          {
+            "value": "Бәйтерек"
+          }
+        ],
+        "en": [
+          {
+            "value": "Bayterek Tower"
+          },
+          {
+            "value": "Baiterek"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Night at Esil District, Astana (P1190721).jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.12833333333333,
+                  "longitude": 71.43055555555556,
+                  "altitude": null,
+                  "precision": 0.0002777777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "monument in Astana, Kazachstan"
@@ -24566,6 +25120,9 @@
       "labels": {
         "ru": {
           "value": "Байтерек"
+        },
+        "kk": {
+          "value": "Бәйтерек (монументі)"
         },
         "en": {
           "value": "Bayterek"
@@ -24691,6 +25248,19 @@
       }
     },
     "Q61949318": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Dodo Torzhok.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "ru": {
           "value": "российская сеть пиццерий"
@@ -24755,6 +25325,35 @@
       }
     },
     "Q573362": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Казахстан ЦКЗ 2011 02.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.122777777778,
+                  "longitude": 71.441666666667,
+                  "altitude": null,
+                  "precision": null,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "concert hall in Astana, Kazakhstan"
@@ -24763,6 +25362,9 @@
       "labels": {
         "en": {
           "value": "Kazakhstan Central Concert Hall"
+        },
+        "kk": {
+          "value": "Қазақстан Орталық концерт залы"
         },
         "ru": {
           "value": "Центральный концертный зал «Казахстан»"
@@ -24820,6 +25422,45 @@
       }
     },
     "Q1072092": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Ледовый дворец \"Алау\""
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.105,
+                  "longitude": 71.405,
+                  "altitude": null,
+                  "precision": 0.00001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          },
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.10472222,
+                  "longitude": 71.405,
+                  "altitude": null,
+                  "precision": 0.00027777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "speed skating rink in Astana, Kazakhstan"
@@ -24834,6 +25475,9 @@
         },
         "en": {
           "value": "Alau Ice Palace"
+        },
+        "kk": {
+          "value": "Алау"
         }
       },
       "sitelinks": {
@@ -24872,6 +25516,42 @@
       }
     },
     "Q177054": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Burger King Corporation"
+          },
+          {
+            "value": "Бургер Кинг"
+          },
+          {
+            "value": "Бургер Кинг Корпорейшн"
+          }
+        ],
+        "en": [
+          {
+            "value": "BK"
+          },
+          {
+            "value": "Insta-Burger King"
+          },
+          {
+            "value": "Burger King Corporation"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Burgerkingheadquarters.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "global chain of hamburger fast food restaurants headquartered in Florida, United States"
@@ -25337,10 +26017,32 @@
       }
     },
     "Q137551678": {
+      "aliases": {},
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.112134,
+                  "longitude": 71.529021,
+                  "altitude": null,
+                  "precision": 0.000001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {},
       "labels": {
         "ru": {
           "value": "Нурлы жол"
+        },
+        "kk": {
+          "value": "Нұрлы жол"
         },
         "en": {
           "value": "Nurly Jol"
@@ -25349,6 +26051,25 @@
       "sitelinks": {}
     },
     "Q137551660": {
+      "aliases": {},
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.041315,
+                  "longitude": 71.442215,
+                  "altitude": null,
+                  "precision": 0.000001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {},
       "labels": {
         "en": {
@@ -25356,17 +26077,52 @@
         },
         "ru": {
           "value": "Атамекен"
+        },
+        "kk": {
+          "value": "Атамекен"
         }
       },
       "sitelinks": {}
     },
     "Q746559": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Astana Arena (inside interior).JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.1082,
+                  "longitude": 71.4026,
+                  "altitude": null,
+                  "precision": 0.0001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "football stadium"
         },
         "ru": {
           "value": "Домашний стадион ФК \"Астана\" в столице Казаxстана"
+        },
+        "kk": {
+          "value": "Астана қаласындағы стадион"
         }
       },
       "labels": {
@@ -25375,6 +26131,9 @@
         },
         "en": {
           "value": "Astana Arena"
+        },
+        "kk": {
+          "value": "Астана Арена"
         }
       },
       "sitelinks": {
@@ -25561,6 +26320,44 @@
       }
     },
     "Q2783344": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Nazarbayev University"
+          },
+          {
+            "value": "Новый университет Астаны"
+          }
+        ],
+        "kk": [
+          {
+            "value": "Назарбаев Университетi"
+          }
+        ],
+        "en": [
+          {
+            "value": "NU"
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.09,
+                  "longitude": 71.39944444,
+                  "altitude": null,
+                  "precision": 0.00027777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "international research university based in Astana, Kazakhstan"
@@ -25575,6 +26372,9 @@
         },
         "en": {
           "value": "Nazarbayev University"
+        },
+        "kk": {
+          "value": "Назарбаев Университеті"
         }
       },
       "sitelinks": {
@@ -25649,6 +26449,35 @@
       }
     },
     "Q104866948": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "A view of Nur-Sultan's Botanical Garden.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.106,
+                  "longitude": 71.416,
+                  "altitude": null,
+                  "precision": 0.001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "Botanical Garden in Astana, Kazakhstan"
@@ -25663,6 +26492,9 @@
         },
         "ru": {
           "value": "Астанинский ботанический сад"
+        },
+        "kk": {
+          "value": "Ботаникалық бақ (Астана)"
         }
       },
       "sitelinks": {
@@ -25693,6 +26525,47 @@
       }
     },
     "Q4408858": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Республиканский велотрек (Казахстан)"
+          },
+          {
+            "value": "Республиканский велотрек"
+          },
+          {
+            "value": "Сары-Арка (велотрек)"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Saryarka Velodrome (inside).JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.11011,
+                  "longitude": 71.40743,
+                  "altitude": null,
+                  "precision": 0.00001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "sports venue in Kazakhstan"
@@ -25749,6 +26622,35 @@
       }
     },
     "Q16632800": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Barys Arena 2014-03-15.JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.10921388888889,
+                  "longitude": 71.39482222222222,
+                  "altitude": null,
+                  "precision": 0.014322487466628,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "ru": {
           "value": "строящийся спортивный комплекс в городе Астана"
@@ -25825,6 +26727,41 @@
       }
     },
     "Q21371563": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Астана Опера"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Inside Astana's New Opera House (8282915665).jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.135555555556,
+                  "longitude": 71.410916666667,
+                  "altitude": null,
+                  "precision": 0.000027777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "opera house in Astana, Kazakhstan"
@@ -25839,6 +26776,9 @@
         },
         "ru": {
           "value": "Астана опера"
+        },
+        "kk": {
+          "value": "Астана Опера (театр)"
         }
       },
       "sitelinks": {
@@ -25945,6 +26885,31 @@
       }
     },
     "Q18405670": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Национальный музей Казахстана"
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.1178,
+                  "longitude": 71.4701,
+                  "altitude": null,
+                  "precision": 0.014310735565832,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "museum in Astana, Kazakhstan"
@@ -25956,6 +26921,9 @@
       "labels": {
         "ru": {
           "value": "Национальный музей Республики Казахстан"
+        },
+        "kk": {
+          "value": "Қазақстан Республикасының Ұлттық музейі"
         },
         "en": {
           "value": "National Museum of the Republic of Kazakhstan"
@@ -26017,6 +26985,49 @@
       }
     },
     "Q30642068": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Astana Nurly Jol railway station"
+          },
+          {
+            "value": "Nur-Sultan Nurly Jol train station"
+          }
+        ],
+        "ru": [
+          {
+            "value": "Нур-Султан Нурлы Жол"
+          }
+        ]
+      },
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Астана, вокзал Нурлы Жол, сферопанорама (cropped).jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.112389,
+                  "longitude": 71.531752,
+                  "altitude": null,
+                  "precision": 0.000001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "railway station in Astana opened 2017"
@@ -26031,6 +27042,9 @@
         },
         "ru": {
           "value": "Астана Нурлы Жол"
+        },
+        "kk": {
+          "value": "Астана Нұрлы жол"
         }
       },
       "sitelinks": {
@@ -26081,6 +27095,50 @@
       }
     },
     "Q42422896": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Триумфальная арка Мангилик Ел (Астана)"
+          },
+          {
+            "value": "Триумфальная арка Мангилик Ел в Астане"
+          },
+          {
+            "value": "Триумфальная арка в Астане"
+          },
+          {
+            "value": "Мангилик Ел"
+          }
+        ],
+        "en": [
+          {
+            "value": "Gate of Eternal Land"
+          }
+        ],
+        "kk": [
+          {
+            "value": "Мәңгілік ел"
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.104305555555555,
+                  "longitude": 71.43008333333334,
+                  "altitude": null,
+                  "precision": 0.00002777777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "ru": {
           "value": "монумент в Астане"
@@ -26095,6 +27153,9 @@
         },
         "en": {
           "value": "Triumphal Arch Mangilik El"
+        },
+        "kk": {
+          "value": "Мәңгілік ел қақпасы"
         }
       },
       "sitelinks": {
@@ -26121,6 +27182,35 @@
       }
     },
     "Q42416691": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Beit Rachel Synagogue, Astana.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.1573088,
+                  "longitude": 71.4616569,
+                  "altitude": null,
+                  "precision": 1e-7,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "ru": {
           "value": "Самая большая синагога в Центральной Азии"
@@ -26149,6 +27239,14 @@
       }
     },
     "Q17116336": {
+      "aliases": {
+        "en": [
+          {
+            "value": "MADO"
+          }
+        ]
+      },
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "global Turkish ice cream brand"
@@ -26179,6 +27277,35 @@
       }
     },
     "Q104866925": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Improvisation of Charyn Canyon in Jetisy park.jpg"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.13583333333333,
+                  "longitude": 71.43861111111111,
+                  "altitude": null,
+                  "precision": 0.0002777777777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "urban park in Astana, Kazakhstan"
@@ -26208,6 +27335,14 @@
       }
     },
     "Q21282762": {
+      "aliases": {
+        "en": [
+          {
+            "value": "Segafredo"
+          }
+        ]
+      },
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "Italian coffee roasting company"
@@ -26258,8 +27393,40 @@
       }
     },
     "Q1454511": {
+      "aliases": {},
+      "claims": {
+        "P18": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": "Этно-мемориальный комплекс «Карта Казахстана Атамекен».JPG"
+              }
+            },
+            "rank": "normal"
+          }
+        ],
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.14937,
+                  "longitude": 71.417838,
+                  "altitude": null,
+                  "precision": 0.00000277777777778,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {},
       "labels": {
+        "kk": {
+          "value": "Атамекен (мұражай)"
+        },
         "en": {
           "value": "Atameken miniature park"
         }
@@ -26284,6 +27451,34 @@
       }
     },
     "Q1804795": {
+      "aliases": {
+        "ru": [
+          {
+            "value": "Министр сельского хозяйства Республики Казахстан"
+          },
+          {
+            "value": "Министерство сельского хозяйства Казахстана"
+          }
+        ]
+      },
+      "claims": {
+        "P625": [
+          {
+            "mainsnak": {
+              "datavalue": {
+                "value": {
+                  "latitude": 51.16444444,
+                  "longitude": 71.42416667,
+                  "altitude": null,
+                  "precision": 0.00001,
+                  "globe": "http://www.wikidata.org/entity/Q2"
+                }
+              }
+            },
+            "rank": "normal"
+          }
+        ]
+      },
       "descriptions": {
         "en": {
           "value": "Kazakh ministry responsible for agriculture"
@@ -26292,6 +27487,9 @@
       "labels": {
         "ru": {
           "value": "Министерство сельского хозяйства Республики Казахстан"
+        },
+        "kk": {
+          "value": "Қазақстан Республикасының Ауыл шаруашылығы министрлігі"
         },
         "en": {
           "value": "Ministry of Agriculture"
@@ -26325,6 +27523,14 @@
       }
     },
     "Q62075311": {
+      "aliases": {
+        "en": [
+          {
+            "value": "OB"
+          }
+        ]
+      },
+      "claims": {},
       "descriptions": {
         "en": {
           "value": "global seafood restaurant chain originating in South Africa"
