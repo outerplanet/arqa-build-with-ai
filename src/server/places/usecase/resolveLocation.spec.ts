@@ -35,10 +35,51 @@ describe('landmark resolution against the committed collection', () => {
 		});
 	});
 	it.each(['Нур Алем', 'Нұр Әлем', 'Nur Alem'])('does not substitute EXPO for the missing museum: %s', (text) => {
-		expect(resolveLocation(context(), { text })).toMatchObject({ found: false, point: null });
+		const withoutMuseum = dataset.filter((item) => item.id !== 'osm:way/454857501');
+		expect(resolveLocation(context(withoutMuseum), { text })).toMatchObject({ found: false, point: null });
+	});
+	it.each(['Нур Алем', 'Нұр Әлем', 'Nur Alem', 'Alem.ai', 'Alem.ai Международный центр искусственного интеллекта'])(
+		'resolves the historical or current name to the confirmed OSM identity: %s',
+		(text) => {
+			const museum = place('osm:way/454857501');
+			expect(resolveLocation(context(), { text })).toMatchObject({
+				found: true,
+				label: museum.name,
+				matchedPlaceId: museum.id,
+				point: { lat: 51.089, lon: 71.416 },
+			});
+		},
+	);
+	it('anchors the historical alias in the preserved OSM identity history', () => {
+		const history = JSON.parse(readFileSync('data/nur-alem-history.json', 'utf8')) as {
+			sourceUrl: string;
+			versions: { id: number; tags: Record<string, string>; version: number }[];
+		};
+		expect(history.sourceUrl).toBe('https://api.openstreetmap.org/api/0.6/way/454857501/history.json');
+		for (const version of [11, 12]) {
+			expect(history.versions.find((item) => item.version === version)).toMatchObject({
+				id: 454857501,
+				tags: { 'name:ru': 'Музей Нур Алем' },
+			});
+		}
+	});
+	it('does not apply historical names to an object with another ID, category, source or current name', () => {
+		const museum = place('osm:way/454857501');
+		for (const wrong of [
+			{ ...museum, id: 'osm:way/1' },
+			{ ...museum, category: 'cafe' as const },
+			{ ...museum, sourceUrl: 'https://www.openstreetmap.org/way/1' },
+			{ ...museum, name: 'EXPO' },
+		]) {
+			expect(resolveLocation(context([wrong]), { text: 'Нур Алем' }).found).toBe(false);
+			expect(resolveLocation(context([wrong]), { text: 'Alem.ai' }).found).toBe(false);
+		}
+	});
+	it('does not collapse the museum, site and quarter into one vague EXPO location', () => {
+		expect(resolveLocation(context(), { text: 'Я у Экспо 2017' })).toMatchObject({ found: false, point: null });
 	});
 	it('still resolves the actual generic EXPO object when the user names EXPO', () => {
-		expect(resolveLocation(context(), { text: 'Я у Экспо 2017' })).toMatchObject({
+		expect(resolveLocation(context([place('osm:way/454853233')]), { text: 'Я у Экспо 2017' })).toMatchObject({
 			found: true,
 			matchedPlaceId: 'osm:way/454853233',
 		});

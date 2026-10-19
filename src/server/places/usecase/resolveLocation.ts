@@ -10,6 +10,7 @@ import 'server-only';
 import { type z } from 'zod';
 import { dependencies, type PlacesContext } from './context';
 import {
+	ALEM_AI_ALIASES,
 	BAYTEREK_ALIASES,
 	EXPO_ALIASES,
 	LANDMARKS,
@@ -23,6 +24,18 @@ import { roundLocation } from './origin';
 function named(place: Place, aliases: readonly string[]): boolean {
 	return [place.name, place.nameEn ?? ''].some((name) =>
 		aliases.some((alias) => normalizeLocation(name) === normalizeLocation(alias)),
+	);
+}
+
+function historicalMuseum(place: Place): boolean {
+	// data/nur-alem-history.json preserves OSM way 454857501 versions 11–12:
+	// name:ru="Музей Нур Алем". Version 15 names the SAME object Alem.ai.
+	// Resolve the historical identity only; use its current dataset label and coordinates.
+	return (
+		place.id === 'osm:way/454857501' &&
+		place.sourceUrl === 'https://www.openstreetmap.org/way/454857501' &&
+		place.category === 'museum' &&
+		named(place, ALEM_AI_ALIASES)
 	);
 }
 
@@ -54,7 +67,7 @@ export function resolveLocation(
 	if (ctx.userMessages !== undefined && !ctx.userMessages.some((message) => mentions(message, text))) {
 		throw new DomainError('validation', { constraint: 'location_unconfirmed' });
 	}
-	const explicitMuseum = NUR_ALEM_ALIASES.some((alias) => mentions(text, alias));
+	const explicitMuseum = [...NUR_ALEM_ALIASES, ...ALEM_AI_ALIASES].some((alias) => mentions(text, alias));
 	const groups = LANDMARKS.filter(
 		(aliases) => aliases.some((alias) => mentions(text, alias)) && !(explicitMuseum && aliases === EXPO_ALIASES),
 	);
@@ -65,9 +78,11 @@ export function resolveLocation(
 			.readPlaces()
 			.filter((place) => {
 				if (groups.length > 0) {
-					return groups.some(
-						(aliases) => named(place, aliases) && (aliases !== BAYTEREK_ALIASES || place.category === 'monument'),
-					);
+					return groups.some((aliases) => {
+						if (aliases === ALEM_AI_ALIASES) return historicalMuseum(place);
+						if (aliases === NUR_ALEM_ALIASES && historicalMuseum(place)) return true;
+						return named(place, aliases) && (aliases !== BAYTEREK_ALIASES || place.category === 'monument');
+					});
 				}
 				return [place.name, place.nameEn ?? ''].filter(Boolean).some((name) => mentions(text, name));
 			}),
