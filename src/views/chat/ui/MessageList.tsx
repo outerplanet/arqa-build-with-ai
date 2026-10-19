@@ -1,11 +1,10 @@
 'use client';
 
 import { type ChatMessage } from '@server/agent/model/agent.schema';
-import { parseInlineMarkdown } from '@shared/lib';
 import { Avatar } from '@shared/ui/Avatar';
 import clsx from 'clsx';
-import { Fragment, useEffect, useRef } from 'react';
-import { splitLinks } from '../model/links';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { AssistantText } from './AssistantText';
 
 /** The agent is thinking: same bubble geometry as a real reply, so the column does not jump. */
 function PendingBubble() {
@@ -14,8 +13,8 @@ function PendingBubble() {
 			<Avatar colorKey="agent" name="Ассистент" size="sm" />
 
 			<div className="bg-surface border-border max-w-[80%] rounded-lg rounded-bl-none border px-3 py-2">
-				<div className="flex gap-1" role="status">
-					<span className="sr-only">Ассистент работает</span>
+				<div className="flex items-center gap-2" role="status">
+					<span className="text-fg-muted text-sm">Ищу места и проверяю часы работы</span>
 					<span className="bg-fg-subtle size-1.5 animate-pulse rounded-full" />
 					<span className="bg-fg-subtle size-1.5 animate-pulse rounded-full [animation-delay:150ms]" />
 					<span className="bg-fg-subtle size-1.5 animate-pulse rounded-full [animation-delay:300ms]" />
@@ -25,58 +24,16 @@ function PendingBubble() {
 	);
 }
 
-/** Plain text with its allow-listed Markdown links turned into real anchors. */
-function LinkedText({ text }: { text: string }) {
-	return splitLinks(text).map((part, index) =>
-		part.kind === 'link' ? (
-			<a
-				className="text-accent-fg underline underline-offset-2 hover:no-underline"
-				href={part.href}
-				key={`p-${String(index)}`}
-				rel="noopener noreferrer"
-				target="_blank"
-			>
-				{part.text}
-			</a>
-		) : (
-			<Fragment key={`p-${String(index)}`}>{part.text}</Fragment>
-		),
-	);
-}
-
-/**
- * An assistant reply with its light Markdown applied. Only the assistant's text goes through
- * this: what the user typed is shown exactly as typed. Lines are rejoined with a newline and the
- * bubble keeps `whitespace-pre-wrap`, so the paragraph breaks the model wrote survive.
- */
-function AssistantText({ content }: { content: string }) {
-	return parseInlineMarkdown(content).map((line, lineIndex) => {
-		const segments = line.segments.map((segment, segmentIndex) =>
-			segment.bold ? (
-				<strong className="font-semibold" key={`s-${String(segmentIndex)}`}>
-					<LinkedText text={segment.text} />
-				</strong>
-			) : (
-				<LinkedText key={`s-${String(segmentIndex)}`} text={segment.text} />
-			),
-		);
-
-		return (
-			<Fragment key={`l-${String(lineIndex)}`}>
-				{lineIndex > 0 && '\n'}
-				{line.heading ? <strong className="font-semibold">{segments}</strong> : segments}
-			</Fragment>
-		);
-	});
-}
-
 export interface MessageListProps {
 	emptyHint: string;
 	messages: readonly ChatMessage[];
 	pending: boolean;
+	/** The structured rendering of the reply at `replyIndex`; null keeps the plain bubble. */
+	reply: ReactNode;
+	replyIndex: number;
 }
 
-export function MessageList({ emptyHint, messages, pending }: MessageListProps) {
+export function MessageList({ emptyHint, messages, pending, reply, replyIndex }: MessageListProps) {
 	const endRef = useRef<HTMLLIElement>(null);
 
 	// Follow the conversation: a new message or the thinking bubble brings the end into view.
@@ -86,7 +43,7 @@ export function MessageList({ emptyHint, messages, pending }: MessageListProps) 
 
 	if (messages.length === 0 && !pending) {
 		return (
-			<div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 py-10 text-center">
+			<div className="flex flex-1 flex-col items-center justify-center gap-1 px-6 py-8 text-center">
 				<p className="text-fg font-medium">Начните разговор</p>
 				<p className="text-fg-muted text-sm">{emptyHint}</p>
 			</div>
@@ -94,27 +51,35 @@ export function MessageList({ emptyHint, messages, pending }: MessageListProps) 
 	}
 
 	return (
-		<ul className="flex flex-1 flex-col gap-3 overflow-y-auto px-1 py-2">
+		<ul className="flex flex-1 flex-col gap-4 py-2">
 			{messages.map((message, index) => {
 				const mine = message.role === 'user';
+				const rich = !mine && index === replyIndex && reply !== null;
 
 				return (
 					<li
-						className={clsx('flex items-end gap-2', mine && 'flex-row-reverse')}
+						className={clsx('flex items-start gap-2', mine && 'flex-row-reverse')}
 						key={`${message.role}-${String(index)}`}
 					>
-						<Avatar colorKey={mine ? 'you' : 'agent'} name={mine ? 'Вы' : 'Ассистент'} size="sm" />
+						{/* A phone needs the avatar's width for the place cards more than it needs the avatar. */}
+						<span className={clsx('shrink-0', rich && 'hidden sm:block')}>
+							<Avatar colorKey={mine ? 'you' : 'agent'} name={mine ? 'Вы' : 'Ассистент'} size="sm" />
+						</span>
 
-						<div
-							className={clsx(
-								'max-w-[80%] min-w-0 rounded-lg px-3 py-2 text-sm wrap-anywhere whitespace-pre-wrap',
-								mine
-									? 'bg-accent text-on-accent rounded-br-none'
-									: 'bg-surface text-fg border-border rounded-bl-none border',
-							)}
-						>
-							{mine ? message.content : <AssistantText content={message.content} />}
-						</div>
+						{rich ? (
+							<div className="min-w-0 flex-1">{reply}</div>
+						) : (
+							<div
+								className={clsx(
+									'max-w-[85%] min-w-0 rounded-lg px-3 py-2 text-base wrap-anywhere whitespace-pre-wrap',
+									mine
+										? 'bg-accent text-on-accent rounded-tr-none'
+										: 'bg-surface text-fg border-border rounded-tl-none border',
+								)}
+							>
+								{mine ? message.content : <AssistantText content={message.content} />}
+							</div>
+						)}
 					</li>
 				);
 			})}

@@ -1,20 +1,25 @@
 'use client';
 
-import { MapPinIcon } from '@heroicons/react/24/outline';
+import { CATEGORY_GROUP_ICON } from '@entities/place/model/category';
+import { MapIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { Callout } from '@shared/ui/Callout';
 import { Card } from '@shared/ui/Card';
 import { PlacesMap } from '@widgets/placesMap';
-import { useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { buildPlaceCards, summariseReply } from '../model/reply';
 import { readPlacesResults } from '../model/results';
 import { SCENARIOS } from '../model/scenarios';
 import { useChat } from '../model/useChat';
 import { AgentActivity } from './AgentActivity';
+import { AssistantReply } from './AssistantReply';
+import { CATEGORY_TILE } from './categoryClasses';
 import { Composer } from './Composer';
 import { LocationControl } from './LocationControl';
 import { MessageList } from './MessageList';
-import { PlaceCards } from './PlaceCards';
+import { PlaceList } from './PlaceList';
 
 export interface ChatScreenProps {
 	demoMode?: boolean;
@@ -24,19 +29,44 @@ export interface ChatScreenProps {
 	title?: string;
 }
 
+/** The map sits beside the chat from this width; below it the map is above and must be scrolled to. */
+const SIDE_BY_SIDE = '(min-width: 1280px)';
+
 export function ChatScreen({
 	demoMode = false,
-	emptyHint = 'Расскажите, где вы сейчас и сколько времени есть на прогулку.',
+	emptyHint = 'Выберите пример выше или напишите, где вы и сколько у вас времени.',
 	placeholder = 'Например: я возле Mega Silk Way, хочу прогуляться 30–60 минут…',
-	subtitle = 'Места рядом, время пешком и честные сведения из открытых городских данных.',
+	subtitle = 'Скажите, где вы и чего хочется, — подберу 1–3 места рядом: сколько идти, почему туда и честно про часы работы.',
 	title = 'Куда пойдём в Астане?',
 }: ChatScreenProps) {
-	const { error, location, messages, recommendedPlaceIds, retry, send, setLocation, status, toolCalls } = useChat();
+	const {
+		error,
+		location,
+		messages,
+		recommendations,
+		recommendedPlaceIds,
+		replyIndex,
+		retry,
+		send,
+		setLocation,
+		status,
+		toolCalls,
+	} = useChat();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const mapRef = useRef<HTMLDivElement>(null);
 	const pending = status === 'sending';
 	const { candidates, plan, search, walkingRoute } = useMemo(
 		() => readPlacesResults(toolCalls, recommendedPlaceIds),
 		[recommendedPlaceIds, toolCalls],
+	);
+	const replyText = messages[replyIndex]?.role === 'assistant' ? messages[replyIndex].content : '';
+	const cards = useMemo(
+		() => buildPlaceCards({ candidates, recommendations, reply: replyText, walkingRoute }),
+		[candidates, recommendations, replyText, walkingRoute],
+	);
+	const summary = useMemo(
+		() => summariseReply({ count: cards.length, plan, reply: replyText, search, walkingRoute }),
+		[cards.length, plan, replyText, search, walkingRoute],
 	);
 	const origin =
 		walkingRoute?.status === 'available'
@@ -44,65 +74,114 @@ export function ChatScreen({
 			: (search?.origin.point ?? plan?.legs[0]?.from ?? null);
 	const activeId = candidates.some((candidate) => candidate.place.id === selectedId) ? selectedId : null;
 
+	const showOnMap = useCallback((id: string) => {
+		setSelectedId(id);
+		// On a phone the map is above the conversation: bring it into view, or the tap looks dead.
+		if (!window.matchMedia(SIDE_BY_SIDE).matches)
+			mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}, []);
+
+	const richReply =
+		search !== null || plan !== null ? (
+			<AssistantReply
+				cards={cards}
+				disabled={pending}
+				locationLabel={search?.origin.label ?? null}
+				onShow={showOnMap}
+				reply={replyText}
+				selectedId={activeId}
+				summary={summary}
+			/>
+		) : null;
+
 	return (
 		<div className="flex flex-col gap-5">
-			<div className="flex items-start gap-3">
-				<div className="bg-accent-subtle text-accent-fg flex size-12 shrink-0 items-center justify-center rounded-lg">
-					<MapPinIcon aria-hidden className="size-6" />
+			{/* A two-stop tint of the semantic accent ground: decoration that follows the theme. */}
+			<section
+				aria-labelledby="hero-title"
+				className="border-border from-accent-subtle via-surface to-surface flex flex-col gap-5 rounded-lg border bg-linear-to-br p-5 md:p-7"
+			>
+				<div className="flex items-start gap-4">
+					<div className="bg-accent text-on-accent hidden size-14 shrink-0 items-center justify-center rounded-lg sm:flex">
+						<MapIcon aria-hidden className="size-7" />
+					</div>
+					<div className="min-w-0">
+						<div className="flex flex-wrap items-center gap-2">
+							<p className="text-accent-fg text-xs font-semibold tracking-wider uppercase">Прогулки по Астане</p>
+							{demoMode && <Badge tone="warning">Демонстрационный режим</Badge>}
+						</div>
+						<h1 className="text-fg mt-1 text-2xl leading-tight font-bold md:text-3xl" id="hero-title">
+							{title}
+						</h1>
+						<p className="text-fg-muted text-md mt-2 max-w-2xl">{subtitle}</p>
+					</div>
 				</div>
-				<div>
-					<p className="text-accent-fg mb-1 text-xs font-medium">ПРОГУЛКИ ПО АСТАНЕ</p>
-					<h1 className="text-fg text-2xl font-semibold">{title}</h1>
-					<p className="text-fg-muted mt-1 text-sm">{subtitle}</p>
-					{demoMode && <Badge tone="warning">Демонстрационный режим</Badge>}
-				</div>
-			</div>
 
-			<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-				<div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
-					<Card
-						className="min-h-[32rem] shrink-0"
-						description="Укажите ориентир, интересы и время — ассистент проверит подходящие места"
-						title="Ваша прогулка"
-					>
-						<LocationControl disabled={pending} location={location} onChange={setLocation} />
-						{messages.length === 0 && (
-							<div className="flex flex-col gap-2">
-								<p className="text-fg-muted text-xs" id="scenario-hint">
-									Примеры из кейса — нажмите, чтобы отправить. Запросы со значком{' '}
-									<MapPinIcon aria-hidden className="inline size-3.5 align-text-bottom" /> ищут места рядом с
-									вами: сначала нажмите «Использовать мою геолокацию» или напишите ориентир сами.
-								</p>
-								<div
-									aria-describedby="scenario-hint"
-									aria-label="Примеры запросов"
-									className="flex flex-wrap gap-2"
-									role="group"
-								>
-									{SCENARIOS.map((scenario) => (
+				<LocationControl disabled={pending} location={location} onChange={setLocation} />
+
+				{messages.length === 0 && (
+					<div className="flex flex-col gap-2">
+						<p className="text-fg-muted text-sm" id="scenario-hint">
+							Примеры из кейса — нажмите, чтобы отправить. Со значком{' '}
+							<MapPinIcon aria-hidden className="inline size-3.5 align-text-bottom" /> ищут рядом с вами: сначала
+							включите геолокацию или напишите ориентир.
+						</p>
+						<ul
+							aria-describedby="scenario-hint"
+							aria-label="Примеры запросов"
+							className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+						>
+							{SCENARIOS.map((scenario) => {
+								const Icon = CATEGORY_GROUP_ICON[scenario.group];
+								return (
+									<li className="flex" key={scenario.query}>
 										<Button
-											// `!`: Button joins classes with clsx, not a merger, so its own
-											// `whitespace-nowrap h-9` would otherwise win and a long chip overflows.
-											className="h-auto! min-h-10 max-w-full justify-start py-2 text-left whitespace-normal!"
+											className="h-auto w-full items-start justify-start gap-3 rounded-lg p-3 text-left whitespace-normal"
 											disabled={pending}
-											key={scenario.query}
 											onClick={() => send(scenario.query)}
 											variant="secondary"
 										>
-											{scenario.needsLocation && (
-												<>
-													<MapPinIcon aria-hidden className="size-4 shrink-0" />
-													<span className="sr-only">Нужна геолокация: </span>
-												</>
-											)}
-											{scenario.query}
+											<span
+												aria-hidden
+												className={clsx(
+													'flex size-10 shrink-0 items-center justify-center rounded-md',
+													CATEGORY_TILE[scenario.group],
+												)}
+											>
+												<Icon className="size-5" />
+											</span>
+											<span className="flex min-w-0 flex-col gap-0.5">
+												<span className="text-fg flex items-center gap-1 font-semibold">
+													{scenario.title}
+													{scenario.needsLocation && (
+														<>
+															<MapPinIcon aria-hidden className="text-fg-subtle size-3.5 shrink-0" />
+															<span className="sr-only">(нужна геолокация)</span>
+														</>
+													)}
+												</span>
+												<span className="text-fg-muted text-sm font-normal">{scenario.query}</span>
+											</span>
 										</Button>
-									))}
-								</div>
-							</div>
-						)}
+									</li>
+								);
+							})}
+						</ul>
+					</div>
+				)}
+			</section>
+
+			<div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+				<div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
+					<Card className="min-h-[24rem] shrink-0" title="Ваша прогулка">
 						<div className="flex min-h-0 flex-1 flex-col gap-3">
-							<MessageList emptyHint={emptyHint} messages={messages} pending={pending} />
+							<MessageList
+								emptyHint={emptyHint}
+								messages={messages}
+								pending={pending}
+								reply={richReply}
+								replyIndex={replyIndex}
+							/>
 							{error !== null && (
 								<Callout tone="danger">
 									<div className="flex flex-wrap items-center gap-2">
@@ -113,82 +192,51 @@ export function ChatScreen({
 									</div>
 								</Callout>
 							)}
+							{candidates.length > 0 && plan === null && (
+								<Button
+									className="self-start"
+									disabled={pending}
+									onClick={() => send('Построй пеший маршрут на 2 часа.')}
+									variant="secondary"
+								>
+									Построить маршрут на 2 часа
+								</Button>
+							)}
 							<Composer disabled={pending} onSend={send} placeholder={placeholder} />
 						</div>
 					</Card>
 					<AgentActivity pending={pending} toolCalls={toolCalls} />
 				</div>
-				<div className="order-1 flex min-w-0 flex-col gap-4 xl:order-2">
-					<PlacesMap
-						candidates={candidates}
-						error={error}
-						onSelect={setSelectedId}
-						origin={origin}
-						pending={pending}
-						plan={plan}
-						selectedId={activeId}
-						walkingRoute={walkingRoute}
-					/>
-					{search && (
-						<div className="text-fg-muted text-xs">
-							<p>
-								Точка: {search.origin.label ?? 'переданная геолокация'} ·{' '}
-								{search.origin.source === 'browser' ? 'из браузера' : 'из вашего сообщения'}
-							</p>
-							{search.usedFilters.length > 0 && (
-								<p className="mt-1">Фильтры: {search.usedFilters.join(' · ')}</p>
-							)}
-							{search.note && <p className="mt-1">{search.note}</p>}
-						</div>
-					)}
-					{candidates.length > 0 && plan === null && (
-						<Button
-							disabled={pending}
-							onClick={() => send('Построй пеший маршрут на 2 часа.')}
-							variant="secondary"
-						>
-							Маршрут на 2 часа
-						</Button>
-					)}
-					{plan !== null && plan.stops.length > 0 && (
-						<Callout>
-							<p className="font-medium">
-								{walkingRoute?.status === 'available' ? 'Маршрут' : 'Предварительная оценка'}:{' '}
-								{plan.stops.length} {plan.stops.length === 1 ? 'остановка' : 'остановки'} · ≈{' '}
-								{Math.ceil(
-									walkingRoute?.status === 'available' ? walkingRoute.totalMinutes : plan.totalMinutes,
-								)}{' '}
-								мин
-							</p>
-							<p className="mt-1 text-sm">Включая переходы и посещения. {plan.note}</p>
-							<p className="mt-1 text-sm">
-								{walkingRoute?.status === 'available'
-									? `${Math.round(walkingRoute.distanceM)} м по дорожкам · ≈ ${Math.ceil(walkingRoute.walkMinutes)} мин пешком.`
-									: 'Пешеходный путь не проверен; навигационная линия не показана.'}
-							</p>
-						</Callout>
-					)}
-					<div className="hidden xl:block">
-						<PlaceCards
+
+				<div className="order-1 flex min-w-0 flex-col gap-3 xl:sticky xl:top-4 xl:order-2 xl:self-start">
+					<div className="scroll-mt-4" ref={mapRef}>
+						<PlacesMap
 							candidates={candidates}
 							error={error}
-							onRetry={retry}
 							onSelect={setSelectedId}
+							origin={origin}
 							pending={pending}
+							plan={plan}
 							selectedId={activeId}
 							walkingRoute={walkingRoute}
 						/>
 					</div>
-				</div>
-				<div className="order-3 min-w-0 xl:hidden">
-					<PlaceCards
-						candidates={candidates}
+					{plan !== null && plan.stops.length > 0 && (
+						<Callout>
+							<p className="font-medium">
+								{walkingRoute?.status === 'available' ? 'Маршрут' : 'Предварительная оценка'}:{' '}
+								{walkingRoute?.status === 'available'
+									? `${String(Math.round(walkingRoute.distanceM))} м по дорожкам · ≈ ${String(Math.ceil(walkingRoute.walkMinutes))} мин пешком`
+									: 'пешеходный путь не проверен; навигационная линия не показана'}
+							</p>
+						</Callout>
+					)}
+					<PlaceList
+						cards={cards}
 						error={error}
-						onRetry={retry}
 						onSelect={setSelectedId}
 						pending={pending}
 						selectedId={activeId}
-						walkingRoute={walkingRoute}
 					/>
 				</div>
 			</div>

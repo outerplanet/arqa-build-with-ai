@@ -1,3 +1,4 @@
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { ChatScreen } from '@pages/chat';
 import { readEnv } from '@server/kernel/env';
 import { ThemeToggle } from '@shared/ui/ThemeToggle';
@@ -11,9 +12,10 @@ export default function HomePage() {
 		<ToastProvider>
 			<div className="bg-canvas text-fg min-h-screen">
 				<header className="border-border bg-surface border-b">
-					<div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-3 md:px-6">
-						<p className="text-fg font-semibold">
-							Прогулки по Астане{' '}
+					<div className="mx-auto flex min-h-14 max-w-[1600px] items-center justify-between gap-4 px-4 md:px-6">
+						<p className="text-fg flex items-center gap-2 font-semibold">
+							<MapPinIcon aria-hidden className="text-accent-fg size-5" />
+							Прогулки по Астане
 							<span className="text-fg-muted hidden text-xs font-normal sm:inline">
 								· Город ближе, чем кажется
 							</span>
@@ -21,11 +23,23 @@ export default function HomePage() {
 						<ThemeToggle />
 					</div>
 				</header>
-				<main className="mx-auto max-w-[1600px] p-3 md:p-6">
+				<main className="mx-auto max-w-[1600px] px-4 py-4 md:p-6">
 					<ChatScreen demoMode={readEnv().LLM_PROVIDER === 'mock'} />
 				</main>
-				<footer className="text-fg-muted mx-auto max-w-[1600px] px-3 pb-6 text-xs md:px-6">
-					© участники OpenStreetMap · Wikidata · Расстояния приблизительные. Проверяйте часы работы перед выходом.
+				<footer className="border-border text-fg-muted mx-auto flex max-w-[1600px] flex-col gap-1 border-t px-4 py-5 text-xs md:px-6">
+					<p>
+						Данные: ©{' '}
+						<a
+							className="hover:text-fg underline underline-offset-2"
+							href="https://www.openstreetmap.org/copyright"
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							участники OpenStreetMap
+						</a>
+						, Wikidata; фото — Wikimedia Commons. Снимок данных: 19.10.2026.
+					</p>
+					<p>Расстояния и время приблизительные. Проверяйте часы работы перед выходом.</p>
 				</footer>
 			</div>
 		</ToastProvider>

@@ -8,6 +8,7 @@ import {
 } from '@server/agent/model/agent.schema';
 import { type GeoPoint } from '@server/places/model/places.schema';
 import { useCallback, useRef, useState } from 'react';
+import { type Recommendation } from './reply';
 import { createChatRequest, normalizeLocation } from './request';
 
 /**
@@ -26,7 +27,10 @@ export interface UseChat {
 	error: string | null;
 	location: GeoPoint | null;
 	messages: readonly ChatMessage[];
+	recommendations: readonly Recommendation[];
 	recommendedPlaceIds: readonly string[];
+	/** Index in `messages` of the reply the current tool calls belong to; -1 before the first. */
+	replyIndex: number;
 	retry: () => void;
 	send: (content: string) => void;
 	setLocation: (point: GeoPoint | null) => void;
@@ -38,6 +42,8 @@ export function useChat(): UseChat {
 	const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
 	const [recommendedPlaceIds, setRecommendedPlaceIds] = useState<readonly string[]>([]);
+	const [recommendations, setRecommendations] = useState<readonly Recommendation[]>([]);
+	const [replyIndex, setReplyIndex] = useState(-1);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
 	const [location, setLocation] = useState<GeoPoint | null>(null);
@@ -90,6 +96,8 @@ export function useChat(): UseChat {
 			setMessages([...request.messages, { content: parsed.data.reply, role: 'assistant' }]);
 			setToolCalls(parsed.data.toolCalls);
 			setRecommendedPlaceIds(parsed.data.recommendedPlaceIds ?? []);
+			setRecommendations(parsed.data.recommendations ?? []);
+			setReplyIndex(request.messages.length);
 			setStatus('idle');
 		} catch (cause) {
 			// The user's message stays in the transcript, so retry resends it rather than making
@@ -120,7 +128,9 @@ export function useChat(): UseChat {
 		error,
 		location,
 		messages,
+		recommendations,
 		recommendedPlaceIds,
+		replyIndex,
 		retry,
 		send,
 		setLocation: updateLocation,
