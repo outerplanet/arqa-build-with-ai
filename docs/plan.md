@@ -154,7 +154,7 @@ GetPlaceInput = { id: string }  →  Place
 
 `RankInput = { places; origin: GeoPoint; at: Date; maxWalkMinutes; categories?; accessibleOnly?;
 semantic: Map<string, number>; limit }`. Usecase Саяна считает `semantic` (косинус с эмбеддингом
-запроса, а без ключа — `lexicalScores`) и передаёт в `rankPlaces`.
+запроса; при недоступной модели или несовместимом индексе — `lexicalScores`) и передаёт в `rankPlaces`.
 
 ---
 

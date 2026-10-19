@@ -57,6 +57,7 @@ function fixture(): { ctx: PlacesContext; deps: PlacesDependencies } {
 
 beforeEach(() => {
 	vi.stubEnv('LLM_PROVIDER', 'mock');
+	vi.stubEnv('EMBEDDING_PROVIDER', 'openai');
 	resetEnvCache();
 });
 afterEach(() => {
