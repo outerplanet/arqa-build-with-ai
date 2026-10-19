@@ -150,8 +150,8 @@
     "lon": 71.4280501,
     "address": null,
     "category": "cafe",
-    "description": null,
-    "descriptionSource": null,
+    "description": "Сеть Starbucks: американская мультинациональная кофейная компания",
+    "descriptionSource": "wikidata",
     "id": "osm:node/10170946741",
     "name": "Starbucks",
     "nameEn": "Starbucks",
@@ -200,20 +200,22 @@
     "wheelchair": null
   },
   {
-    "lat": 51.1289248,
-    "lon": 71.4220016,
+    "lat": 51.0597904,
+    "lon": 71.4237057,
     "address": null,
     "category": "playground",
     "description": null,
     "descriptionSource": null,
-    "id": "osm:node/2691137163",
-    "name": "Gymboree",
+    "id": "osm:node/10972819071",
+    "name": "Детская площадка, улица Амандык",
     "nameEn": null,
     "openingHours": null,
     "phone": null,
     "popularity": null,
-    "sourceUrl": "https://www.openstreetmap.org/node/2691137163",
-    "tags": [],
+    "sourceUrl": "https://www.openstreetmap.org/node/10972819071",
+    "tags": [
+      "kids"
+    ],
     "website": null,
     "wheelchair": null
   },
@@ -236,22 +238,22 @@
     "wheelchair": null
   },
   {
-    "lat": 51.1584852,
-    "lon": 71.4287068,
+    "lat": 51.183578,
+    "lon": 71.4081778,
     "address": null,
     "category": "theatre",
     "description": null,
     "descriptionSource": null,
-    "id": "osm:node/2349675581",
-    "name": "Театр кукол",
+    "id": "osm:node/12125755601",
+    "name": "Sayajay аrt",
     "nameEn": null,
     "openingHours": null,
     "phone": null,
     "popularity": null,
-    "sourceUrl": "https://www.openstreetmap.org/node/2349675581",
+    "sourceUrl": "https://www.openstreetmap.org/node/12125755601",
     "tags": [],
     "website": null,
-    "wheelchair": null
+    "wheelchair": "no"
   },
   {
     "lat": 51.154109,

@@ -9,21 +9,26 @@
     51.25,
     71.65
   ],
+  "brandDescriptions": {
+    "count": 45,
+    "fraction": 0.036,
+    "percent": 3.6
+  },
   "byCategory": {
-    "cafe": 305,
+    "cafe": 306,
     "restaurant": 168,
     "fast_food": 118,
     "bar": 89,
     "nightclub": 3,
     "museum": 9,
     "gallery": 2,
-    "theatre": 9,
+    "theatre": 15,
     "cinema": 9,
-    "park": 35,
+    "park": 34,
     "garden": 3,
-    "playground": 1,
-    "viewpoint": 0,
-    "attraction": 16,
+    "playground": 283,
+    "viewpoint": 1,
+    "attraction": 17,
     "monument": 36,
     "artwork": 13,
     "mall": 51,
@@ -32,51 +37,75 @@
     "theme_park": 1,
     "sports": 28,
     "place_of_worship": 17,
-    "other": 170
+    "other": 39
   },
-  "collectedAt": "2026-10-19T10:19:33.838Z",
+  "byTag": {
+    "free": 1,
+    "kids": 284,
+    "outdoor_seating": 39,
+    "view": 1,
+    "wheelchair": 42,
+    "wifi": 37
+  },
+  "collectedAt": "2026-10-19T12:44:19.085Z",
   "descriptions": {
-    "count": 20,
-    "fraction": 0.01833180568285976,
-    "percent": 1.83
+    "count": 67,
+    "fraction": 0.0536,
+    "percent": 5.36
   },
-  "duplicatesRemoved": 9,
+  "duplicatesByRule": {
+    "same_name": 61,
+    "cross_language": 1
+  },
+  "duplicatesRemoved": 62,
   "endpoint": "https://overpass-api.de/api/interpreter",
+  "excluded": {
+    "tourism=hotel": 110,
+    "tourism=apartment": 8,
+    "tourism=hostel": 10,
+    "tourism=chalet": 1,
+    "tourism=guest_house": 2,
+    "private_playground": 1
+  },
   "failedWikidataBatches": 0,
+  "generatedNames": 283,
   "limitations": [
-    "Выборка именованных POI в bbox, не полный реестр Астаны.",
-    "Наличие opening_hours не означает проверенную актуальность или статус «открыто».",
-    "Описания могут быть краткими. Популярность из числа sitelinks, не пользовательский рейтинг."
+    "Выборка POI в bbox, не полный реестр Астаны. Гостиницы и посуточная аренда исключены.",
+    "Безымянные детские и смотровые площадки названы шаблоном «Детская/Смотровая площадка, <ближайшая улица OSM ≤150 м>».",
+    "Наличие opening_hours не означает проверенную актуальность или статус «открыто»; тег night не ставится статически.",
+    "Описания могут быть краткими; «Сеть …» — описание бренда из Wikidata, не филиала. Популярность из числа sitelinks."
   ],
   "openingHours": {
-    "count": 342,
-    "fraction": 0.31347387717690195,
-    "percent": 31.35
+    "count": 323,
+    "fraction": 0.2584,
+    "percent": 25.84
   },
-  "osmBaseTimestamp": "2026-10-19T10:18:05Z",
+  "osmBaseTimestamp": "2026-10-19T12:42:36Z",
   "osmDescriptions": {
     "count": 3,
-    "fraction": 0.002749770852428964,
-    "percent": 0.27
+    "fraction": 0.0024,
+    "percent": 0.24
   },
-  "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[museum][\"name\"](51.03,71.25,51.25,71.65);nwr[amenity=exhibition_centre][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[place=quarter][name~\"^(ЭКСПО-2017|EXPO-2017)$\",i][\"name\"](51.03,71.25,51.25,71.65););out center tags;",
-  "rawElements": 1101,
-  "startedAt": "2026-10-19T10:18:41.624Z",
+  "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university|arts_centre|planetarium|exhibition_centre)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[museum][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium|water_park)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[place=quarter][name~\"^(ЭКСПО-2017|EXPO-2017)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure=playground](51.03,71.25,51.25,71.65);nwr[tourism=viewpoint](51.03,71.25,51.25,71.65););out center tags;",
+  "rawElements": 1445,
+  "startedAt": "2026-10-19T12:43:10.193Z",
   "status": "complete",
-  "total": 1091,
+  "streetQuery": "[out:json][timeout:90];(nwr[leisure=playground](51.03,71.25,51.25,71.65);nwr[tourism=viewpoint](51.03,71.25,51.25,71.65););way(around:150)[highway~\"^(primary|secondary|tertiary|residential|living_street|pedestrian|unclassified)$\"][\"name\"];out tags geom;",
+  "streets": 850,
+  "total": 1250,
   "wikidataDescriptions": {
-    "count": 17,
-    "fraction": 0.015582034830430797,
-    "percent": 1.56
+    "count": 64,
+    "fraction": 0.0512,
+    "percent": 5.12
   },
   "wikidataLinked": {
-    "count": 24,
-    "fraction": 0.021998166819431713,
-    "percent": 2.2
+    "count": 23,
+    "fraction": 0.0184,
+    "percent": 1.84
   },
   "wikidataPopularity": {
-    "count": 24,
-    "fraction": 0.021998166819431713,
-    "percent": 2.2
+    "count": 23,
+    "fraction": 0.0184,
+    "percent": 1.84
   }
 }
