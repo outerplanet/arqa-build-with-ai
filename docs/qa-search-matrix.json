@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-19T12:03:53.797Z",
+  "at": "2026-10-19T12:09:11.037Z",
   "credentials": "No API keys; mock chat; offline cached local model or explicit lexical search.",
   "crossPlatformScope": "Executed on the recorded platform only; portable CLI and fallback are not evidence of a Windows/Linux execution.",
   "datasetSha256": "4a7a3ff284be2aff8beb90ffab6ec6721eb5228a66c8632888d70eb682518621",
@@ -50,7 +50,7 @@
             "arguments": {
               "text": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком."
             },
-            "durationMs": 22,
+            "durationMs": 25,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -103,7 +103,7 @@
             "arguments": {
               "text": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком."
             },
-            "durationMs": 15,
+            "durationMs": 13,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -128,7 +128,7 @@
               "maxWalkMinutes": 15,
               "query": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком."
             },
-            "durationMs": 6062,
+            "durationMs": 6603,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -231,7 +231,7 @@
             "arguments": {
               "text": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 11,
+            "durationMs": 12,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -258,7 +258,7 @@
               "maxWalkMinutes": 15,
               "query": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 5363,
+            "durationMs": 5250,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -373,7 +373,7 @@
               "maxWalkMinutes": 15,
               "query": "Хочу тихое место с кофе и розеткой недалеко от меня."
             },
-            "durationMs": 5273,
+            "durationMs": 4427,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -639,7 +639,7 @@
               "maxWalkMinutes": 15,
               "query": "Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?"
             },
-            "durationMs": 4951,
+            "durationMs": 4344,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -791,7 +791,7 @@
               "maxWalkMinutes": 15,
               "query": "Ищу необычную ночную активность на последние пару часов."
             },
-            "durationMs": 5328,
+            "durationMs": 4389,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -1055,7 +1055,7 @@
               "maxWalkMinutes": 10,
               "query": "Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком."
             },
-            "durationMs": 5603,
+            "durationMs": 4450,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -1128,7 +1128,7 @@
               "maxWalkMinutes": 15,
               "query": "Составь маршрут из двух-трёх мест на 90 минут."
             },
-            "durationMs": 4720,
+            "durationMs": 4365,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -1352,7 +1352,7 @@
                 "lon": 71.43
               }
             },
-            "durationMs": 4360,
+            "durationMs": 4343,
             "label": "Планирование прогулки",
             "name": "plan_walk",
             "result": {
@@ -1606,7 +1606,7 @@
             "arguments": {
               "text": "Я у Хан Шатыр, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 6,
+            "durationMs": 5,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -1633,7 +1633,7 @@
               "maxWalkMinutes": 15,
               "query": "Я у Хан Шатыр, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 4417,
+            "durationMs": 4326,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -1915,7 +1915,7 @@
               "maxWalkMinutes": 15,
               "query": "Я у Байтерек, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 4956,
+            "durationMs": 4360,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -2016,7 +2016,7 @@
             "arguments": {
               "text": "Я у набережной, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 6,
+            "durationMs": 5,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -2067,7 +2067,7 @@
             "arguments": {
               "text": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком."
             },
-            "durationMs": 23,
+            "durationMs": 21,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -2120,7 +2120,7 @@
             "arguments": {
               "text": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком."
             },
-            "durationMs": 14,
+            "durationMs": 13,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -2145,7 +2145,7 @@
               "maxWalkMinutes": 15,
               "query": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком."
             },
-            "durationMs": 9,
+            "durationMs": 8,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -2275,7 +2275,7 @@
               "maxWalkMinutes": 15,
               "query": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 9,
+            "durationMs": 7,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -2390,7 +2390,7 @@
               "maxWalkMinutes": 15,
               "query": "Хочу тихое место с кофе и розеткой недалеко от меня."
             },
-            "durationMs": 14,
+            "durationMs": 10,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -2656,7 +2656,7 @@
               "maxWalkMinutes": 15,
               "query": "Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?"
             },
-            "durationMs": 8,
+            "durationMs": 6,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -2808,7 +2808,7 @@
               "maxWalkMinutes": 15,
               "query": "Ищу необычную ночную активность на последние пару часов."
             },
-            "durationMs": 10,
+            "durationMs": 8,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -3072,7 +3072,7 @@
               "maxWalkMinutes": 10,
               "query": "Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком."
             },
-            "durationMs": 8,
+            "durationMs": 6,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -3145,7 +3145,7 @@
               "maxWalkMinutes": 15,
               "query": "Составь маршрут из двух-трёх мест на 90 минут."
             },
-            "durationMs": 26,
+            "durationMs": 22,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -3367,7 +3367,7 @@
                 "lon": 71.43
               }
             },
-            "durationMs": 21,
+            "durationMs": 19,
             "label": "Планирование прогулки",
             "name": "plan_walk",
             "result": {
@@ -3619,7 +3619,7 @@
             "arguments": {
               "text": "Я у Хан Шатыр, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 5,
+            "durationMs": 4,
             "label": "Определение локации",
             "name": "resolve_location",
             "result": {
@@ -3928,7 +3928,7 @@
               "maxWalkMinutes": 15,
               "query": "Я у Байтерек, хочу прогуляться 30–60 минут."
             },
-            "durationMs": 6,
+            "durationMs": 5,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -4094,7 +4094,7 @@
               "maxWalkMinutes": 15,
               "query": "Хочу тихое место с кофе и розеткой недалеко от меня."
             },
-            "durationMs": 32,
+            "durationMs": 31,
             "label": "Поиск мест",
             "name": "find_places",
             "result": {
@@ -4315,7 +4315,7 @@
   ],
   "scenarioTime": "2026-10-19T16:00:00.000Z",
   "scenarioTimeAstana": "2026-10-19 21:00:00 UTC+05:00",
-  "sourceGitCommit": "683209126653bcb44fce3fef866496d18d11fe34",
+  "sourceGitCommit": "5a2476ef901898e6a691addb9f67eb5c9d4473e9",
   "synonyms": [
     {
       "category": "cafe",
