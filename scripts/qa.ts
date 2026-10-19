@@ -89,7 +89,7 @@ const cases: Scenario[] = [
 	{
 		id: 'bayterek',
 		landmark: 'osm:way/230401645',
-		query: 'Я у Байтерек, хочу прогуляться 30–60 минут.',
+		query: 'Я у Байтерека, хочу прогуляться 30–60 минут.',
 		tools: ['resolve_location', 'find_places'],
 	},
 	{

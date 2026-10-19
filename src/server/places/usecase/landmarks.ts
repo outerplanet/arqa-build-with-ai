@@ -4,7 +4,7 @@ import 'server-only';
 export const EXPO_ALIASES = ['экспо', 'expo', 'экспо 2017', 'expo 2017'] as const;
 export const NUR_ALEM_ALIASES = ['нур алем', 'нұр әлем', 'нұр алем', 'нур әлем', 'nur alem'] as const;
 export const ALEM_AI_ALIASES = ['alem.ai', 'alem.ai международный центр искусственного интеллекта'] as const;
-export const BAYTEREK_ALIASES = ['байтерек', 'бәйтерек', 'baiterek', 'bayterek'] as const;
+export const BAYTEREK_ALIASES = ['байтерек', 'байтерека', 'бәйтерек', 'baiterek', 'bayterek'] as const;
 export const MEGA_ALIASES = ['mega silk way', 'mega silkway astana', 'мега силк вей', 'мега шелковый путь'] as const;
 
 export const LANDMARKS: readonly (readonly string[])[] = [

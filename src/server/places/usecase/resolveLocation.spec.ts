@@ -28,12 +28,15 @@ describe('landmark resolution against the committed collection', () => {
 			point: { lat: 51.089, lon: 71.407 },
 		});
 	});
-	it.each(['Байтерек', 'Baiterek', 'Бәйтерек'])('selects the monument rather than a namesake: %s', (text) => {
-		expect(resolveLocation(context(), { text })).toMatchObject({
-			found: true,
-			matchedPlaceId: 'osm:way/230401645',
-		});
-	});
+	it.each(['Байтерек', 'Я у Байтерека', 'Baiterek', 'Бәйтерек'])(
+		'selects the monument rather than a namesake: %s',
+		(text) => {
+			expect(resolveLocation(context(), { text })).toMatchObject({
+				found: true,
+				matchedPlaceId: 'osm:way/230401645',
+			});
+		},
+	);
 	it.each(['Нур Алем', 'Нұр Әлем', 'Nur Alem'])('does not substitute EXPO for the missing museum: %s', (text) => {
 		const withoutMuseum = dataset.filter((item) => item.id !== 'osm:way/454857501');
 		expect(resolveLocation(context(withoutMuseum), { text })).toMatchObject({ found: false, point: null });
