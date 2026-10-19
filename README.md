@@ -18,10 +18,11 @@ Wikidata. В ответе 1–3 места: у каждого расстояни
 
 ## Быстрый старт
 
-Нужны Node.js 22 или новее и pnpm 10 (точная версия указана в `package.json`).
+Нужны Node.js 22 или новее и pnpm 10 (точная версия указана в `package.json`). Если pnpm нет:
+`npm install -g pnpm@10` или `corepack enable`.
 
 ```bash
-git clone <ссылка на репозиторий> astana-walks
+git clone https://github.com/outerplanet/arqa-build-with-ai.git astana-walks
 cd astana-walks
 pnpm install
 cp .env.example .env        # PowerShell: Copy-Item .env.example .env
