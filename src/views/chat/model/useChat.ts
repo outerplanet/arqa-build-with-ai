@@ -1,9 +1,14 @@
 'use client';
 
-import { type ChatMessage, chatResponseSchema, type ToolCall } from '@server/agent/model/agent.schema';
+import {
+	type ChatMessage,
+	type ChatRequest,
+	chatResponseSchema,
+	type ToolCall,
+} from '@server/agent/model/agent.schema';
 import { type GeoPoint } from '@server/places/model/places.schema';
 import { useCallback, useRef, useState } from 'react';
-import { buildChatRequest } from './results';
+import { createChatRequest, normalizeLocation } from './request';
 
 /**
  * The transcript, and the one call that advances it: POST /api/chat with the whole history.
@@ -19,10 +24,11 @@ export type ChatStatus = 'error' | 'idle' | 'sending';
 
 export interface UseChat {
 	error: string | null;
+	location: GeoPoint | null;
 	messages: readonly ChatMessage[];
-	recommendedPlaceIds: readonly string[];
-	retry: (location?: GeoPoint) => void;
-	send: (content: string, location?: GeoPoint) => void;
+	retry: () => void;
+	send: (content: string) => void;
+	setLocation: (point: GeoPoint | null) => void;
 	status: ChatStatus;
 	toolCalls: readonly ToolCall[];
 }
@@ -30,17 +36,27 @@ export interface UseChat {
 export function useChat(): UseChat {
 	const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
-	const [recommendedPlaceIds, setRecommendedPlaceIds] = useState<readonly string[]>([]);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
+	const [location, updateLocation] = useState<GeoPoint | null>(null);
+	const locationRef = useRef<GeoPoint | null>(null);
+	const lastRequest = useRef<ChatRequest | null>(null);
 	const inFlight = useRef(false);
-	const lastHistory = useRef<readonly ChatMessage[] | null>(null);
 
-	const exchange = useCallback(async (history: readonly ChatMessage[], location?: GeoPoint) => {
+	const setLocation = useCallback((point: GeoPoint | null) => {
+		const rounded = normalizeLocation(point);
+		locationRef.current = rounded;
+		updateLocation(rounded);
+		// Revoking location also prevents a failed request from sending it again on retry.
+		if (rounded === null && lastRequest.current !== null) {
+			lastRequest.current = createChatRequest(lastRequest.current.messages, null);
+		}
+	}, []);
+
+	const exchange = useCallback(async (request: ChatRequest) => {
 		if (inFlight.current) return;
 		inFlight.current = true;
-		const request = buildChatRequest(history, location);
-		lastHistory.current = history;
+		lastRequest.current = request;
 		setStatus('sending');
 		setError(null);
 
@@ -69,9 +85,8 @@ export function useChat(): UseChat {
 				throw new Error('Ответ сервера не совпал с ожидаемой формой.');
 			}
 
-			setMessages([...history, { content: parsed.data.reply, role: 'assistant' }]);
+			setMessages([...request.messages, { content: parsed.data.reply, role: 'assistant' }]);
 			setToolCalls(parsed.data.toolCalls);
-			setRecommendedPlaceIds(parsed.data.recommendedPlaceIds ?? []);
 			setStatus('idle');
 		} catch (cause) {
 			// The user's message stays in the transcript, so retry resends it rather than making
@@ -84,23 +99,19 @@ export function useChat(): UseChat {
 	}, []);
 
 	const send = useCallback(
-		(content: string, location?: GeoPoint) => {
-			if (inFlight.current || content.trim().length === 0) return;
+		(content: string) => {
+			if (inFlight.current) return;
 			const history = [...messages, { content, role: 'user' as const }];
 
 			setMessages(history);
-			void exchange(history, location);
+			void exchange(createChatRequest(history, locationRef.current));
 		},
 		[exchange, messages],
 	);
 
-	const retry = useCallback(
-		(location?: GeoPoint) => {
-			const history = lastHistory.current;
-			if (history !== null) void exchange(history, location);
-		},
-		[exchange],
-	);
+	const retry = useCallback(() => {
+		if (lastRequest.current !== null) void exchange(lastRequest.current);
+	}, [exchange]);
 
-	return { error, messages, recommendedPlaceIds, retry, send, status, toolCalls };
+	return { error, location, messages, retry, send, setLocation, status, toolCalls };
 }
