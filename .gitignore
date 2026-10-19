@@ -44,3 +44,6 @@ yarn.lock
 # Marker written by `pnpm gate:unlock`. Its presence disables the protectGate hook, so it
 # must never be committed — a checked-in marker would silently unlock every clone.
 .claude/.gate-unlocked
+# Subagent worktrees: whole checkouts of this repository. Remove them after merging
+# (`git worktree remove`); ESLint still scans them while they exist.
+.claude/worktrees/
