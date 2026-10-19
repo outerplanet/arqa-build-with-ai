@@ -104,6 +104,114 @@ describe('map result boundary', () => {
 	it('ignores place-shaped values from unrelated tools', () => {
 		expect(readPlacesResults([call('get_current_time', { candidates: [] })]).search).toBeNull();
 	});
+	it('accepts only schema-valid walking geometry matching the visible stop order and leg count', () => {
+		const leg = { distanceM: 100, from: { lat: 51.1, lon: 71.4 }, to: { lat: 51.101, lon: 71.401 }, walkMinutes: 2 };
+		const walkingRoute = {
+			collectedAt: '2026-10-19T12:00:00Z',
+			distanceM: 100,
+			legs: [
+				{
+					...leg,
+					fromOffsetM: 2,
+					geometry: {
+						coordinates: [
+							[71.4, 51.1],
+							[71.401, 51.101],
+						],
+						type: 'LineString',
+					},
+					toOffsetM: 5,
+				},
+			],
+			note: 'Проверьте вход.',
+			source: 'OpenStreetMap',
+			status: 'available',
+			stopIds: [candidate.place.id],
+			totalMinutes: 22,
+			walkMinutes: 2,
+		};
+		const plan = {
+			legs: [leg],
+			note: 'Маршрут',
+			stops: [{ arriveAtMinute: 2, candidate, order: 1 }],
+			totalMinutes: 22,
+			walkingRoute,
+		};
+		const read = (value: unknown) => readPlacesResults([call('plan_walk', value)], [candidate.place.id]);
+		expect(read(plan).walkingRoute).toEqual(walkingRoute);
+		for (const invalid of [
+			{ ...walkingRoute, stopIds: ['osm:node/2'] },
+			{ ...walkingRoute, stopIds: [candidate.place.id, 'osm:node/2'] },
+			{ ...walkingRoute, legs: [...walkingRoute.legs, ...walkingRoute.legs] },
+			{ ...walkingRoute, legs: [{ ...walkingRoute.legs[0], fromOffsetM: 76 }] },
+			{
+				...walkingRoute,
+				legs: [
+					{
+						...walkingRoute.legs[0],
+						geometry: {
+							coordinates: [
+								[200, 51],
+								[71, 51],
+							],
+							type: 'LineString',
+						},
+					},
+				],
+			},
+		])
+			expect(read({ ...plan, walkingRoute: invalid }).walkingRoute).toBeNull();
+		expect(read({ ...plan, stops: [{ arriveAtMinute: 2, candidate, order: 2 }] }).walkingRoute).toBeNull();
+		expect(read({ ...plan, legs: [] }).walkingRoute).toBeNull();
+		expect(read({ ...plan, walkingRoute: undefined }).walkingRoute).toBeNull();
+		expect(
+			readPlacesResults(
+				[call('plan_walk', plan), call('plan_walk', { ...plan, walkingRoute: undefined })],
+				[candidate.place.id],
+			).walkingRoute,
+		).toBeNull();
+		const other = { ...candidate, place: { ...candidate.place, id: 'osm:node/2' } };
+		const twoStops = {
+			...plan,
+			legs: [leg, leg],
+			stops: [plan.stops[0], { arriveAtMinute: 4, candidate: other, order: 2 }],
+			walkingRoute: {
+				...walkingRoute,
+				legs: [walkingRoute.legs[0], walkingRoute.legs[0]],
+				stopIds: [other.place.id, candidate.place.id],
+			},
+		};
+		expect(
+			readPlacesResults([call('plan_walk', twoStops)], [candidate.place.id, other.place.id]).walkingRoute,
+		).toBeNull();
+		expect(
+			readPlacesResults(
+				[
+					call('plan_walk', {
+						...twoStops,
+						walkingRoute: { ...twoStops.walkingRoute, stopIds: [candidate.place.id, other.place.id] },
+					}),
+				],
+				[candidate.place.id, other.place.id],
+			).walkingRoute,
+		).toEqual({ ...twoStops.walkingRoute, stopIds: [candidate.place.id, other.place.id] });
+		expect(
+			read({ ...plan, walkingRoute: { note: 'Граф отсутствует.', status: 'unavailable' } }).walkingRoute,
+		).toEqual({ note: 'Граф отсутствует.', status: 'unavailable' });
+		expect(readPlacesResults([call('plan_walk', plan)], []).walkingRoute).toBeNull();
+		expect(
+			readPlacesResults([{ ...call('plan_walk', plan), status: 'error' }], [candidate.place.id]).walkingRoute,
+		).toBeNull();
+		const search = {
+			candidates: [candidate],
+			note: null,
+			origin: { label: null, point: leg.from, source: 'browser' },
+			usedFilters: [],
+		};
+		expect(
+			readPlacesResults([call('plan_walk', plan), call('find_places', search)], [candidate.place.id]).walkingRoute,
+		).toBeNull();
+	});
 });
 
 describe('browser request privacy', () => {
