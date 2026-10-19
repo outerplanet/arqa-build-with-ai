@@ -34,7 +34,7 @@ describe('the scripted agent', () => {
 	});
 
 	it('every reported call carries what the panel renders', async () => {
-		const result = await runAgent(ctx, { messages: [{ content: 'hello', role: 'user' }] });
+		const result = await runAgent(ctx, { messages: [{ content: 'Который час?', role: 'user' }] });
 
 		for (const call of result.toolCalls) {
 			expect(call.label.length).toBeGreaterThan(0);

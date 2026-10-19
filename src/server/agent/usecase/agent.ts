@@ -7,10 +7,13 @@ import {
 } from '@server/agent/model/agent.schema';
 import { type Ctx } from '@server/kernel/ctx';
 import { readEnv } from '@server/kernel/env';
+import { type PlacesContext } from '@server/places/usecase/context';
 import 'server-only';
 import { type ChatMessageParam, createClient, type ResponseItem, type ResponsesTool, withRetry } from './client';
+import { runMock } from './mock';
 import { SYSTEM_PROMPT } from './prompt';
-import { chatToolDefinitions, type CurrentTime, executeTool, responsesToolDefinitions } from './tools';
+import { replyForTools } from './reply';
+import { chatToolDefinitions, executeTool, responsesToolDefinitions } from './tools';
 
 /**
  * The agent loop, in three dialects that behave identically from the outside.
@@ -67,7 +70,7 @@ const EXHAUSTED = 'Не удалось завершить запрос. Уточ
  * how this product searches the web or a set of uploaded documents without a line of retrieval
  * code, a vector database or an embedding pipeline of ours.
  */
-async function runResponses(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
+async function runResponses(ctx: PlacesContext, input: AgentInput): Promise<ChatResponse> {
 	const env = readEnv();
 	const client = createClient();
 	const toolCalls: ToolCall[] = [];
@@ -105,7 +108,7 @@ async function runResponses(ctx: Ctx, input: AgentInput): Promise<ChatResponse> 
 		const requested = response.output.filter((item) => item.type === 'function_call');
 
 		if (requested.length === 0) {
-			return { reply: response.output_text, toolCalls };
+			return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 		}
 
 		for (const call of requested) {
@@ -132,7 +135,7 @@ async function runResponses(ctx: Ctx, input: AgentInput): Promise<ChatResponse> 
  *
  * No hosted tools here — that is the trade. Our own tools are identical.
  */
-async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
+async function runChat(ctx: PlacesContext, input: AgentInput): Promise<ChatResponse> {
 	const env = readEnv();
 	const client = createClient();
 	const toolCalls: ToolCall[] = [];
@@ -158,7 +161,7 @@ async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
 		if (choice === undefined) break;
 
 		if (choice.tool_calls === undefined || choice.tool_calls.length === 0) {
-			return { reply: choice.content ?? '', toolCalls };
+			return { reply: replyForTools(ctx, { messages: input.messages, toolCalls }), toolCalls };
 		}
 
 		conversation.push(choice);
@@ -197,36 +200,22 @@ async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
  * arrive, script the main scenario here — and for a tool that writes, propose first and act only
  * on an explicit confirmation in a later message, as prompt rule 2 demands of a model.
  */
-async function runMock(ctx: Ctx, _input: AgentInput): Promise<ChatResponse> {
-	const call = await executeTool(ctx, { args: { timeZone: 'Asia/Almaty' }, name: 'get_current_time' });
-
-	if (call.status === 'error') {
-		return { reply: 'Не удалось проверить время. Попробуйте ещё раз.', toolCalls: [call] };
-	}
-
-	const time = call.result as CurrentTime;
-
-	return {
-		reply: `Демонстрационный режим. По серверным часам: ${time.local} (${time.timeZone}). Поиск мест ещё не подключён.`,
-		toolCalls: [call],
-	};
-}
-
 // --- the entry point ----------------------------------------------------------------------------
 
-export async function runAgent(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
+export async function runAgent(ctx: PlacesContext, input: AgentInput): Promise<ChatResponse> {
 	// Direct callers must cross the same privacy boundary as POST /api/chat.
 	const parsed = chatRequestSchema.parse(input);
+	const requestCtx: PlacesContext = { ...ctx, browserLocation: parsed.location, resolvedLocation: undefined };
 
 	switch (readEnv().LLM_PROVIDER) {
 		case 'chat':
-			return runChat(ctx, parsed);
+			return runChat(requestCtx, parsed);
 
 		case 'mock':
-			return runMock(ctx, parsed);
+			return runMock(requestCtx, parsed);
 
 		case 'responses':
 		default:
-			return runResponses(ctx, parsed);
+			return runResponses(requestCtx, parsed);
 	}
 }

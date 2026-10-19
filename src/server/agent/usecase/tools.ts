@@ -1,5 +1,17 @@
 import { type ToolCall } from '@server/agent/model/agent.schema';
 import { type Ctx } from '@server/kernel/ctx';
+import { isDomainError } from '@server/kernel/errors';
+import {
+	findPlacesInputSchema,
+	getPlaceInputSchema,
+	planWalkInputSchema,
+	resolveLocationInputSchema,
+} from '@server/places/model/places.schema';
+import { type PlacesContext } from '@server/places/usecase/context';
+import { findPlaces } from '@server/places/usecase/findPlaces';
+import { getPlace } from '@server/places/usecase/getPlace';
+import { planWalk } from '@server/places/usecase/planWalk';
+import { resolveLocation } from '@server/places/usecase/resolveLocation';
 import 'server-only';
 import { z } from 'zod';
 
@@ -17,7 +29,7 @@ import { z } from 'zod';
 export interface ToolSpec {
 	/** Written for the model: when to reach for this, not what it returns. */
 	description: string;
-	handler: (ctx: Ctx, args: Record<string, unknown>) => unknown;
+	handler: (ctx: PlacesContext, args: Record<string, unknown>) => unknown;
 	/** Written for a human watching the activity panel. Short. */
 	label: string;
 	name: string;
@@ -32,7 +44,7 @@ export interface ToolSpec {
  */
 function defineTool<S extends z.ZodType>(spec: {
 	description: string;
-	handler: (ctx: Ctx, args: z.output<S>) => unknown;
+	handler: (ctx: PlacesContext, args: z.output<S>) => unknown;
 	label: string;
 	name: string;
 	parameters: S;
@@ -78,7 +90,52 @@ export const TOOLS: readonly ToolSpec[] = [
 			timeZone: z.string().min(1).optional().describe('IANA time zone, for example Asia/Almaty. Defaults to UTC.'),
 		}),
 	}),
+	defineTool({
+		description:
+			'Определяет локацию из слов пользователя по названиям и ориентирам датасета. Вызови перед поиском, если пользователь назвал место. При неоднозначности уточни локацию, не угадывай координаты.',
+		handler: (ctx, args) => {
+			const result = resolveLocation(ctx, args);
+
+			ctx.resolvedLocation = result;
+			return result;
+		},
+		label: 'Определение локации',
+		name: 'resolve_location',
+		parameters: resolveLocationInputSchema,
+	}),
+	defineTool({
+		description:
+			'Ищет места рядом с локацией браузера или результатом resolve_location. Укажи пожелания, категории и предел ходьбы. Не выдумывай near: это должна быть подтверждённая точка пользователя. Данные о часах, источниках и расстояниях бери только из результата.',
+		handler: findPlaces,
+		label: 'Поиск мест',
+		name: 'find_places',
+		parameters: findPlacesInputSchema,
+	}),
+	defineTool({
+		description:
+			'Возвращает подробности одного места из датасета по OSM id, полученному из поиска. Не придумывай id. Отсутствие часов и описания — неизвестные данные.',
+		handler: getPlace,
+		label: 'Сведения о месте',
+		name: 'get_place',
+		parameters: getPlaceInputSchema,
+	}),
+	defineTool({
+		description:
+			'Подбирает прогулку из 2–3 остановок в пределах бюджета времени. start должен совпадать с подтверждённой локацией пользователя. Расстояния приблизительные, не по пешеходному графу. Не используй всё время перед вылетом на прогулку: уточни запас на аэропорт.',
+		handler: planWalk,
+		label: 'Планирование прогулки',
+		name: 'plan_walk',
+		parameters: planWalkInputSchema,
+	}),
 ];
+
+const PUBLIC_ERRORS: Record<string, string> = {
+	invalid_walk_plan: 'Не удалось составить маршрут в пределах указанного времени.',
+	location_mismatch: 'Точка начала не совпала с вашей локацией. Уточните, откуда начать прогулку.',
+	location_required: 'Где вы сейчас находитесь? Назовите ориентир или передайте геолокацию.',
+	place_not_found: 'Место не найдено в нашем датасете.',
+	places_unavailable: 'Данные мест и алгоритмы поиска ещё не подключены. Рекомендации пока недоступны.',
+};
 
 /** `$schema` is meaningful to a validator and noise to an inference endpoint. */
 function parametersJsonSchema(parameters: z.ZodType): Record<string, unknown> {
@@ -128,7 +185,10 @@ export function responsesToolDefinitions(): {
  * at all — the one moment somebody is looking straight at it. A tool that fails is a row that says
  * so, which is information; a blank panel is not.
  */
-export async function executeTool(ctx: Ctx, input: { args: Record<string, unknown>; name: string }): Promise<ToolCall> {
+export async function executeTool(
+	ctx: PlacesContext,
+	input: { args: Record<string, unknown>; name: string },
+): Promise<ToolCall> {
 	// `performance.now` rather than `ctx.now`: this measures elapsed time, it does not ask what
 	// time it is. Business rules still read the clock only through `ctx`.
 	const started = performance.now();
@@ -153,11 +213,14 @@ export async function executeTool(ctx: Ctx, input: { args: Record<string, unknow
 		const result = await spec.handler(ctx, input.args);
 
 		return { ...base, durationMs: elapsed(), result, status: 'ok' };
-	} catch {
+	} catch (cause) {
 		return {
 			...base,
 			durationMs: elapsed(),
-			result: 'Не удалось выполнить инструмент. Проверьте параметры и попробуйте ещё раз.',
+			result:
+				isDomainError(cause) && cause.constraint !== undefined
+					? (PUBLIC_ERRORS[cause.constraint] ?? 'Не удалось выполнить запрос.')
+					: 'Не удалось выполнить инструмент. Проверьте параметры и попробуйте ещё раз.',
 			status: 'error',
 		};
 	}

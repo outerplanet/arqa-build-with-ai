@@ -32,6 +32,42 @@ afterEach(() => {
 });
 
 describe.each(['chat', 'responses'])('location sent through the %s adapter', (provider) => {
+	it('renders the clock tool result in a live adapter without asking for location', async () => {
+		vi.stubEnv('LLM_PROVIDER', provider);
+		chat.mockResolvedValueOnce({
+			choices: [
+				{
+					message: {
+						content: null,
+						role: 'assistant',
+						tool_calls: [
+							{
+								function: { arguments: '{"timeZone":"Asia/Almaty"}', name: 'get_current_time' },
+								id: 'clock-1',
+								type: 'function',
+							},
+						],
+					},
+				},
+			],
+		});
+		responses.mockResolvedValueOnce({
+			output: [
+				{
+					arguments: '{"timeZone":"Asia/Almaty"}',
+					call_id: 'clock-1',
+					name: 'get_current_time',
+					type: 'function_call',
+				},
+			],
+		});
+		const result = await runAgent(ctx, { messages: [{ content: 'Который час?', role: 'user' }] });
+
+		expect(result.reply).toContain('13:00');
+		expect(result.reply).toContain('Asia/Almaty');
+		expect(result.reply).not.toContain('Где вы');
+	});
+
 	it('sends the resolved asynchronous tool result back to the provider', async () => {
 		vi.stubEnv('LLM_PROVIDER', provider);
 		const handler = vi.spyOn(TOOLS[0]!, 'handler').mockResolvedValue({ completed: true });
