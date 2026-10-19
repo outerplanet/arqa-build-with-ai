@@ -1,0 +1,76 @@
+.places-map-frame {
+	position: relative;
+	height: 300px;
+	background: var(--color-surface-sunken);
+}
+
+.places-map-canvas {
+	width: 100%;
+	height: 100%;
+}
+
+.places-map-state {
+	display: flex;
+	z-index: 2;
+	position: absolute;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	inset: 0;
+	padding: 24px;
+	gap: 12px;
+	background: var(--color-surface-sunken);
+	color: var(--color-fg-muted);
+	text-align: center;
+}
+
+.places-map-caption {
+	z-index: 2;
+	position: absolute;
+	right: 12px;
+	bottom: 12px;
+	left: 12px;
+	padding: 8px 12px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-surface);
+	color: var(--color-fg-muted);
+	font-size: 12px;
+}
+
+.places-map-marker {
+	width: 36px;
+	height: 36px;
+	border: 2px solid var(--color-surface);
+	border-radius: 50%;
+	background: var(--color-accent);
+	color: var(--color-fg-on-accent);
+	font: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.places-map-marker[aria-pressed='true'] {
+	width: 44px;
+	height: 44px;
+	border-width: 3px;
+	border-color: var(--color-fg);
+	background: var(--color-highlight);
+	color: var(--color-fg-on-highlight);
+}
+
+.places-map-origin {
+	padding: 4px 8px;
+	border: 2px solid var(--color-border-strong);
+	border-radius: 8px;
+	background: var(--color-surface);
+	color: var(--color-fg);
+	font-weight: 600;
+	font-size: 12px;
+}
+
+@media (min-width: 768px) {
+	.places-map-frame {
+		height: 420px;
+	}
+}
