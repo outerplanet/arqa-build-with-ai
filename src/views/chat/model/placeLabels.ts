@@ -42,15 +42,34 @@ function hostIs(raw: string, domain: string): URL | null {
 	}
 }
 
+/** The Commons file hosts `next.config.mjs` lets the image optimiser fetch — keep the two in step. */
+const COMMONS_FILE_HOSTS = new Set(['thumb.wikimedia.org', 'upload.wikimedia.org']);
+
 /**
- * A Wikimedia Commons photo the card may show. The file must be on upload.wikimedia.org — the
- * only host `next.config.mjs` lets the image optimiser fetch — and its attribution page on
- * wikimedia.org; anything else falls back to the category tile rather than to an arbitrary URL.
+ * A Wikimedia Commons photo the card may show. The file must be on one of the Commons file hosts
+ * under /wikipedia/commons/, and its attribution page on wikimedia.org; anything else falls back to
+ * the category tile rather than to an arbitrary URL.
+ *
+ * The returned `url` has its query string removed: Commons thumbnails arrive with `utm_*` tracking
+ * parameters, and the optimiser's `remotePatterns` only accept a URL with no query at all.
  */
 export function commonsImage(place: Place): NonNullable<Place['image']> | null {
 	const { image } = place;
 	if (!image) return null;
-	const file = hostIs(image.url, 'upload.wikimedia.org');
+	let file: URL;
+	try {
+		file = new URL(image.url);
+	} catch {
+		return null;
+	}
 	const page = hostIs(image.pageUrl, 'wikimedia.org');
-	return file !== null && file.pathname.startsWith('/wikipedia/commons/') && page !== null ? image : null;
+	if (
+		file.protocol !== 'https:' ||
+		file.port !== '' ||
+		!COMMONS_FILE_HOSTS.has(file.hostname.toLowerCase()) ||
+		!file.pathname.startsWith('/wikipedia/commons/') ||
+		page === null
+	)
+		return null;
+	return { ...image, url: `${file.origin}${file.pathname}` };
 }

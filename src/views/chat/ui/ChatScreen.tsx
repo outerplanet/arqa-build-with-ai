@@ -8,9 +8,9 @@ import { Callout } from '@shared/ui/Callout';
 import { Card } from '@shared/ui/Card';
 import { PlacesMap } from '@widgets/placesMap';
 import clsx from 'clsx';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildPlaceCards, summariseReply } from '../model/reply';
-import { readPlacesResults } from '../model/results';
+import { readPlacesResults, readResolvedLocation } from '../model/results';
 import { SCENARIOS } from '../model/scenarios';
 import { useChat } from '../model/useChat';
 import { AgentActivity } from './AgentActivity';
@@ -31,6 +31,19 @@ export interface ChatScreenProps {
 
 /** The map sits beside the chat from this width; below it the map is above and must be scrolled to. */
 const SIDE_BY_SIDE = '(min-width: 1280px)';
+
+/** Whether the element is at least partly on screen; true until measured, so nothing flashes. */
+function useInView(ref: RefObject<HTMLElement | null>): boolean {
+	const [visible, setVisible] = useState(true);
+	useEffect(() => {
+		const element = ref.current;
+		if (!element || typeof IntersectionObserver === 'undefined') return undefined;
+		const observer = new IntersectionObserver(([entry]) => setVisible(entry?.isIntersecting ?? true));
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, [ref]);
+	return visible;
+}
 
 export function ChatScreen({
 	demoMode = false,
@@ -64,29 +77,36 @@ export function ChatScreen({
 		() => buildPlaceCards({ candidates, recommendations, reply: replyText, walkingRoute }),
 		[candidates, recommendations, replyText, walkingRoute],
 	);
+	const resolved = useMemo(() => readResolvedLocation(toolCalls), [toolCalls]);
 	const summary = useMemo(
-		() => summariseReply({ count: cards.length, plan, reply: replyText, search, walkingRoute }),
-		[cards.length, plan, replyText, search, walkingRoute],
+		() => summariseReply({ count: cards.length, plan, reply: replyText, resolved, search, walkingRoute }),
+		[cards.length, plan, replyText, resolved, search, walkingRoute],
 	);
+	const mapVisible = useInView(mapRef);
 	const origin =
 		walkingRoute?.status === 'available'
 			? (walkingRoute.legs[0]?.from ?? null)
 			: (search?.origin.point ?? plan?.legs[0]?.from ?? null);
 	const activeId = candidates.some((candidate) => candidate.place.id === selectedId) ? selectedId : null;
 
-	const showOnMap = useCallback((id: string) => {
-		setSelectedId(id);
-		// On a phone the map is above the conversation: bring it into view, or the tap looks dead.
-		if (!window.matchMedia(SIDE_BY_SIDE).matches)
-			mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	const jumpToMap = useCallback(() => {
+		mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}, []);
+
+	const showOnMap = useCallback(
+		(id: string) => {
+			setSelectedId(id);
+			// On a phone the map is above the conversation: bring it into view, or the tap looks dead.
+			if (!window.matchMedia(SIDE_BY_SIDE).matches) jumpToMap();
+		},
+		[jumpToMap],
+	);
 
 	const richReply =
 		search !== null || plan !== null ? (
 			<AssistantReply
 				cards={cards}
 				disabled={pending}
-				locationLabel={search?.origin.label ?? null}
 				onShow={showOnMap}
 				reply={replyText}
 				selectedId={activeId}
@@ -205,7 +225,11 @@ export function ChatScreen({
 							<Composer disabled={pending} onSend={send} placeholder={placeholder} />
 						</div>
 					</Card>
-					<AgentActivity pending={pending} toolCalls={toolCalls} />
+					<AgentActivity
+						pending={pending}
+						shownIds={candidates.map((candidate) => candidate.place.id)}
+						toolCalls={toolCalls}
+					/>
 				</div>
 
 				<div className="order-1 flex min-w-0 flex-col gap-3 xl:sticky xl:top-4 xl:order-2 xl:self-start">
@@ -215,6 +239,7 @@ export function ChatScreen({
 							error={error}
 							onSelect={setSelectedId}
 							origin={origin}
+							originLabel={summary.source === 'геолокация браузера' ? 'Вы здесь' : 'Старт'}
 							pending={pending}
 							plan={plan}
 							selectedId={activeId}
@@ -240,6 +265,18 @@ export function ChatScreen({
 					/>
 				</div>
 			</div>
+
+			{/* Below the side-by-side width the map is far above the answer: one tap brings it back. */}
+			{cards.length > 0 && !mapVisible && (
+				<Button
+					className="fixed right-4 bottom-4 z-20 rounded-full shadow-lg xl:hidden"
+					onClick={jumpToMap}
+					size="lg"
+				>
+					<MapIcon aria-hidden className="size-5" />
+					Карта
+				</Button>
+			)}
 		</div>
 	);
 }

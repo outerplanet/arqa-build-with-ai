@@ -11,10 +11,18 @@ import { type PlaceCardModel, type ReplySummary } from '../model/reply';
 import { AssistantText } from './AssistantText';
 import { PlaceCard } from './PlaceCard';
 
+/** How the cards' distances were measured — said once per answer, not on every card. */
+function distanceNote(cards: readonly PlaceCardModel[]): string {
+	const measured = cards.filter((card) => card.onFootways).length;
+	if (measured === cards.length)
+		return 'Расстояние и время — по пешеходным дорожкам OpenStreetMap; подход ко входу не проверен.';
+	if (measured === 0) return 'Расстояние и время — оценка по прямой, пешеходный путь не проверен.';
+	return 'Расстояние и время без «≈» — по пешеходным дорожкам OpenStreetMap, с «≈» — оценка; подход ко входу не проверен.';
+}
+
 export interface AssistantReplyProps {
 	cards: readonly PlaceCardModel[];
 	disabled: boolean;
-	locationLabel: string | null;
 	onShow: (id: string) => void;
 	reply: string;
 	selectedId: string | null;
@@ -26,15 +34,7 @@ export interface AssistantReplyProps {
  * filters ran, the server's caveats, then a card per place. The reply text the server wrote — the
  * case's answer format, word for word — stays one click away under «Полный ответ».
  */
-export function AssistantReply({
-	cards,
-	disabled,
-	locationLabel,
-	onShow,
-	reply,
-	selectedId,
-	summary,
-}: AssistantReplyProps) {
+export function AssistantReply({ cards, disabled, onShow, reply, selectedId, summary }: AssistantReplyProps) {
 	return (
 		<div className="flex flex-col gap-3">
 			<div className="bg-surface border-border flex flex-col gap-2 rounded-lg rounded-tl-none border px-4 py-3">
@@ -45,7 +45,7 @@ export function AssistantReply({
 							<li>
 								<Badge className="max-w-full shrink whitespace-normal" tone="accent">
 									<MapPinIcon aria-hidden className="size-3.5 shrink-0" />
-									Точка: {locationLabel ?? 'ваши координаты'} — {summary.source}
+									Точка: {summary.location ?? 'ваши координаты'} — {summary.source}
 								</Badge>
 							</li>
 						)}
@@ -81,6 +81,7 @@ export function AssistantReply({
 					))}
 				</ol>
 			)}
+			{cards.length > 0 && <p className="text-fg-subtle text-xs">{distanceNote(cards)}</p>}
 
 			<details className="group">
 				<summary className="text-fg-muted hover:text-fg inline-flex min-h-8 items-center gap-1 text-sm font-medium">

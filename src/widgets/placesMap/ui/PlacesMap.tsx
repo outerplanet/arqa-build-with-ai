@@ -16,7 +16,7 @@ import { type Map as LibreMap, type LngLatBounds, type Marker } from 'maplibre-g
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { nameLabelLayerIds } from '../model/localizeLabels';
+import { CITY_LABEL_MAX_ZOOM, cityLabelLayerIds, nameLabelLayerIds } from '../model/localizeLabels';
 import { routeGeometry } from '../model/routeGeometry';
 import { formatSnapshotDate } from '../model/snapshotDate';
 import { spreadMarkers } from '../model/spreadMarkers';
@@ -68,8 +68,8 @@ function reducedMotion() {
 function fitPadding(container: HTMLElement) {
 	// Room for a whole marker (and its fanned-out neighbours) inside the frame; the zoom buttons sit
 	// top-right, and a label hangs below a marker.
-	const side = Math.round(Math.max(44, Math.min(72, container.clientWidth * 0.1)));
-	return { bottom: side + 24, left: side, right: side + 24, top: side + 8 };
+	const side = Math.round(Math.max(56, Math.min(96, container.clientWidth * 0.14)));
+	return { bottom: side + 28, left: side, right: side + 28, top: side + 16 };
 }
 
 /** A chevron pointing along +x; MapLibre rotates it with the line, so it shows walking direction. */
@@ -207,6 +207,11 @@ export function PlacesMap({
 					// Base-map labels in Russian where OpenStreetMap has a Russian name.
 					for (const id of nameLabelLayerIds(created.getStyle().layers)) {
 						created.setLayoutProperty(id, 'text-field', ['coalesce', ['get', 'name:ru'], ['get', 'name']]);
+					}
+					// At walking zoom the city's own name sat on the start marker near Baiterek.
+					for (const id of cityLabelLayerIds(created.getStyle().layers)) {
+						const layer = created.getLayer(id);
+						created.setLayerZoomRange(id, layer?.minzoom ?? 0, CITY_LABEL_MAX_ZOOM);
 					}
 					if (!cancelled) {
 						setFailed(false);

@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { nameLabelLayerIds } from './localizeLabels';
+import { cityLabelLayerIds, nameLabelLayerIds } from './localizeLabels';
+
+describe('cityLabelLayerIds', () => {
+	it('picks city and town name layers of both styles and nothing else', () => {
+		const symbol = (id: string) => ({ id, type: 'symbol' });
+		expect(
+			cityLabelLayerIds([
+				symbol('label_city_capital'),
+				symbol('label_city'),
+				symbol('label_town'),
+				symbol('place_city_large'),
+				symbol('place_suburb'),
+				symbol('highway-name-major'),
+				{ id: 'place_city_fill', type: 'fill' },
+			]),
+		).toEqual(['label_city_capital', 'label_city', 'label_town', 'place_city_large']);
+	});
+});
 
 const LATIN = [
 	'case',
