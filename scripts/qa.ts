@@ -19,10 +19,12 @@ import {
 } from '../src/server/places/model/places.schema';
 import { readPlaces } from '../src/server/places/repo/places';
 import { readVectors } from '../src/server/places/repo/vectors';
+import { recommendationShape } from './qa-contract.mjs';
 
 /** Public synthetic cases, not captured user locations. Domain time is explicitly fixed. */
 const scenarioTime = '2026-10-19T16:00:00.000Z';
 interface Scenario {
+	allowEmpty?: boolean;
 	id: string;
 	landmark?: false | string;
 	location?: { lat: number; lon: number };
@@ -32,11 +34,12 @@ interface Scenario {
 const cases: Scenario[] = [
 	{
 		id: 'expo',
-		landmark: false,
+		landmark: 'osm:way/454857501',
 		query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.',
-		tools: ['resolve_location'],
+		tools: ['resolve_location', 'find_places'],
 	},
 	{
+		allowEmpty: true,
 		id: 'nur-alem',
 		landmark: 'osm:way/454857501',
 		query: 'Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком.',
@@ -68,6 +71,7 @@ const cases: Scenario[] = [
 		tools: ['find_places'],
 	},
 	{
+		allowEmpty: true,
 		id: 'accessible',
 		location: { lat: 51.128, lon: 71.43 },
 		query: 'Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком.',
@@ -175,6 +179,11 @@ async function execute(scenario: Scenario, backend: 'lexical' | 'local' | 'unava
 				scenario.tools.length !== 0 ||
 				(!result.toolCalls.some((tool) => tool.name === 'find_places') &&
 					/Где вы|Уточните|уточните|ориентир/u.test(result.reply)),
+			recommendationShape: recommendationShape({
+				allowEmpty: scenario.allowEmpty === true || scenario.landmark === false || scenario.tools.length === 0,
+				reply: result.reply,
+				selectedCount: selectedIds.length,
+			}),
 			routeBudgetAndStops:
 				scenario.id !== 'route' ||
 				plans.some(

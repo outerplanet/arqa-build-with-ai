@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { chatResponseSchema } from '../src/server/agent/model/agent.schema';
 import { findPlacesResultSchema, walkPlanSchema } from '../src/server/places/model/places.schema';
+import { recommendationShape } from './qa-contract.mjs';
 
 const cases = [
 	{
@@ -13,6 +14,8 @@ const cases = [
 		tools: ['resolve_location', 'find_places'],
 	},
 	{
+		// The origin is excluded; no other museums/galleries may remain nearby.
+		allowEmpty: true,
 		id: 'nur-alem',
 		query: 'Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком.',
 		tools: ['resolve_location', 'find_places'],
@@ -123,6 +126,11 @@ async function main() {
 			('allowEmpty' in scenario && scenario.allowEmpty) ||
 			(candidates.length > 0 && selected.length > 0);
 		const passed =
+			recommendationShape({
+				allowEmpty: scenario.tools.length === 0 || ('allowEmpty' in scenario && scenario.allowEmpty === true),
+				reply: result.reply,
+				selectedCount: selected.length,
+			}) &&
 			selectionValid &&
 			routeValid &&
 			accessValid &&

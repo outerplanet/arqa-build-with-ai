@@ -212,3 +212,2376 @@ OSM-часы дают `open` до 23:00; **NU Park** — 562 м / 10 минут,
 - Локальная модель загружается отдельным процессом, что добавляет несколько секунд.
   Качество рекомендаций требует пользовательской оценки. Эвристические минуты посещения
   и сгенерированные идеи не являются фактами о работающей экспозиции или услуге.
+
+<!-- GENERATED QA TRANSCRIPT -->
+
+## Полные фактические ответы и логи локального прогона
+
+Этот раздел воспроизводится командой `python3 scripts/qa_report.py` из `docs/qa-search-matrix.json`. Входы тестовые; ответы и результаты инструментов вставлены без ручного пересказа. Логи лексического режима и отказа Python сохранены в том же JSON. Время сценария фиксировано, время выполнения указано отдельно.
+
+### expo
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком."
+  },
+  "durationMs": 11,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "high",
+    "found": true,
+    "label": "Alem.ai (бывший Нур Алем), территория ЭКСПО",
+    "matchedPlaceId": "osm:way/454857501",
+    "point": {
+      "lat": 51.089,
+      "lon": 71.416
+    }
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "attraction",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "artwork",
+      "monument"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 30,
+    "query": "хочу что-то необычное на 1–2 часа, пешком."
+  },
+  "durationMs": 4956,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 506.9988012066003,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.0934524,
+          "lon": 71.4175645,
+          "address": null,
+          "category": "attraction",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1460763574",
+          "name": "25-ти летие Независимости",
+          "nameEn": "25th Anniversary of Independence",
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1460763574",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.3113677623526686,
+        "visitMinutes": 30,
+        "walkMinutes": 9,
+        "why": {
+          "distance": 0.7,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.1534194058816716,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": "Alem.ai (бывший Нур Алем), территория ЭКСПО",
+      "point": {
+        "lat": 51.089,
+        "lon": 71.416
+      },
+      "source": "text"
+    },
+    "usedFilters": [
+      "Пешком до 30 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: достопримечательность, музей, галерея, смотровая площадка, арт-объект, памятник"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: Alem.ai (бывший Нур Алем), территория ЭКСПО (из ваших слов).
+
+Фильтры: Пешком до 30 минут; Категории: достопримечательность, музей, галерея, смотровая площадка, арт-объект, памятник.
+
+1. 25-ти летие Независимости — 507 м, 9 мин пешком (оценка).
+Почему: достопримечательность — совпадает с запросом «необычное», 9 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: осмотреть достопримечательность и сделать короткую остановку (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/1460763574).
+```
+
+### nur-alem
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я у Нур Алем, хочу посмотреть музей или необычное место на 1–2 часа пешком."
+  },
+  "durationMs": 10,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "high",
+    "found": true,
+    "label": "Alem.ai (бывший Нур Алем), территория ЭКСПО",
+    "matchedPlaceId": "osm:way/454857501",
+    "point": {
+      "lat": 51.089,
+      "lon": 71.416
+    }
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "museum",
+      "gallery"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 30,
+    "query": "хочу посмотреть музей или необычное место на 1–2 часа пешком."
+  },
+  "durationMs": 4526,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [],
+    "note": null,
+    "origin": {
+      "label": "Alem.ai (бывший Нур Алем), территория ЭКСПО",
+      "point": {
+        "lat": 51.089,
+        "lon": 71.416
+      },
+      "source": "text"
+    },
+    "usedFilters": [
+      "Пешком до 30 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: музей, галерея"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: Alem.ai (бывший Нур Алем), территория ЭКСПО (из ваших слов).
+
+Фильтры: Пешком до 30 минут; Категории: музей, галерея.
+
+Подходящих мест с этими условиями не найдено. Попробуйте изменить фильтры.
+```
+
+### mega
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 18,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "high",
+    "found": true,
+    "label": "Mega Silk Way",
+    "matchedPlaceId": "osm:way/499328514",
+    "point": {
+      "lat": 51.089,
+      "lon": 71.407
+    }
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "monument",
+      "attraction",
+      "artwork",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "theatre",
+      "park",
+      "garden",
+      "cafe"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 15,
+    "query": "хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 4556,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 61.56877861878505,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.0891569,
+          "lon": 71.4078454,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/12520559591",
+          "name": "Лепим и варим",
+          "nameEn": null,
+          "openingHours": "Mo-Su 10:00-23:00",
+          "phone": "+7 707 180 7400",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/12520559591",
+          "tags": [],
+          "website": "https://lepimivarim.ru",
+          "wheelchair": null
+        },
+        "score": 0.4208165322602688,
+        "visitMinutes": 30,
+        "walkMinutes": 2,
+        "why": {
+          "distance": 0.8666666666666667,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.13537466398400524,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 64.12381062943267,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.0890765,
+          "lon": 71.40609,
+          "address": "Қабанбай Батыр даңғылы 62",
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/14275682079",
+          "name": "Drinkit",
+          "nameEn": null,
+          "openingHours": "Mo-Su 08:00-22:00",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/14275682079",
+          "tags": [],
+          "website": "https://drinkit.ru/",
+          "wheelchair": null
+        },
+        "score": 0.4148160797421505,
+        "visitMinutes": 30,
+        "walkMinutes": 2,
+        "why": {
+          "distance": 0.8666666666666667,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.12037353268870966,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 133.80914569055133,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.0890092,
+          "lon": 71.4089158,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/9047331879",
+          "name": "Starbucks",
+          "nameEn": "Starbucks",
+          "openingHours": "Mo-Su 08:00-22:00",
+          "phone": "+7 727 339 9860;+7 800 0802185",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/9047331879",
+          "tags": [],
+          "website": "https://www.starbucks.com.kz/",
+          "wheelchair": null
+        },
+        "score": 0.40116420980477363,
+        "visitMinutes": 30,
+        "walkMinutes": 3,
+        "why": {
+          "distance": 0.8,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.12791052451193408,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 163.99340865283415,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.0889451,
+          "lon": 71.4093464,
+          "address": "ТРЦ MEGA Silk Way, Кабанбай батыр проспект 62",
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/13173517356",
+          "name": "Gasteria",
+          "nameEn": null,
+          "openingHours": "Mo-Th 10:00-23:00; Fr-Su 10:00-00:00",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/13173517356",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.40007809367287117,
+        "visitMinutes": 30,
+        "walkMinutes": 3,
+        "why": {
+          "distance": 0.8,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.1251952341821778,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 562.0161461549811,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.0872699,
+          "lon": 71.3994394,
+          "address": null,
+          "category": "park",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1467797207",
+          "name": "NU Park",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1467797207",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.2973035910968328,
+        "visitMinutes": 40,
+        "walkMinutes": 10,
+        "why": {
+          "distance": 0.33333333333333337,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.3474256444087487,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": "Mega Silk Way",
+      "point": {
+        "lat": 51.089,
+        "lon": 71.407
+      },
+      "source": "text"
+    },
+    "usedFilters": [
+      "Пешком до 15 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: Mega Silk Way (из ваших слов).
+
+Фильтры: Пешком до 15 минут; Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе.
+
+1. Лепим и варим — 62 м, 2 мин пешком (оценка).
+Почему: кафе — остановка на кофе, открыто до 23:00, 2 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 23:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/12520559591).
+
+2. NU Park — 562 м, 10 мин пешком (оценка).
+Почему: парк — подходит для прогулки, 10 мин пешком.
+На посещение: 40 мин (оценка).
+Что делать: пройтись по парку и отдохнуть (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/1467797207).
+```
+
+### coffee
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Хочу тихое место с кофе и розеткой недалеко от меня.",
+      "role": "user"
+    }
+  ],
+  "location": {
+    "lat": 51.089,
+    "lon": 71.416
+  }
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "cafe",
+      "library"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 15,
+    "query": "Хочу тихое место с кофе и розеткой недалеко от меня."
+  },
+  "durationMs": 4453,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 464.74785608419427,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.0889451,
+          "lon": 71.4093464,
+          "address": "ТРЦ MEGA Silk Way, Кабанбай батыр проспект 62",
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/13173517356",
+          "name": "Gasteria",
+          "nameEn": null,
+          "openingHours": "Mo-Th 10:00-23:00; Fr-Su 10:00-00:00",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/13173517356",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.4882578942368485,
+        "visitMinutes": 30,
+        "walkMinutes": 9,
+        "why": {
+          "distance": 0.4,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.5956447355921212,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 494.7828961966136,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.0890092,
+          "lon": 71.4089158,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/9047331879",
+          "name": "Starbucks",
+          "nameEn": "Starbucks",
+          "openingHours": "Mo-Su 08:00-22:00",
+          "phone": "+7 727 339 9860;+7 800 0802185",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/9047331879",
+          "tags": [],
+          "website": "https://www.starbucks.com.kz/",
+          "wheelchair": null
+        },
+        "score": 0.4844141772810321,
+        "visitMinutes": 30,
+        "walkMinutes": 9,
+        "why": {
+          "distance": 0.4,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.5860354432025803,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 569.8080382625325,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.0891569,
+          "lon": 71.4078454,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/12520559591",
+          "name": "Лепим и варим",
+          "nameEn": null,
+          "openingHours": "Mo-Su 10:00-23:00",
+          "phone": "+7 707 180 7400",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/12520559591",
+          "tags": [],
+          "website": "https://lepimivarim.ru",
+          "wheelchair": null
+        },
+        "score": 0.4767573078174284,
+        "visitMinutes": 30,
+        "walkMinutes": 10,
+        "why": {
+          "distance": 0.33333333333333337,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.6085599362102375,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 692.1959772187766,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.0890765,
+          "lon": 71.40609,
+          "address": "Қабанбай Батыр даңғылы 62",
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/14275682079",
+          "name": "Drinkit",
+          "nameEn": null,
+          "openingHours": "Mo-Su 08:00-22:00",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/14275682079",
+          "tags": [],
+          "website": "https://drinkit.ru/",
+          "wheelchair": null
+        },
+        "score": 0.4303008925931382,
+        "visitMinutes": 30,
+        "walkMinutes": 12,
+        "why": {
+          "distance": 0.19999999999999996,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.5757522314828456,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 739.5640215426723,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.0941798,
+          "lon": 71.4093574,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/6408255389",
+          "name": "завтрак бар",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/6408255389",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.37446798637919154,
+        "visitMinutes": 30,
+        "walkMinutes": 13,
+        "why": {
+          "distance": 0.1333333333333333,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.6653366326146455,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": null,
+      "point": {
+        "lat": 51.089,
+        "lon": 71.416
+      },
+      "source": "browser"
+    },
+    "usedFilters": [
+      "Пешком до 15 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: кафе, библиотека"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: 51.089, 71.416 (геолокация браузера).
+
+Фильтры: Пешком до 15 минут; Категории: кафе, библиотека.
+
+1. Gasteria — 465 м, 9 мин пешком (оценка).
+Почему: кафе — совпадает с запросом «кофе, розетка», открыто до 23:00, 9 мин пешком.
+На посещение: 30 мин (оценка).
+Розетки: данных нет — уточните перед выходом.
+Уровень шума не проверен — уточните у места.
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 23:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/13173517356).
+
+2. Starbucks — 495 м, 9 мин пешком (оценка).
+Почему: кафе — совпадает с запросом «кофе, розетка», открыто до 22:00, 9 мин пешком.
+На посещение: 30 мин (оценка).
+Розетки: данных нет — уточните перед выходом.
+Уровень шума не проверен — уточните у места.
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 22:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/9047331879).
+
+3. Лепим и варим — 570 м, 10 мин пешком (оценка).
+Почему: кафе — совпадает с запросом «кофе, розетка», открыто до 23:00, 10 мин пешком.
+На посещение: 30 мин (оценка).
+Розетки: данных нет — уточните перед выходом.
+Уровень шума не проверен — уточните у места.
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 23:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/12520559591).
+```
+
+### child
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?",
+      "role": "user"
+    }
+  ],
+  "location": {
+    "lat": 51.089,
+    "lon": 71.416
+  }
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "playground",
+      "museum",
+      "zoo"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 15,
+    "query": "Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?"
+  },
+  "durationMs": 4376,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 31.079680752009846,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.089252,
+          "lon": 71.4161925,
+          "address": "Мәңгілік Ел даңғылы В1",
+          "category": "museum",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/454857501",
+          "name": "Alem.ai Международный центр искусственного интеллекта",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/454857501",
+          "tags": [],
+          "website": "https://alem.ai/kk/",
+          "wheelchair": null
+        },
+        "score": 0.45809320497874123,
+        "visitMinutes": 60,
+        "walkMinutes": 1,
+        "why": {
+          "distance": 0.9333333333333333,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.3743996791135198,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": null,
+      "point": {
+        "lat": 51.089,
+        "lon": 71.416
+      },
+      "source": "browser"
+    },
+    "usedFilters": [
+      "Пешком до 15 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: детская площадка, музей, зоопарк"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: 51.089, 71.416 (геолокация браузера).
+
+Фильтры: Пешком до 15 минут; Категории: детская площадка, музей, зоопарк.
+
+1. Alem.ai Международный центр искусственного интеллекта — 31 м, 1 мин пешком (оценка).
+Почему: музей — совпадает с запросом «с ребёнком, интерактивы», 1 мин пешком.
+На посещение: 60 мин (оценка).
+Интерактивы: данных нет — уточните перед выходом.
+Что делать: посмотреть экспозицию, предварительно уточнив условия входа (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/454857501).
+```
+
+### flight
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+Вызовов нет.
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Где вы сейчас находитесь? Назовите ориентир или передайте геолокацию. Уточните также, сколько времени осталось с учётом дороги в аэропорт, регистрации и досмотра.
+```
+
+### night
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Ищу необычную ночную активность на последние пару часов.",
+      "role": "user"
+    }
+  ],
+  "location": {
+    "lat": 51.128,
+    "lon": 71.43
+  }
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "bar",
+      "nightclub",
+      "viewpoint",
+      "artwork",
+      "attraction"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 30,
+    "query": "Ищу необычную ночную активность на последние пару часов."
+  },
+  "durationMs": 4554,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 332.5398884526303,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 06:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "06:00"
+        },
+        "place": {
+          "lat": 51.1296521,
+          "lon": 71.4339722,
+          "address": null,
+          "category": "bar",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/2826184438",
+          "name": "Лигалайф",
+          "nameEn": null,
+          "openingHours": "09:00-06:00",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/2826184438",
+          "tags": [],
+          "website": "https://www.fairplay.kz/",
+          "wheelchair": null
+        },
+        "score": 0.4622479079737658,
+        "visitMinutes": 45,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.8,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.28061976993441445,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 456.4559717787103,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто круглосуточно",
+          "opensAt": null,
+          "status": "open",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1280843,
+          "lon": 71.4365396,
+          "address": null,
+          "category": "bar",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/4199896989",
+          "name": "Avtor",
+          "nameEn": null,
+          "openingHours": "24/7",
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/4199896989",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.4354480658802474,
+        "visitMinutes": 45,
+        "walkMinutes": 8,
+        "why": {
+          "distance": 0.7333333333333334,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.2552868313672853,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 489.60419995990776,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 02:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "02:00"
+        },
+        "place": {
+          "lat": 51.12467,
+          "lon": 71.43459,
+          "address": null,
+          "category": "bar",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/8595205064",
+          "name": "Пинта",
+          "nameEn": null,
+          "openingHours": "Fr-Sa 12:00-03:00; Mo-Th,Su 12:00-02:00",
+          "phone": "+7 778 445 9895",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/8595205064",
+          "tags": [],
+          "website": "http://pinta.kz/",
+          "wheelchair": null
+        },
+        "score": 0.4336680189250689,
+        "visitMinutes": 45,
+        "walkMinutes": 9,
+        "why": {
+          "distance": 0.7,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.2716700473126722,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 509.0738261390949,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 01:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "01:00"
+        },
+        "place": {
+          "lat": 51.1301482,
+          "lon": 71.4364422,
+          "address": null,
+          "category": "bar",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/11345949802",
+          "name": "Golpas",
+          "nameEn": null,
+          "openingHours": "Mo-Su 12:00-01:00",
+          "phone": "+7 707 304 0605;+7 7172 51 61 85",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/11345949802",
+          "tags": [],
+          "website": "https://golpas.cafe",
+          "wheelchair": null
+        },
+        "score": 0.42810729537258707,
+        "visitMinutes": 45,
+        "walkMinutes": 9,
+        "why": {
+          "distance": 0.7,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.25776823843146757,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 458.20417866273715,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1247205,
+          "lon": 71.4339755,
+          "address": null,
+          "category": "bar",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/11920102269",
+          "name": "Celentano retro bar",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/11920102269",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.3890438092050535,
+        "visitMinutes": 45,
+        "walkMinutes": 8,
+        "why": {
+          "distance": 0.7333333333333334,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.3267761896793002,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": null,
+      "point": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "source": "browser"
+    },
+    "usedFilters": [
+      "Пешком до 30 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: бар, ночной клуб, смотровая площадка, арт-объект, достопримечательность"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: 51.128, 71.43 (геолокация браузера).
+
+Фильтры: Пешком до 30 минут; Категории: бар, ночной клуб, смотровая площадка, арт-объект, достопримечательность.
+
+Сейчас 21:00 по Астане — часы проверены на это время; ночью статус может отличаться.
+
+У части найденных мест часы работы неизвестны — уточните перед выходом; они исключены из ночных рекомендаций.
+
+1. Лигалайф — 333 м, 6 мин пешком (оценка).
+Почему: бар — совпадает с запросом «ночью, необычное», открыто до 06:00, 6 мин пешком.
+На посещение: 45 мин (оценка).
+Что делать: познакомиться с местом и осмотреться (сгенерированная идея).
+Часы: открыто до 06:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/2826184438).
+
+2. Avtor — 456 м, 8 мин пешком (оценка).
+Почему: бар — совпадает с запросом «ночью, необычное», открыто сейчас, 8 мин пешком.
+На посещение: 45 мин (оценка).
+Что делать: познакомиться с местом и осмотреться (сгенерированная идея).
+Часы: открыто сейчас по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/4199896989).
+
+3. Пинта — 490 м, 9 мин пешком (оценка).
+Почему: бар — совпадает с запросом «ночью, необычное», открыто до 02:00, 9 мин пешком.
+На посещение: 45 мин (оценка).
+Что делать: познакомиться с местом и осмотреться (сгенерированная идея).
+Часы: открыто до 02:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/8595205064).
+```
+
+### accessible
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком.",
+      "role": "user"
+    }
+  ],
+  "location": {
+    "lat": 51.128,
+    "lon": 71.43
+  }
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "accessibleOnly": true,
+    "categories": [
+      "cafe",
+      "library"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 10,
+    "query": "Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком."
+  },
+  "durationMs": 8485,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [],
+    "note": null,
+    "origin": {
+      "label": null,
+      "point": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "source": "browser"
+    },
+    "usedFilters": [
+      "Пешком до 10 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: кафе, библиотека",
+      "Только места с подтверждённой доступностью для колясок"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: 51.128, 71.43 (геолокация браузера).
+
+Фильтры: Пешком до 10 минут; Категории: кафе, библиотека; Только места с подтверждённой доступностью для колясок.
+
+Подходящих мест с этими условиями не найдено. Попробуйте изменить фильтры.
+```
+
+### route
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Составь маршрут из двух-трёх мест на 90 минут.",
+      "role": "user"
+    }
+  ],
+  "location": {
+    "lat": 51.128,
+    "lon": 71.43
+  }
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "monument",
+      "attraction",
+      "artwork",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "theatre",
+      "park",
+      "garden",
+      "cafe"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 23,
+    "query": "Составь маршрут из двух-трёх мест на 90 минут."
+  },
+  "durationMs": 7554,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 337.7867751308332,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.1277607,
+          "lon": 71.4251746,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/4853972122",
+          "name": "Фаттуш",
+          "nameEn": "Fattoush",
+          "openingHours": "Mo-Su 10:00-23:00",
+          "phone": "+77017330010",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/4853972122",
+          "tags": [
+            "wifi"
+          ],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.4334074271197318,
+        "visitMinutes": 30,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.7391304347826086,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.2465620460601991,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 182.35445221242122,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 00:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "00:00"
+        },
+        "place": {
+          "lat": 51.1293821,
+          "lon": 71.4285934,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/6408271985",
+          "name": "CrepeCafe",
+          "nameEn": null,
+          "openingHours": "Mo-Fr 08:00-00:00; Sa-Su 09:00-00:00",
+          "phone": "+7 771 949 4949",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/6408271985",
+          "tags": [],
+          "website": "https://crepecafe.kz",
+          "wheelchair": null
+        },
+        "score": 0.4199009881017871,
+        "visitMinutes": 30,
+        "walkMinutes": 4,
+        "why": {
+          "distance": 0.8260869565217391,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.15844812242838077,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 240.43877556599747,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 00:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "00:00"
+        },
+        "place": {
+          "lat": 51.1285659,
+          "lon": 71.4333254,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/10564988185",
+          "name": "Degirmen",
+          "nameEn": null,
+          "openingHours": "Mo-Su 08:00-00:00",
+          "phone": "+7 708 377 7778",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/10564988185",
+          "tags": [],
+          "website": "http://degirmen.kz/",
+          "wheelchair": null
+        },
+        "score": 0.41675531619630246,
+        "visitMinutes": 30,
+        "walkMinutes": 5,
+        "why": {
+          "distance": 0.782608695652174,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.1777578557081474,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 45.092901814572045,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1282882,
+          "lon": 71.4304546,
+          "address": "Нұржол желек жолы 14",
+          "category": "monument",
+          "description": "достопримечательность города",
+          "descriptionSource": "wikidata",
+          "id": "osm:way/230401645",
+          "name": "Байтерек",
+          "nameEn": "Bayterek",
+          "openingHours": null,
+          "phone": null,
+          "popularity": 0.5959578882977504,
+          "sourceUrl": "https://www.openstreetmap.org/way/230401645",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.4060440623730172,
+        "visitMinutes": 15,
+        "walkMinutes": 1,
+        "why": {
+          "distance": 0.9565217391304348,
+          "open": 0.5,
+          "popularity": 0.5959578882977504,
+          "semantic": 0.08079459690158354,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 317.5937266824208,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.1279246,
+          "lon": 71.4254505,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/12520559589",
+          "name": "Лепим и варим",
+          "nameEn": null,
+          "openingHours": "Mo-Su 10:00-22:00",
+          "phone": "+7 707 180 7400",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/12520559589",
+          "tags": [],
+          "website": "https://lepimivarim.ru",
+          "wheelchair": null
+        },
+        "score": 0.4055298007963042,
+        "visitMinutes": 30,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.7391304347826086,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.17686798025163009,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": null,
+      "point": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "source": "browser"
+    },
+    "usedFilters": [
+      "Пешком до 23 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "monument",
+      "attraction",
+      "artwork",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "theatre",
+      "park",
+      "garden"
+    ],
+    "durationMinutes": 90,
+    "query": "Составь маршрут из двух-трёх мест на 90 минут.",
+    "start": {
+      "lat": 51.128,
+      "lon": 71.43
+    }
+  },
+  "durationMs": 4884,
+  "label": "Планирование прогулки",
+  "name": "plan_walk",
+  "result": {
+    "legs": [
+      {
+        "distanceM": 45.092901814572045,
+        "from": {
+          "lat": 51.128,
+          "lon": 71.43
+        },
+        "to": {
+          "lat": 51.1282882,
+          "lon": 71.4304546
+        },
+        "walkMinutes": 1
+      },
+      {
+        "distanceM": 1113.0137911854542,
+        "from": {
+          "lat": 51.1282882,
+          "lon": 71.4304546
+        },
+        "to": {
+          "lat": 51.1185681,
+          "lon": 71.4266471
+        },
+        "walkMinutes": 20
+      }
+    ],
+    "note": "Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.",
+    "stops": [
+      {
+        "arriveAtMinute": 1,
+        "candidate": {
+          "distanceM": 45.092901814572045,
+          "open": {
+            "confidence": "none",
+            "note": "часы работы неизвестны — уточните перед выходом",
+            "opensAt": null,
+            "status": "unknown",
+            "until": null
+          },
+          "place": {
+            "lat": 51.1282882,
+            "lon": 71.4304546,
+            "address": "Нұржол желек жолы 14",
+            "category": "monument",
+            "description": "достопримечательность города",
+            "descriptionSource": "wikidata",
+            "id": "osm:way/230401645",
+            "name": "Байтерек",
+            "nameEn": "Bayterek",
+            "openingHours": null,
+            "phone": null,
+            "popularity": 0.5959578882977504,
+            "sourceUrl": "https://www.openstreetmap.org/way/230401645",
+            "tags": [],
+            "website": null,
+            "wheelchair": null
+          },
+          "score": 0.41413584981263074,
+          "visitMinutes": 15,
+          "walkMinutes": 1,
+          "why": {
+            "distance": 0.9888888888888889,
+            "open": 0.5,
+            "popularity": 0.5959578882977504,
+            "semantic": 0.08079459690158354,
+            "tags": []
+          }
+        },
+        "order": 1
+      },
+      {
+        "arriveAtMinute": 36,
+        "candidate": {
+          "distanceM": 1074.5690942778058,
+          "open": {
+            "confidence": "none",
+            "note": "часы работы неизвестны — уточните перед выходом",
+            "opensAt": null,
+            "status": "unknown",
+            "until": null
+          },
+          "place": {
+            "lat": 51.1185681,
+            "lon": 71.4266471,
+            "address": null,
+            "category": "park",
+            "description": null,
+            "descriptionSource": null,
+            "id": "osm:way/734514013",
+            "name": "Линейный парк",
+            "nameEn": null,
+            "openingHours": null,
+            "phone": null,
+            "popularity": null,
+            "sourceUrl": "https://www.openstreetmap.org/way/734514013",
+            "tags": [],
+            "website": null,
+            "wheelchair": null
+          },
+          "score": 0.3837374550293519,
+          "visitMinutes": 40,
+          "walkMinutes": 19,
+          "why": {
+            "distance": 0.7888888888888889,
+            "open": 0.5,
+            "popularity": 0,
+            "semantic": 0.2787880820178242,
+            "tags": []
+          }
+        },
+        "order": 2
+      }
+    ],
+    "totalMinutes": 76
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: 51.128, 71.43 (геолокация браузера).
+Фильтры: Прогулка до 90 минут; Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад; Часы проверены на 21:00 по Астане.
+
+Пеший маршрут: всего 76 мин, включая переходы и посещения (оценка).
+
+1. Байтерек — прибытие через 1 мин от старта. Переход: 45 м, 1 мин.
+Почему: памятник — подходит для прогулки, заметное место по данным Wikidata/OSM, переход 1 мин.
+На посещение: 15 мин (оценка).
+достопримечательность города (Wikidata).
+Что делать: осмотреть памятник и сделать фото (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/230401645).
+
+2. Линейный парк — прибытие через 36 мин от старта. Переход: 1113 м, 20 мин.
+Почему: парк — подходит для прогулки, переход 20 мин.
+На посещение: 40 мин (оценка).
+Что делать: пройтись по парку и отдохнуть (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/734514013).
+
+Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены. У части мест часы работы неизвестны — уточните перед выходом.
+```
+
+### unknown-location
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Хочу погулять рядом со мной.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+Вызовов нет.
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Где вы сейчас находитесь? Назовите ориентир или передайте геолокацию.
+```
+
+### khan-shatyr
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я у Хан Шатыр, хочу прогуляться 30–60 минут.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я у Хан Шатыр, хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 9,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "high",
+    "found": true,
+    "label": "Хан Шатыр",
+    "matchedPlaceId": "osm:way/460703779",
+    "point": {
+      "lat": 51.133,
+      "lon": 71.404
+    }
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "monument",
+      "attraction",
+      "artwork",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "theatre",
+      "park",
+      "garden",
+      "cafe"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 15,
+    "query": "хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 4512,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 86.76579362410237,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.132337,
+          "lon": 71.4033443,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1449317691",
+          "name": "Лепим и варим",
+          "nameEn": null,
+          "openingHours": "Mo-Su 10:00-23:00",
+          "phone": "+7 707 180 7400",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1449317691",
+          "tags": [],
+          "website": "https://lepimivarim.ru",
+          "wheelchair": null
+        },
+        "score": 0.4208165322602688,
+        "visitMinutes": 30,
+        "walkMinutes": 2,
+        "why": {
+          "distance": 0.8666666666666667,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.13537466398400524,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 21.465391534701624,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1328472,
+          "lon": 71.403812,
+          "address": null,
+          "category": "attraction",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1449322329",
+          "name": "Конвой",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1449322329",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.36822460384494565,
+        "visitMinutes": 30,
+        "walkMinutes": 1,
+        "why": {
+          "distance": 0.9333333333333333,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.1497281762790308,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 71.23521032612354,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1324374,
+          "lon": 71.4044883,
+          "address": null,
+          "category": "attraction",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1449322339",
+          "name": "Динопарк",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1449322339",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.36049863216123085,
+        "visitMinutes": 30,
+        "walkMinutes": 2,
+        "why": {
+          "distance": 0.8666666666666667,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.17207991373641043,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 42.93682262318752,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1327244,
+          "lon": 71.404431,
+          "address": null,
+          "category": "attraction",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1449322340",
+          "name": "Электронды көліктер",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1449322340",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.3593229455709032,
+        "visitMinutes": 30,
+        "walkMinutes": 1,
+        "why": {
+          "distance": 0.9333333333333333,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.1274740305939246,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 34.564875056018636,
+        "open": {
+          "confidence": "none",
+          "note": "часы работы неизвестны — уточните перед выходом",
+          "opensAt": null,
+          "status": "unknown",
+          "until": null
+        },
+        "place": {
+          "lat": 51.1327269,
+          "lon": 71.4037634,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:way/1449301315",
+          "name": "Starbucks",
+          "nameEn": null,
+          "openingHours": null,
+          "phone": null,
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/way/1449301315",
+          "tags": [],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.3550659626858768,
+        "visitMinutes": 30,
+        "walkMinutes": 1,
+        "why": {
+          "distance": 0.9333333333333333,
+          "open": 0.5,
+          "popularity": 0,
+          "semantic": 0.11683157338135862,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": "Хан Шатыр",
+      "point": {
+        "lat": 51.133,
+        "lon": 71.404
+      },
+      "source": "text"
+    },
+    "usedFilters": [
+      "Пешком до 15 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: Хан Шатыр (из ваших слов).
+
+Фильтры: Пешком до 15 минут; Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе.
+
+1. Лепим и варим — 87 м, 2 мин пешком (оценка).
+Почему: кафе — остановка на кофе, открыто до 23:00, 2 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 23:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/1449317691).
+
+2. Конвой — 21 м, 1 мин пешком (оценка).
+Почему: достопримечательность — подходит для прогулки, 1 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: осмотреть достопримечательность и сделать короткую остановку (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/1449322329).
+
+3. Динопарк — 71 м, 2 мин пешком (оценка).
+Почему: достопримечательность — подходит для прогулки, 2 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: осмотреть достопримечательность и сделать короткую остановку (сгенерированная идея).
+Часы: часы работы неизвестны — уточните перед выходом.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/way/1449322339).
+```
+
+### bayterek
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я у Байтерека, хочу прогуляться 30–60 минут.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я у Байтерека, хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 16,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "high",
+    "found": true,
+    "label": "Байтерек",
+    "matchedPlaceId": "osm:way/230401645",
+    "point": {
+      "lat": 51.128,
+      "lon": 71.43
+    }
+  },
+  "status": "ok"
+}
+```
+
+```json
+{
+  "arguments": {
+    "categories": [
+      "monument",
+      "attraction",
+      "artwork",
+      "museum",
+      "gallery",
+      "viewpoint",
+      "theatre",
+      "park",
+      "garden",
+      "cafe"
+    ],
+    "limit": 5,
+    "maxWalkMinutes": 15,
+    "query": "хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 4496,
+  "label": "Поиск мест",
+  "name": "find_places",
+  "result": {
+    "candidates": [
+      {
+        "distanceM": 182.35445221242122,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 00:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "00:00"
+        },
+        "place": {
+          "lat": 51.1293821,
+          "lon": 71.4285934,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/6408271985",
+          "name": "CrepeCafe",
+          "nameEn": null,
+          "openingHours": "Mo-Fr 08:00-00:00; Sa-Su 09:00-00:00",
+          "phone": "+7 771 949 4949",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/6408271985",
+          "tags": [],
+          "website": "https://crepecafe.kz",
+          "wheelchair": null
+        },
+        "score": 0.3843104778536448,
+        "visitMinutes": 30,
+        "walkMinutes": 4,
+        "why": {
+          "distance": 0.7333333333333334,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.1274428613007787,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 337.7867751308332,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.1277607,
+          "lon": 71.4251746,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/4853972122",
+          "name": "Фаттуш",
+          "nameEn": "Fattoush",
+          "openingHours": "Mo-Su 10:00-23:00",
+          "phone": "+77017330010",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/4853972122",
+          "tags": [
+            "wifi"
+          ],
+          "website": null,
+          "wheelchair": null
+        },
+        "score": 0.37897418857587684,
+        "visitMinutes": 30,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.6,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.19743547143969217,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 240.43877556599747,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 00:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "00:00"
+        },
+        "place": {
+          "lat": 51.1285659,
+          "lon": 71.4333254,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/10564988185",
+          "name": "Degirmen",
+          "nameEn": null,
+          "openingHours": "Mo-Su 08:00-00:00",
+          "phone": "+7 708 377 7778",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/10564988185",
+          "tags": [],
+          "website": "http://degirmen.kz/",
+          "wheelchair": null
+        },
+        "score": 0.3769890689413058,
+        "visitMinutes": 30,
+        "walkMinutes": 5,
+        "why": {
+          "distance": 0.6666666666666667,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.15080600568659777,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 317.5937266824208,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 22:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "22:00"
+        },
+        "place": {
+          "lat": 51.1279246,
+          "lon": 71.4254505,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/12520559589",
+          "name": "Лепим и варим",
+          "nameEn": null,
+          "openingHours": "Mo-Su 10:00-22:00",
+          "phone": "+7 707 180 7400",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/12520559589",
+          "tags": [],
+          "website": "https://lepimivarim.ru",
+          "wheelchair": null
+        },
+        "score": 0.35414986559360206,
+        "visitMinutes": 30,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.6,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.13537466398400524,
+          "tags": []
+        }
+      },
+      {
+        "distanceM": 314.7880083611689,
+        "open": {
+          "confidence": "high",
+          "note": "по данным OSM открыто до 23:00",
+          "opensAt": null,
+          "status": "open",
+          "until": "23:00"
+        },
+        "place": {
+          "lat": 51.1280727,
+          "lon": 71.4254906,
+          "address": null,
+          "category": "cafe",
+          "description": null,
+          "descriptionSource": null,
+          "id": "osm:node/9047331880",
+          "name": "Starbucks",
+          "nameEn": "Starbucks",
+          "openingHours": "Mo-Su 09:00-23:00",
+          "phone": "+7 727 339 9860;+7 800 0802185",
+          "popularity": null,
+          "sourceUrl": "https://www.openstreetmap.org/node/9047331880",
+          "tags": [],
+          "website": "https://www.starbucks.com.kz/",
+          "wheelchair": null
+        },
+        "score": 0.35116420198460163,
+        "visitMinutes": 30,
+        "walkMinutes": 6,
+        "why": {
+          "distance": 0.6,
+          "open": 1,
+          "popularity": 0,
+          "semantic": 0.1279105049615041,
+          "tags": []
+        }
+      }
+    ],
+    "note": null,
+    "origin": {
+      "label": "Байтерек",
+      "point": {
+        "lat": 51.128,
+        "lon": 71.43
+      },
+      "source": "text"
+    },
+    "usedFilters": [
+      "Пешком до 15 минут",
+      "Время проверки: 19.10, 21:00 по Астане",
+      "Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе"
+    ]
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Локация: Байтерек (из ваших слов).
+
+Фильтры: Пешком до 15 минут; Категории: памятник, достопримечательность, арт-объект, музей, галерея, смотровая площадка, театр, парк, сад, кафе.
+
+1. CrepeCafe — 182 м, 4 мин пешком (оценка).
+Почему: кафе — остановка на кофе, открыто до 00:00, 4 мин пешком.
+На посещение: 30 мин (оценка).
+Что делать: выпить кофе и отдохнуть перед следующей остановкой (сгенерированная идея).
+Часы: открыто до 00:00 по данным OpenStreetMap.
+Источник места: [OpenStreetMap](https://www.openstreetmap.org/node/6408271985).
+```
+
+### embankment
+
+Вход:
+
+```json
+{
+  "messages": [
+    {
+      "content": "Я у набережной, хочу прогуляться 30–60 минут.",
+      "role": "user"
+    }
+  ]
+}
+```
+
+Вызовы инструментов (полные аргументы и результаты):
+
+```json
+{
+  "arguments": {
+    "text": "Я у набережной, хочу прогуляться 30–60 минут."
+  },
+  "durationMs": 6,
+  "label": "Определение локации",
+  "name": "resolve_location",
+  "result": {
+    "confidence": "low",
+    "found": false,
+    "label": null,
+    "matchedPlaceId": null,
+    "point": null
+  },
+  "status": "ok"
+}
+```
+
+Итоговый ответ ассистента (дословно):
+
+```text
+Не удалось однозначно определить ориентир. Уточните название здания или музея либо передайте геолокацию.
+```

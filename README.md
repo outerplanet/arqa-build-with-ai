@@ -314,6 +314,7 @@ py -3 -m venv ../.arqa-pdf-venv
 ```bash
 node --conditions=react-server --import tsx scripts/qa.ts
 python3 scripts/qa_report.py
+node --test scripts/qa-contract.test.mjs
 ```
 
 Для первой команды задайте `EMBEDDING_PYTHON` и `EMBEDDING_CACHE` в окружении процесса.
