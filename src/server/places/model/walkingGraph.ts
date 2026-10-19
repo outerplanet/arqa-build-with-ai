@@ -222,14 +222,31 @@ function coordinatesForPath(
 	return coordinates;
 }
 
-export function findWalkingPath(
+interface WalkingPathInput {
+	from: GeoPoint;
+	maxSnapM?: number;
+	to: GeoPoint;
+}
+
+function snapFor(
 	index: WalkingGraphIndex,
-	input: { from: GeoPoint; maxSnapM?: number; to: GeoPoint },
+	{ cache, maxSnapM, point }: { cache?: Map<string, Snap | null>; maxSnapM: number; point: GeoPoint },
+): Snap | null {
+	const key = JSON.stringify([point.lat, point.lon, maxSnapM]);
+	if (cache?.has(key)) return cache.get(key) ?? null;
+	const snap = nearestSegment(index, { maxSnapM, point });
+	cache?.set(key, snap);
+	return snap;
+}
+
+function findPath(
+	index: WalkingGraphIndex,
+	input: WalkingPathInput & { snaps?: Map<string, Snap | null> },
 ): WalkingPath | null {
 	const maxSnapM = input.maxSnapM ?? 75;
 	if (!validPoint(input.from) || !validPoint(input.to) || !Number.isFinite(maxSnapM) || maxSnapM < 0) return null;
-	const from = nearestSegment(index, { maxSnapM, point: input.from });
-	const to = nearestSegment(index, { maxSnapM, point: input.to });
+	const from = snapFor(index, { cache: input.snaps, maxSnapM, point: input.from });
+	const to = snapFor(index, { cache: input.snaps, maxSnapM, point: input.to });
 	if (!from || !to) return null;
 	const points = [...index.points, from.point, to.point];
 	const start = index.points.length;
@@ -263,4 +280,15 @@ export function findWalkingPath(
 		current = queue.pop();
 	}
 	return null;
+}
+
+/** Pure single-query API: it never retains a location after returning. */
+export function findWalkingPath(index: WalkingGraphIndex, input: WalkingPathInput): WalkingPath | null {
+	return findPath(index, input);
+}
+
+/** Create once per request, never on the static index: locations and failed snaps are request-scoped. */
+export function createWalkingSession(index: WalkingGraphIndex): (input: WalkingPathInput) => WalkingPath | null {
+	const snaps = new Map<string, Snap | null>();
+	return (input) => findPath(index, { ...input, snaps });
 }

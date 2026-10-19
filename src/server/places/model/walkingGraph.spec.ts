@@ -2,7 +2,13 @@ import 'server-only';
 import { describe, expect, it } from 'vitest';
 import { distanceM } from './geo';
 import { type GeoPoint } from './places.schema';
-import { createWalkingGraph, findWalkingPath, type WalkingGraphInput } from './walkingGraph';
+import {
+	createWalkingGraph,
+	createWalkingSession,
+	findWalkingPath,
+	type WalkingGraphIndex,
+	type WalkingGraphInput,
+} from './walkingGraph';
 
 function graph(points: readonly GeoPoint[], directed: readonly (readonly [number, number])[]) {
 	return createWalkingGraph({
@@ -15,6 +21,60 @@ const b = { lat: 51, lon: 71.01 };
 const middle = { lat: 51, lon: 71.005 };
 
 describe('walking graph paths', () => {
+	it('reuses each point snap only within one session, across different directed pairs', () => {
+		const index = graph([a, b], [[0, 1]]);
+		let scans = 0;
+		const observed: WalkingGraphIndex = {
+			...index,
+			get segments() {
+				scans++;
+				return index.segments;
+			},
+		};
+		const session = createWalkingSession(observed);
+		for (const input of [
+			{ from: a, to: middle },
+			{ from: middle, to: b },
+			{ from: b, to: a },
+		]) {
+			expect(session(input)).toEqual(findWalkingPath(index, input));
+		}
+		expect(scans).toBe(3);
+		const independent = createWalkingSession(observed);
+		expect(independent({ from: a, to: middle })).toEqual(session({ from: a, to: middle }));
+		expect(scans).toBe(5);
+	});
+	it('caches failed snaps, distinguishes snap radii and protects cached projections from result mutation', () => {
+		const index = graph(
+			[a, b],
+			[
+				[0, 1],
+				[1, 0],
+			],
+		);
+		let scans = 0;
+		const observed: WalkingGraphIndex = {
+			...index,
+			get segments() {
+				scans++;
+				return index.segments;
+			},
+		};
+		const session = createWalkingSession(observed);
+		const from = { lat: 51.0005, lon: 71.004 };
+		const to = { lat: 51, lon: 71.006 };
+		expect(session({ from, maxSnapM: 10, to })).toBeNull();
+		const count = scans;
+		expect(session({ from, maxSnapM: 10, to })).toBeNull();
+		expect(scans).toBe(count);
+		const path = session({ from, to });
+		expect(path).toEqual(findWalkingPath(index, { from, to }));
+		path!.coordinates[0]![0] = 0;
+		path!.fromSnap.point.lat = 0;
+		expect(session({ from, to })).toEqual(findWalkingPath(index, { from, to }));
+		expect(session({ from: to, to: from })).toEqual(findWalkingPath(index, { from: to, to: from }));
+		expect(session({ from: { lat: NaN, lon: 71 }, to })).toBeNull();
+	});
 	it('matches an independent all-pairs distance oracle on a directed graph', () => {
 		const points = Array.from({ length: 8 }, (_, index) => ({
 			lat: 51 + Math.sin((index * Math.PI) / 4) * 0.002,
@@ -244,6 +304,6 @@ describe('walking graph paths', () => {
 			{ ...valid, edges: [[0.5, 1, 100]] },
 			{ ...valid, edges: [[0, 1, NaN]] },
 		])
-			expect(() => createWalkingGraph(input as WalkingGraphInput)).toThrow();
+			expect(() => createWalkingGraph(input as unknown as WalkingGraphInput)).toThrow();
 	});
 });
