@@ -4,33 +4,8 @@ import {
 	type FindPlacesResult,
 	type WalkPlan,
 } from '@server/places/model/places.schema';
+import { categoryNames } from '@server/places/usecase/categoryNames';
 import 'server-only';
-
-const categoryNames: Record<Category, string> = {
-	artwork: 'арт-объект',
-	attraction: 'достопримечательность',
-	bar: 'бар',
-	cafe: 'кафе',
-	cinema: 'кинотеатр',
-	fast_food: 'место быстрого питания',
-	gallery: 'галерея',
-	garden: 'сад',
-	library: 'библиотека',
-	mall: 'торговый центр',
-	monument: 'памятник',
-	museum: 'музей',
-	nightclub: 'ночной клуб',
-	other: 'место из набора данных',
-	park: 'парк',
-	place_of_worship: 'религиозный объект',
-	playground: 'детская площадка',
-	restaurant: 'ресторан',
-	sports: 'спортивный объект',
-	theatre: 'театр',
-	theme_park: 'парк развлечений',
-	viewpoint: 'смотровая площадка',
-	zoo: 'зоопарк',
-};
 
 function hours(candidate: Candidate): string {
 	const { open } = candidate;
@@ -38,7 +13,7 @@ function hours(candidate: Candidate): string {
 	if (open.status === 'open') status = `открыто по данным источника${open.until ? ` до ${open.until}` : ''}`;
 	if (open.status === 'closed')
 		status = `закрыто${open.opensAt ? `; открытие по данным источника в ${open.opensAt}` : ''}`;
-	return `${status}${open.confidence === 'low' ? '; уверенность низкая' : ''}${open.note ? `. ${open.note}` : ''}`;
+	return `${status}${open.confidence === 'low' ? '; уверенность низкая' : ''}${open.note && open.note !== status ? `. ${open.note}` : ''}`;
 }
 
 function requestedFacts(candidate: Candidate, query: string): string[] {
@@ -95,13 +70,11 @@ function placeDetails(candidate: Candidate, query = ''): string {
 		.join('\n');
 }
 
-export function formatRecommendations(
+export function selectRecommendations(
 	result: FindPlacesResult,
 	options: { durationMinutes?: number; flight?: boolean; night?: boolean; query?: string } = {},
-): string {
-	const { origin } = result;
-	const location = origin.label ?? `${origin.point.lat}, ${origin.point.lon}`;
-	const candidates = result.candidates
+): Candidate[] {
+	return result.candidates
 		.filter((candidate) => !options.night || candidate.open.status === 'open')
 		.filter(
 			(candidate) =>
@@ -109,6 +82,15 @@ export function formatRecommendations(
 				candidate.walkMinutes + candidate.visitMinutes <= options.durationMinutes,
 		)
 		.slice(0, options.flight ? 2 : 3);
+}
+
+export function formatRecommendations(
+	result: FindPlacesResult,
+	options: { durationMinutes?: number; flight?: boolean; night?: boolean; query?: string } = {},
+): string {
+	const { origin } = result;
+	const location = origin.label ?? `${origin.point.lat}, ${origin.point.lon}`;
+	const candidates = selectRecommendations(result, options);
 	const parts = [
 		`Локация: ${location} (${origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).`,
 		`Фильтры: ${result.usedFilters.length ? result.usedFilters.join('; ') : 'дополнительные не заданы'}.`,

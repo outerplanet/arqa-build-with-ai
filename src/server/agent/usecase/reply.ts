@@ -3,14 +3,15 @@ import { findPlacesResultSchema, placeSchema, walkPlanSchema } from '@server/pla
 import { type PlacesContext } from '@server/places/usecase/context';
 import 'server-only';
 import { z } from 'zod';
-import { formatRecommendations, formatWalk } from './formatReply';
+import { formatRecommendations, formatWalk, selectRecommendations } from './formatReply';
 import { scenarioFor } from './scenario';
 
-/** Recommendation facts are rendered from validated tool results, never free-form model output. */
-export function replyForTools(
-	ctx: PlacesContext,
-	input: { messages: readonly ChatMessage[]; toolCalls: readonly ToolCall[] },
-): string {
+interface ReplyInput {
+	messages: readonly ChatMessage[];
+	toolCalls: readonly ToolCall[];
+}
+
+function selectedResults(input: ReplyInput) {
 	const scenario = scenarioFor(
 		input.messages
 			.filter((message) => message.role === 'user')
@@ -18,14 +19,34 @@ export function replyForTools(
 			.join('\n'),
 	);
 	const successful = input.toolCalls.filter((call) => call.status === 'ok');
-	const search = successful.findLast((call) => call.name === 'find_places');
-	const found = findPlacesResultSchema.safeParse(search?.result);
-	const route = walkPlanSchema.safeParse(successful.findLast((call) => call.name === 'plan_walk')?.result);
+	const searchIndex = successful.findLastIndex((call) => call.name === 'find_places');
+	const routeIndex = successful.findLastIndex((call) => call.name === 'plan_walk');
+	const found = findPlacesResultSchema.safeParse(successful[searchIndex]?.result);
+	const route = walkPlanSchema.safeParse(routeIndex > searchIndex ? successful[routeIndex]?.result : undefined);
+	return { found, route, scenario, successful };
+}
 
-	if (route.success && found.success && !scenario.flight && !scenario.night) {
-		const { origin, usedFilters } = found.data;
+/** The browser and text renderer share one authoritative recommendation selection. */
+export function recommendedPlaceIdsForTools(input: ReplyInput): string[] {
+	const { found, route, scenario } = selectedResults(input);
+	if (route.success && !scenario.flight && !scenario.night)
+		return route.data.stops.map((stop) => stop.candidate.place.id);
+	return found.success ? selectRecommendations(found.data, scenario).map((candidate) => candidate.place.id) : [];
+}
 
-		return `Локация: ${origin.label ?? `${origin.point.lat}, ${origin.point.lon}`} (${origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).\nФильтры: ${usedFilters.join('; ')}.\n\n${formatWalk(route.data)}`;
+/** Recommendation facts are rendered from validated tool results, never free-form model output. */
+export function replyForTools(ctx: PlacesContext, input: ReplyInput): string {
+	const { found, route, scenario, successful } = selectedResults(input);
+
+	if (route.success && !scenario.flight && !scenario.night) {
+		const origin = found.success ? found.data.origin : null;
+		const point = origin?.point ?? ctx.browserLocation ?? ctx.resolvedLocation?.point ?? route.data.legs[0]?.from;
+		const label =
+			origin?.label ??
+			ctx.resolvedLocation?.label ??
+			(point ? `${point.lat}, ${point.lon}` : 'старт из результата инструмента');
+		const source = origin?.source ?? (ctx.browserLocation ? 'browser' : 'text');
+		return `Локация: ${label} (${source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).\nФильтры: ${found.success ? found.data.usedFilters.join('; ') : scenario.query}.\n\n${formatWalk(route.data)}`;
 	}
 	if (found.success) return formatRecommendations(found.data, scenario);
 	const place = placeSchema.safeParse(successful.findLast((call) => call.name === 'get_place')?.result);

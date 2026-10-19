@@ -1,4 +1,6 @@
 import { formatRecommendations, formatWalk } from '@server/agent/usecase/formatReply';
+import { recommendedPlaceIdsForTools, replyForTools } from '@server/agent/usecase/reply';
+import { createCtx } from '@server/kernel/ctx';
 import { type Candidate, type FindPlacesResult } from '@server/places/model/places.schema';
 import { describe, expect, it } from 'vitest';
 
@@ -41,6 +43,30 @@ function result(candidates: Candidate[]): FindPlacesResult {
 }
 
 describe('formatRecommendations', () => {
+	it('gives the map exactly the eligible recommendations from the text, capped at three', () => {
+		const candidates = ['unknown', 'open', 'open', 'open', 'open'].map((status, index) => {
+			const item = candidate(status as Candidate['open']['status']);
+			item.place.id = `osm:node/${index + 1}`;
+			return item;
+		});
+		const input = {
+			messages: [{ content: 'Что открыто ночью на 30 минут?', role: 'user' as const }],
+			toolCalls: [
+				{
+					arguments: {},
+					durationMs: 1,
+					label: 'Поиск',
+					name: 'find_places',
+					result: result(candidates),
+					status: 'ok' as const,
+				},
+			],
+		};
+		expect(recommendedPlaceIdsForTools(input)).toEqual(['osm:node/2', 'osm:node/3', 'osm:node/4']);
+		expect(
+			recommendedPlaceIdsForTools({ ...input, messages: [{ content: 'Есть только 10 минут', role: 'user' }] }),
+		).toEqual([]);
+	});
 	it('discloses missing requested facilities instead of inferring sockets or quietness', () => {
 		const reply = formatRecommendations(result([candidate('unknown')]), {
 			query: 'Хочу тихое место с розеткой и Wi-Fi',
@@ -111,6 +137,30 @@ describe('formatRecommendations', () => {
 });
 
 describe('formatWalk', () => {
+	it('renders a successful plan even when its internal search is not a separate tool call', () => {
+		const input = {
+			messages: [{ content: 'Построй маршрут на час', role: 'user' as const }],
+			toolCalls: [
+				{
+					arguments: {},
+					durationMs: 1,
+					label: 'Маршрут',
+					name: 'plan_walk',
+					result: {
+						legs: [{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 }],
+						note: 'По прямой',
+						stops: [{ arriveAtMinute: 5, candidate: candidate('open'), order: 1 }],
+						totalMinutes: 25,
+					},
+					status: 'ok' as const,
+				},
+			],
+		};
+		expect(recommendedPlaceIdsForTools(input)).toEqual(['osm:node/1']);
+		expect(replyForTools({ ...createCtx(), browserLocation: { lat: 51, lon: 71 } }, input)).toContain(
+			'Пеший маршрут: всего 25 мин',
+		);
+	});
 	it('uses the plan minutes, stop hours, source and note', () => {
 		const reply = formatWalk({
 			legs: [{ distanceM: 400, from: { lat: 51, lon: 71 }, to: { lat: 51.01, lon: 71 }, walkMinutes: 5 }],

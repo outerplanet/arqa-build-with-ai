@@ -117,7 +117,7 @@ export function ChatScreen({
 								<Button
 									className="min-h-10 text-sm"
 									disabled={pending}
-									onClick={() => sendMessage('Построй пеший маршрут на 2 часа по этим местам.')}
+									onClick={() => sendMessage('Построй пеший маршрут на 2 часа.')}
 									variant="secondary"
 								>
 									Маршрут на 2 часа

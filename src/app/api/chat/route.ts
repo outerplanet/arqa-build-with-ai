@@ -1,5 +1,6 @@
 import { chatRequestSchema, chatResponseSchema } from '@server/agent/model/agent.schema';
 import { runAgent } from '@server/agent/usecase/agent';
+import { recommendedPlaceIdsForTools } from '@server/agent/usecase/reply';
 import { createCtx } from '@server/kernel/ctx';
 
 /**
@@ -33,7 +34,15 @@ export async function POST(request: Request): Promise<Response> {
 	try {
 		const result = await runAgent(createCtx(), parsedInput.data);
 
-		return Response.json(chatResponseSchema.parse(result));
+		return Response.json(
+			chatResponseSchema.parse({
+				...result,
+				recommendedPlaceIds: recommendedPlaceIdsForTools({
+					messages: parsedInput.data.messages,
+					toolCalls: result.toolCalls,
+				}),
+			}),
+		);
 	} catch (error) {
 		// The detail goes to the server log, never to the browser: a provider error message can
 		// carry an endpoint, a model name or part of a key.

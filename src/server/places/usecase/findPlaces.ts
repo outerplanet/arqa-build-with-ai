@@ -8,6 +8,7 @@ import {
 } from '@server/places/model/places.schema';
 import 'server-only';
 import { z } from 'zod';
+import { categoryNames } from './categoryNames';
 import { dependencies, type PlacesContext } from './context';
 import { assertOrigin, origin } from './origin';
 import { semanticScores } from './semantic';
@@ -47,7 +48,9 @@ export async function searchPlaces(
 			`Пешком до ${parsed.maxWalkMinutes} минут`,
 			`Время проверки: ${at.toISOString()}`,
 			...(durationMinutes === undefined ? [] : [`Ходьба и посещение до ${durationMinutes} минут`]),
-			...(parsed.categories === undefined ? [] : [`Категории: ${parsed.categories.join(', ')}`]),
+			...(parsed.categories === undefined
+				? []
+				: [`Категории: ${parsed.categories.map((category) => categoryNames[category]).join(', ')}`]),
 			...(parsed.accessibleOnly === true ? ['Только места с подтверждённой доступностью для колясок'] : []),
 		],
 	});

@@ -41,6 +41,8 @@ export const chatRequestSchema = z.object({
 });
 
 export const chatResponseSchema = z.object({
+	/** Server selection shared with the text reply; every id still needs a validated tool result. */
+	recommendedPlaceIds: z.array(z.string()).optional(),
 	reply: z.string(),
 	toolCalls: z.array(toolCallSchema),
 });

@@ -76,7 +76,11 @@ export function PlacesMap({ candidates, onSelect, origin, pending = false, plan,
 					map.on('error', () => {
 						if (!disposed) setError(true);
 					});
-					resize = new ResizeObserver(() => map?.resize());
+					resize = new ResizeObserver(() => {
+						map?.resize();
+						fitted.current = '';
+						setReady((value) => value + 1);
+					});
 					resize.observe(container.current);
 					let currentStyle = mapStyle();
 					const updateTheme = () => {
@@ -115,6 +119,13 @@ export function PlacesMap({ candidates, onSelect, origin, pending = false, plan,
 	useEffect(() => {
 		const map = mapRef.current;
 		if (!map || !ready) return;
+		if (!map.isStyleLoaded()) {
+			const resume = () => setReady((value) => value + 1);
+			map.once('idle', resume);
+			return () => {
+				map.off('idle', resume);
+			};
+		}
 		let disposed = false;
 		const markers: Marker[] = [];
 		void import('maplibre-gl')
@@ -190,7 +201,7 @@ export function PlacesMap({ candidates, onSelect, origin, pending = false, plan,
 					: loading
 						? 'Загружаем карту…'
 						: candidates.length
-							? `${candidates.length} мест на карте`
+							? `Мест на карте: ${candidates.length}`
 							: 'Здесь появятся найденные места. Задайте вопрос в чате.'}
 				{Boolean(plan?.legs.length) && <p>Пунктир — прямые отрезки, не пешеходная навигация.</p>}
 			</div>
