@@ -1,6 +1,7 @@
 import { runAgent } from '@server/agent/usecase/agent';
 import { executeTool } from '@server/agent/usecase/tools';
 import { resetEnvCache } from '@server/kernel/env';
+import { DomainError } from '@server/kernel/errors';
 import { type Candidate, type Place } from '@server/places/model/places.schema';
 import 'server-only';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -164,9 +165,11 @@ describe('places usecases', () => {
 			constraint: 'invalid_walk_plan',
 		});
 	});
-	it('returns a visible error rather than fake recommendations while dependencies are pending', async () => {
-		const { ctx } = fixture();
-		ctx.places = undefined;
+	it('returns a visible error rather than fake recommendations when data is unavailable', async () => {
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.readPlaces).mockImplementation(() => {
+			throw new DomainError('conflict', { constraint: 'places_unavailable' });
+		});
 		const result = await executeTool(ctx, { args: { query: 'музей' }, name: 'find_places' });
 		expect(result.status).toBe('error');
 		expect(result.result).toContain('ещё не подключены');

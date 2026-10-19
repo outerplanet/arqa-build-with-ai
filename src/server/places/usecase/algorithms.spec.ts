@@ -53,6 +53,25 @@ afterEach(() => {
 });
 
 describe('connected places algorithms', () => {
+	it('connects the default data repositories to the validated tool dispatcher', async () => {
+		const ctx: PlacesContext = { browserLocation: POINT, now: new Date('2026-10-19T12:00:00+05:00') };
+		const result = await executeTool(ctx, { args: { categories: ['cafe'], query: 'кофе' }, name: 'find_places' });
+		expect(result.status).toBe('ok');
+		const found = await findPlaces(ctx, { categories: ['cafe'], query: 'кофе' });
+		expect(found.candidates.length).toBeGreaterThan(0);
+		for (const candidate of found.candidates) {
+			expect(getPlace(ctx, { id: candidate.place.id })).toEqual(candidate.place);
+			expect(candidate.walkMinutes).toBeLessThanOrEqual(15);
+		}
+	});
+	it.each([30, 60, 90])('plans within %i minutes using the default real dataset', async (durationMinutes) => {
+		const ctx: PlacesContext = { browserLocation: POINT, now: new Date('2026-10-19T12:00:00+05:00') };
+		const route = await planWalk(ctx, { durationMinutes, start: POINT });
+		expect(route.stops.length).toBeGreaterThan(0);
+		expect(route.totalMinutes).toBeLessThanOrEqual(durationMinutes);
+		for (const stop of route.stops)
+			expect(getPlace(ctx, { id: stop.candidate.place.id })).toEqual(stop.candidate.place);
+	});
 	it('filters the full visit budget before truncating the ranked candidate list', async () => {
 		const museums = Array.from({ length: 10 }, (_, index): Place => ({
 			...PLACES[0]!,
