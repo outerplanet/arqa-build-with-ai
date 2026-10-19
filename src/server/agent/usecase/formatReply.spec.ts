@@ -41,6 +41,15 @@ function result(candidates: Candidate[]): FindPlacesResult {
 }
 
 describe('formatRecommendations', () => {
+	it('does not recommend a visit that exceeds the explicit walking and visit budget', () => {
+		const reply = formatRecommendations(result([candidate('open', 'Слишком длинное посещение')]), {
+			durationMinutes: 10,
+		});
+
+		expect(reply).not.toContain('Слишком длинное посещение');
+		expect(reply).toContain('Подходящих мест');
+	});
+
 	it('discloses unknown hours, source, origin, filters and generated suggestions', () => {
 		const reply = formatRecommendations(result([candidate('unknown')]));
 		expect(reply).toContain('часы работы неизвестны — уточните перед выходом');

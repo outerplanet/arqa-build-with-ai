@@ -65,6 +65,45 @@ afterEach(() => {
 });
 
 describe('places usecases', () => {
+	it('rejects a location invented by the model rather than stated by the user', async () => {
+		const { ctx, deps } = fixture();
+		Object.assign(ctx, { userMessages: ['Хочу кофе рядом со мной'] });
+		const result = await executeTool(ctx, { args: { text: 'Я у Экспо' }, name: 'resolve_location' });
+
+		expect(result.status).toBe('error');
+		expect(deps.readPlaces).not.toHaveBeenCalled();
+	});
+
+	it('rejects recommendations fabricated by a ranking dependency', async () => {
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.rankPlaces).mockReturnValue([{ ...candidate, place: { ...place, name: 'Выдуманное место' } }]);
+		await expect(findPlaces(ctx, { query: 'музей' })).rejects.toMatchObject({ constraint: 'invalid_place_results' });
+	});
+
+	it('rejects a route whose stated total hides time needed for visits', async () => {
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.planWalk).mockReturnValue({
+			legs: [{ distanceM: 100, from: ctx.browserLocation!, to: place, walkMinutes: 2 }],
+			note: '',
+			stops: [{ arriveAtMinute: 2, candidate, order: 1 }],
+			totalMinutes: 8,
+		});
+		await expect(planWalk(ctx, { durationMinutes: 20, start: ctx.browserLocation! })).rejects.toMatchObject({
+			constraint: 'invalid_walk_plan',
+		});
+	});
+
+	it('accepts a route whose stops and timing match the search result', async () => {
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.planWalk).mockReturnValue({
+			legs: [{ distanceM: 100, from: ctx.browserLocation!, to: place, walkMinutes: 2 }],
+			note: 'По прямой ×1,3',
+			stops: [{ arriveAtMinute: 2, candidate, order: 1 }],
+			totalMinutes: 32,
+		});
+		expect((await planWalk(ctx, { durationMinutes: 60, start: ctx.browserLocation! })).totalMinutes).toBe(32);
+	});
+
 	it('rejects missing location before attempting to read data', async () => {
 		const { ctx, deps } = fixture();
 		ctx.browserLocation = undefined;

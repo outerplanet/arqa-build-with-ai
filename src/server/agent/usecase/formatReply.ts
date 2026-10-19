@@ -65,12 +65,17 @@ function placeDetails(candidate: Candidate): string {
 
 export function formatRecommendations(
 	result: FindPlacesResult,
-	options: { flight?: boolean; night?: boolean } = {},
+	options: { durationMinutes?: number; flight?: boolean; night?: boolean } = {},
 ): string {
 	const { origin } = result;
 	const location = origin.label ?? `${origin.point.lat}, ${origin.point.lon}`;
 	const candidates = result.candidates
 		.filter((candidate) => !options.night || candidate.open.status === 'open')
+		.filter(
+			(candidate) =>
+				options.durationMinutes === undefined ||
+				candidate.walkMinutes + candidate.visitMinutes <= options.durationMinutes,
+		)
 		.slice(0, options.flight ? 2 : 3);
 	const parts = [
 		`Локация: ${location} (${origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).`,

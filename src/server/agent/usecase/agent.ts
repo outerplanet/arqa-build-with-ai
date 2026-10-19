@@ -205,7 +205,12 @@ async function runChat(ctx: PlacesContext, input: AgentInput): Promise<ChatRespo
 export async function runAgent(ctx: PlacesContext, input: AgentInput): Promise<ChatResponse> {
 	// Direct callers must cross the same privacy boundary as POST /api/chat.
 	const parsed = chatRequestSchema.parse(input);
-	const requestCtx: PlacesContext = { ...ctx, browserLocation: parsed.location, resolvedLocation: undefined };
+	const requestCtx: PlacesContext = {
+		...ctx,
+		browserLocation: parsed.location,
+		resolvedLocation: undefined,
+		userMessages: parsed.messages.filter((message) => message.role === 'user').map((message) => message.content),
+	};
 
 	switch (readEnv().LLM_PROVIDER) {
 		case 'chat':

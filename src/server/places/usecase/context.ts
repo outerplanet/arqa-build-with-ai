@@ -8,6 +8,7 @@ export interface PlacesContext extends Ctx {
 	browserLocation?: GeoPoint;
 	places?: PlacesDependencies;
 	resolvedLocation?: ResolvedLocation;
+	userMessages?: readonly string[];
 }
 
 export function dependencies(ctx: PlacesContext): PlacesDependencies {

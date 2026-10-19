@@ -1,3 +1,4 @@
+import { DomainError } from '@server/kernel/errors';
 import {
 	findPlacesInputSchema,
 	type FindPlacesResult,
@@ -32,7 +33,7 @@ export async function findPlaces(
 		semantic: semantic.scores,
 	});
 
-	return findPlacesResultSchema.parse({
+	const result = findPlacesResultSchema.parse({
 		candidates,
 		note: semantic.note,
 		origin: location,
@@ -44,4 +45,15 @@ export async function findPlaces(
 			...(parsed.accessibleOnly === true ? ['Только места с подтверждённой доступностью для колясок'] : []),
 		],
 	});
+	const originals = new Map(places.map((place) => [place.id, JSON.stringify(place)]));
+	const ids = result.candidates.map((candidate) => candidate.place.id);
+
+	if (
+		result.candidates.length > parsed.limit ||
+		new Set(ids).size !== ids.length ||
+		result.candidates.some((candidate) => originals.get(candidate.place.id) !== JSON.stringify(candidate.place))
+	) {
+		throw new DomainError('validation', { constraint: 'invalid_place_results' });
+	}
+	return result;
 }

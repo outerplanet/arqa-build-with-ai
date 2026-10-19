@@ -1,3 +1,4 @@
+import { DomainError } from '@server/kernel/errors';
 import {
 	type ResolvedLocation,
 	resolvedLocationSchema,
@@ -14,6 +15,9 @@ export function resolveLocation(
 	input: z.input<typeof resolveLocationInputSchema>,
 ): ResolvedLocation {
 	const { text } = resolveLocationInputSchema.parse(input);
+	if (ctx.userMessages !== undefined && !ctx.userMessages.some((message) => mentions(message, text))) {
+		throw new DomainError('validation', { constraint: 'location_unconfirmed' });
+	}
 	const groups = LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
 	const matches = dependencies(ctx)
 		.readPlaces()
