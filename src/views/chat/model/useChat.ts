@@ -116,5 +116,15 @@ export function useChat(): UseChat {
 		if (lastRequest.current !== null) void exchange(lastRequest.current);
 	}, [exchange]);
 
-	return { error, location, messages, recommendedPlaceIds, retry, send, setLocation: updateLocation, status, toolCalls };
+	return {
+		error,
+		location,
+		messages,
+		recommendedPlaceIds,
+		retry,
+		send,
+		setLocation: updateLocation,
+		status,
+		toolCalls,
+	};
 }

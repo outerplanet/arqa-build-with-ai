@@ -2,22 +2,30 @@
 
 import { type Candidate, type GeoPoint, type WalkPlan } from '@server/places/model/places.schema';
 import { Button } from '@shared/ui/Button';
-import { type GeoJSONSource, type Map as MapLibreMap, type Marker } from 'maplibre-gl';
+import { type Map as LibreMap, type Marker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { routeGeometry } from '../model/routeGeometry';
-import styles from './PlacesMap.module.css';
+import './PlacesMap.css';
 
 export interface PlacesMapProps {
 	candidates: readonly Candidate[];
-	onSelect?: (id: string) => void;
-	origin?: GeoPoint | null;
-	pending?: boolean;
-	plan?: WalkPlan | null;
-	selectedId?: string | null;
+	error: string | null;
+	onSelect: (id: string) => void;
+	origin: GeoPoint | null;
+	pending: boolean;
+	plan: WalkPlan | null;
+	selectedId: string | null;
 }
 
-const ROUTE_SOURCE = 'walk-route';
+function routeColor(container: HTMLElement) {
+	const sample = document.createElement('span');
+	sample.style.color = 'var(--color-accent-bright)';
+	container.append(sample);
+	const { color } = getComputedStyle(sample);
+	sample.remove();
+	return color;
+}
 
 function mapStyle(): string {
 	const { theme } = document.documentElement.dataset;
@@ -25,229 +33,201 @@ function mapStyle(): string {
 	return `https://tiles.openfreemap.org/styles/${dark ? 'dark' : 'positron'}`;
 }
 
-export function PlacesMap({ candidates, onSelect, origin, pending = false, plan, selectedId }: PlacesMapProps) {
-	const container = useRef<HTMLDivElement>(null);
-	const mapRef = useRef<MapLibreMap | null>(null);
-	const fitted = useRef('');
+/** Receives only parsed tool results; it never resolves locations or invents route geometry. */
+export function PlacesMap({ candidates, error, onSelect, origin, pending, plan, selectedId }: PlacesMapProps) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const mapRef = useRef<LibreMap | null>(null);
 	const [attempt, setAttempt] = useState(0);
-	const [ready, setReady] = useState(0);
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(true);
+	const [ready, setReady] = useState(false);
+	const [failed, setFailed] = useState(false);
+	const hasPoints = candidates.length > 0 || origin !== null || (plan?.legs.length ?? 0) > 0;
 
 	useEffect(() => {
-		let disposed = false;
-		let map: MapLibreMap | undefined;
-		let resize: ResizeObserver | undefined;
-		let observer: MutationObserver | undefined;
-		let removeThemeListener: (() => void) | undefined;
-		let timeout: ReturnType<typeof setTimeout> | undefined;
+		const container = containerRef.current;
+		if (!container || !hasPoints) return undefined;
+		let cancelled = false;
+		let map: LibreMap | null = null;
+		let resize: ResizeObserver | null = null;
+		let theme: MutationObserver | null = null;
+		const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+		let currentStyle = mapStyle();
+		const recolor = () => {
+			const nextStyle = mapStyle();
+			if (map && nextStyle !== currentStyle) {
+				currentStyle = nextStyle;
+				setReady(false);
+				map.setStyle(nextStyle);
+			}
+			if (map?.getLayer('walk-route')) map.setPaintProperty('walk-route', 'line-color', routeColor(container));
+		};
+		// A failed style request must not leave an endless loading skeleton.
+		const timeout = window.setTimeout(() => {
+			if (!cancelled) setFailed(true);
+		}, 20000);
 		void import('maplibre-gl')
-			.then((library) => {
-				if (disposed || !container.current) return;
-				try {
-					// MapLibre 6 requires an explicit worker asset when bundled by Next.js.
-					library.setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).toString());
-					map = new library.Map({
-						attributionControl: false,
-						center: [71.43, 51.13],
-						container: container.current,
-						locale: { 'Map.MapFeedback': 'Сообщить об ошибке карты', 'Map.Title': 'Карта мест Астаны' },
-						style: mapStyle(),
-						zoom: 11,
-					});
-					mapRef.current = map;
-					map.getCanvas().setAttribute(
-						'aria-label',
-						'Карта мест Астаны. Для выбора места доступны карточки ниже.',
-					);
-					timeout = setTimeout(() => {
-						if (!disposed) setError(true);
-					}, 20000);
-					map.on('style.load', () => {
-						if (disposed) return;
-						setReady((value) => value + 1);
-					});
-					map.on('idle', () => {
-						if (disposed) return;
-						clearTimeout(timeout);
-						setLoading(false);
-						setError(false);
-					});
-					map.on('error', () => {
-						if (!disposed) setError(true);
-					});
-					resize = new ResizeObserver(() => {
-						map?.resize();
-						fitted.current = '';
-						setReady((value) => value + 1);
-					});
-					resize.observe(container.current);
-					let currentStyle = mapStyle();
-					const updateTheme = () => {
-						const nextStyle = mapStyle();
-						if (nextStyle === currentStyle) return;
-						currentStyle = nextStyle;
-						map?.setStyle(nextStyle);
-					};
-					observer = new MutationObserver(updateTheme);
-					observer.observe(document.documentElement, { attributeFilter: ['data-theme'], attributes: true });
-					const media = window.matchMedia('(prefers-color-scheme: dark)');
-					media.addEventListener('change', updateTheme);
-					removeThemeListener = () => media.removeEventListener('change', updateTheme);
-				} catch {
-					setError(true);
-					setLoading(false);
-				}
+			.then((libre) => {
+				if (cancelled) return;
+				setReady(false);
+				libre.setWorkerCount(1);
+				// Emit the worker as a local asset; bundled module URLs cannot locate it implicitly.
+				libre.setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
+				map = new libre.Map({
+					attributionControl: false,
+					container,
+					locale: {
+						'Map.Title': 'Карта мест для прогулки',
+						'Marker.Title': 'Место на карте',
+						'NavigationControl.ResetBearing': 'Повернуть на север',
+						'NavigationControl.ZoomIn': 'Приблизить',
+						'NavigationControl.ZoomOut': 'Отдалить',
+					},
+					maxZoom: 18,
+					style: currentStyle,
+				});
+				mapRef.current = map;
+				map.addControl(new libre.NavigationControl({ showCompass: false }), 'top-right');
+				map.on('style.load', () => {
+					window.clearTimeout(timeout);
+					if (!cancelled) {
+						setFailed(false);
+						setReady(true);
+					}
+				});
+				map.on('error', () => {
+					if (!cancelled) setFailed(true);
+				});
+				map.on('webglcontextlost', () => {
+					if (!cancelled) setFailed(true);
+				});
+				resize = new ResizeObserver(() => map?.resize());
+				resize.observe(container);
+				theme = new MutationObserver(recolor);
+				theme.observe(document.documentElement, { attributeFilter: ['data-theme'], attributes: true });
+				scheme.addEventListener('change', recolor);
 			})
 			.catch(() => {
-				if (!disposed) {
-					setError(true);
-					setLoading(false);
-				}
+				if (!cancelled) setFailed(true);
 			});
 		return () => {
-			disposed = true;
-			clearTimeout(timeout);
+			cancelled = true;
+			window.clearTimeout(timeout);
 			resize?.disconnect();
-			observer?.disconnect();
-			removeThemeListener?.();
-			map?.remove();
+			theme?.disconnect();
+			scheme.removeEventListener('change', recolor);
 			mapRef.current = null;
+			map?.remove();
 		};
-	}, [attempt]);
+	}, [attempt, hasPoints]);
 
 	useEffect(() => {
 		const map = mapRef.current;
-		if (!map || !ready) return;
-		if (!map.isStyleLoaded()) {
-			const resume = () => setReady((value) => value + 1);
-			map.once('idle', resume);
-			return () => {
-				map.off('idle', resume);
-			};
-		}
-		let disposed = false;
+		const container = containerRef.current;
+		if (!ready || !map || !container) return undefined;
+		let cancelled = false;
 		const markers: Marker[] = [];
 		void import('maplibre-gl')
-			.then((library) => {
-				if (disposed) return;
-				candidates.forEach((candidate, index) => {
-					const element = document.createElement('button');
-					element.type = 'button';
-					element.className = styles.marker ?? '';
-					element.textContent = String(index + 1);
-					element.setAttribute('aria-label', `${index + 1}. ${candidate.place.name}. Показать карточку`);
-					element.setAttribute('aria-pressed', String(candidate.place.id === selectedId));
-					element.addEventListener('click', () => onSelect?.(candidate.place.id));
-					markers.push(
-						new library.Marker({ element }).setLngLat([candidate.place.lon, candidate.place.lat]).addTo(map),
-					);
-				});
-				if (origin) {
-					const element = document.createElement('div');
-					element.className = styles.origin ?? '';
-					element.setAttribute('role', 'img');
-					element.setAttribute('aria-label', 'Точка начала поиска');
-					markers.push(new library.Marker({ element }).setLngLat([origin.lon, origin.lat]).addTo(map));
+			.then((libre) => {
+				if (cancelled) return;
+				const bounds = new libre.LngLatBounds();
+				for (const [index, candidate] of candidates.entries()) {
+					const { place } = candidate;
+					const selected = selectedId === place.id;
+					const button = document.createElement('button');
+					button.type = 'button';
+					button.className = 'places-map-marker';
+					button.textContent = String(index + 1);
+					button.setAttribute('aria-label', `Место ${index + 1}: ${place.name}`);
+					button.setAttribute('aria-pressed', String(selected));
+					button.addEventListener('click', () => onSelect(place.id));
+					markers.push(new libre.Marker({ element: button }).setLngLat([place.lon, place.lat]).addTo(map));
+					bounds.extend([place.lon, place.lat]);
 				}
-				const data = routeGeometry(plan);
-				const source = map.getSource<GeoJSONSource>(ROUTE_SOURCE);
-				if (source) void source.setData(data);
-				else {
-					map.addSource(ROUTE_SOURCE, { data, type: 'geojson' });
+				if (origin) {
+					const label = document.createElement('span');
+					label.className = 'places-map-origin';
+					label.textContent = 'Старт';
+					label.setAttribute('aria-label', 'Начало прогулки');
+					markers.push(new libre.Marker({ element: label }).setLngLat([origin.lon, origin.lat]).addTo(map));
+					bounds.extend([origin.lon, origin.lat]);
+				}
+				if (map.getLayer('walk-route')) map.removeLayer('walk-route');
+				if (map.getSource('walk-route')) map.removeSource('walk-route');
+				if (plan && plan.legs.length > 0) {
+					for (const leg of plan.legs) {
+						bounds.extend([leg.from.lon, leg.from.lat]);
+						bounds.extend([leg.to.lon, leg.to.lat]);
+					}
+					map.addSource('walk-route', {
+						data: routeGeometry(plan),
+						type: 'geojson',
+					});
 					map.addLayer({
-						id: ROUTE_SOURCE,
-						paint: {
-							'line-color': getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
-							'line-dasharray': [2, 2],
-							'line-width': 4,
-						},
-						source: ROUTE_SOURCE,
+						id: 'walk-route',
+						paint: { 'line-color': routeColor(container), 'line-dasharray': [2, 2], 'line-width': 4 },
+						source: 'walk-route',
 						type: 'line',
 					});
 				}
-				const points: [number, number][] = candidates.map(({ place }) => [place.lon, place.lat]);
-				if (origin) points.push([origin.lon, origin.lat]);
-				for (const leg of plan?.legs ?? []) points.push([leg.from.lon, leg.from.lat], [leg.to.lon, leg.to.lat]);
-				const signature = JSON.stringify(points);
-				if (points.length && fitted.current !== signature) {
-					fitted.current = signature;
-					const bounds = points.reduce(
-						(value, point) => value.extend(point),
-						new library.LngLatBounds(points[0], points[0]),
-					);
-					map.fitBounds(bounds, {
-						duration: 0,
-						maxZoom: 15,
-						padding: { bottom: 64, left: 56, right: 56, top: 84 },
-					});
-				}
+				if (!bounds.isEmpty()) map.fitBounds(bounds, { duration: 0, maxZoom: 15, padding: 56 });
 			})
 			.catch(() => {
-				if (!disposed) setError(true);
+				if (!cancelled) setFailed(true);
 			});
 		return () => {
-			disposed = true;
-			markers.forEach((marker) => marker.remove());
+			cancelled = true;
+			for (const marker of markers) marker.remove();
 		};
 	}, [candidates, onSelect, origin, plan, ready, selectedId]);
 
+	const retry = useCallback(() => {
+		setFailed(false);
+		setReady(false);
+		setAttempt((value) => value + 1);
+	}, []);
+
 	return (
-		<section aria-label="Места и маршрут на карте" className={styles.map}>
-			<div className={styles.canvas} ref={container} />
-			<div aria-live="polite" className={styles.status}>
-				{pending
-					? 'Ищем места…'
-					: loading
-						? 'Загружаем карту…'
-						: candidates.length
-							? `Мест на карте: ${candidates.length}`
-							: 'Здесь появятся найденные места. Задайте вопрос в чате.'}
-				{Boolean(plan?.legs.length) && <p>Пунктир — прямые отрезки, не пешеходная навигация.</p>}
+		<section aria-label="Карта прогулки" className="border-border bg-surface overflow-hidden rounded-lg border">
+			<div className="places-map-frame">
+				<div aria-label="Карта мест и маршрута" className="places-map-canvas" ref={containerRef} />
+				{failed ? (
+					<div className="places-map-state" role="status">
+						<p>Карта недоступна. Места и расстояния можно посмотреть в карточках.</p>
+						<Button onClick={retry} size="sm" variant="secondary">
+							Повторить загрузку карты
+						</Button>
+					</div>
+				) : error ? (
+					<div className="places-map-state" role="status">
+						Не удалось получить места. Повторите запрос в чате.
+					</div>
+				) : pending || (hasPoints && !ready) ? (
+					<div aria-busy="true" className="places-map-state" role="status">
+						Загружаем карту и места…
+					</div>
+				) : !hasPoints ? (
+					<div className="places-map-state" role="status">
+						Укажите, где вы находитесь, и попросите подобрать места.
+					</div>
+				) : candidates.length === 0 ? (
+					<div className="places-map-caption" role="status">
+						Мест пока нет. Попробуйте изменить запрос или расстояние.
+					</div>
+				) : null}
 			</div>
-			<div aria-label="Масштаб карты" className={styles.controls}>
-				<Button
-					aria-label="Приблизить карту"
-					onClick={() => mapRef.current?.zoomIn()}
-					size="lg"
-					variant="secondary"
-				>
-					+
-				</Button>
-				<Button aria-label="Отдалить карту" onClick={() => mapRef.current?.zoomOut()} size="lg" variant="secondary">
-					−
-				</Button>
-			</div>
-			{error && (
-				<div className={styles.failure} role="status">
-					<p>Карта недоступна. Места и ссылки на источники доступны в карточках.</p>
-					<Button
-						onClick={() => {
-							setError(false);
-							setLoading(true);
-							fitted.current = '';
-							setAttempt((value) => value + 1);
-						}}
-						size="lg"
-						variant="secondary"
-					>
-						Повторить загрузку
-					</Button>
-				</div>
+			{plan && plan.legs.length > 0 && (
+				<p className="border-border text-fg-muted border-t px-3 py-2 text-xs">Приблизительный маршрут по прямой</p>
 			)}
-			<div className={styles.attribution}>
-				<a href="https://openfreemap.org" rel="noreferrer" target="_blank">
-					OpenFreeMap
-				</a>
-				{' · '}
-				<a href="https://openmaptiles.org" rel="noreferrer" target="_blank">
-					© OpenMapTiles
-				</a>
-				{' · '}
+			<p className="border-border text-fg-muted flex flex-wrap gap-x-2 border-t px-3 py-2 text-xs">
 				<a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">
 					© участники OpenStreetMap
 				</a>
-			</div>
+				<a href="https://openfreemap.org/" rel="noreferrer" target="_blank">
+					OpenFreeMap
+				</a>
+				<a href="https://openmaptiles.org/" rel="noreferrer" target="_blank">
+					OpenMapTiles
+				</a>
+			</p>
 		</section>
 	);
 }

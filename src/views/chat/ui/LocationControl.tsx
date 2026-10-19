@@ -2,7 +2,7 @@
 
 import { type GeoPoint } from '@server/places/model/places.schema';
 import { Button } from '@shared/ui/Button';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface LocationControlProps {
 	disabled?: boolean;
@@ -13,8 +13,16 @@ export interface LocationControlProps {
 export function LocationControl({ disabled = false, location, onChange }: LocationControlProps) {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const requestGeneration = useRef(0);
+	useEffect(
+		() => () => {
+			requestGeneration.current += 1;
+		},
+		[],
+	);
 
 	const locate = useCallback(() => {
+		const generation = ++requestGeneration.current;
 		setError(null);
 		const { geolocation } = navigator as { geolocation?: Geolocation };
 		if (geolocation === undefined) {
@@ -24,6 +32,7 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 		setPending(true);
 		geolocation.getCurrentPosition(
 			(position) => {
+				if (generation !== requestGeneration.current) return;
 				onChange({
 					lat: Math.round(position.coords.latitude * 1000) / 1000,
 					lon: Math.round(position.coords.longitude * 1000) / 1000,
@@ -31,6 +40,7 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 				setPending(false);
 			},
 			(failure) => {
+				if (generation !== requestGeneration.current) return;
 				setPending(false);
 				setError(
 					failure.code === 1
@@ -45,6 +55,8 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 	}, [onChange]);
 
 	const clearLocation = useCallback(() => {
+		requestGeneration.current += 1;
+		setPending(false);
 		setError(null);
 		onChange(null);
 	}, [onChange]);
@@ -60,14 +72,15 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 				>
 					{pending ? 'Определяем местоположение…' : 'Использовать мою геолокацию'}
 				</Button>
-				{location !== null && (
-					<Button disabled={disabled || pending} onClick={clearLocation} size="lg" variant="ghost">
+				{(location !== null || pending) && (
+					<Button onClick={clearLocation} size="lg" variant="ghost">
 						Убрать геолокацию
 					</Button>
 				)}
 			</div>
 			<p className="text-fg-muted text-xs">
-				Координаты округляются до ~100 м и нигде не сохраняются. Можно просто назвать ориентир в чате.
+				Координаты округляются до ~100 м. Приложение не записывает их в хранилище или логи; в живом режиме они
+				передаются провайдеру модели. Можно просто назвать ориентир в чате.
 			</p>
 			{location !== null && (
 				<p className="text-fg-muted text-xs" role="status">

@@ -1,10 +1,11 @@
 'use client';
 
 import { MapPinIcon } from '@heroicons/react/24/outline';
-import { Button } from '@shared/ui/Button';
 import { Badge } from '@shared/ui/Badge';
+import { Button } from '@shared/ui/Button';
 import { Callout } from '@shared/ui/Callout';
 import { Card } from '@shared/ui/Card';
+import { PlacesMap } from '@widgets/placesMap';
 import { useMemo, useState } from 'react';
 import { readPlacesResults } from '../model/results';
 import { useChat } from '../model/useChat';
@@ -13,7 +14,6 @@ import { Composer } from './Composer';
 import { LocationControl } from './LocationControl';
 import { MessageList } from './MessageList';
 import { PlaceCards } from './PlaceCards';
-import { PlacesMap } from './PlacesMap';
 
 const SCENARIOS = [
 	{ label: 'Необычное у Экспо', query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.' },
@@ -113,6 +113,27 @@ export function ChatScreen({
 						plan={plan}
 						selectedId={activeId}
 					/>
+					{search && (
+						<div className="text-fg-muted text-xs">
+							<p>
+								Точка: {search.origin.label ?? 'переданная геолокация'} ·{' '}
+								{search.origin.source === 'browser' ? 'из браузера' : 'из вашего сообщения'}
+							</p>
+							{search.usedFilters.length > 0 && (
+								<p className="mt-1">Фильтры: {search.usedFilters.join(' · ')}</p>
+							)}
+							{search.note && <p className="mt-1">{search.note}</p>}
+						</div>
+					)}
+					{candidates.length > 0 && plan === null && (
+						<Button
+							disabled={pending}
+							onClick={() => send('Построй пеший маршрут на 2 часа.')}
+							variant="secondary"
+						>
+							Маршрут на 2 часа
+						</Button>
+					)}
 					{plan !== null && plan.stops.length > 0 && (
 						<Callout>
 							<p className="font-medium">

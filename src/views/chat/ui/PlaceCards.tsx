@@ -85,6 +85,9 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 				<ul className="flex flex-col gap-3">
 					{candidates.map((candidate, index) => {
 						const { open, place } = candidate;
+						const sourceUrl = /^https:\/\/(?:www\.)?openstreetmap\.org\//u.test(place.sourceUrl)
+							? place.sourceUrl
+							: null;
 						const selected = selectedId === place.id;
 						const status =
 							open.status === 'open'
@@ -166,14 +169,16 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 									>
 										{selected ? 'Выбрано на карте' : 'Показать на карте'}
 									</Button>
-									<a
-										className="text-accent-fg inline-flex min-h-10 items-center text-sm underline underline-offset-4"
-										href={place.sourceUrl}
-										rel="noreferrer"
-										target="_blank"
-									>
-										Источник: OpenStreetMap
-									</a>
+									{sourceUrl && (
+										<a
+											className="text-accent-fg inline-flex min-h-10 items-center text-sm underline underline-offset-4"
+											href={sourceUrl}
+											rel="noreferrer"
+											target="_blank"
+										>
+											Источник: OpenStreetMap
+										</a>
+									)}
 								</div>
 							</li>
 						);
