@@ -4,22 +4,40 @@ import { resolve } from 'node:path';
 import 'server-only';
 import { z } from 'zod';
 
-export const embeddingSchema = z
-	.array(z.number())
-	.length(256)
-	.refine((values) => {
-		const vector = new Float32Array(values);
-		return vector.every(Number.isFinite) && vector.some((value) => value !== 0);
-	}, 'Expected a finite nonzero float32 vector');
+function vectorSchema(dimensions: number) {
+	return z
+		.array(z.number())
+		.length(dimensions)
+		.refine((values) => {
+			const vector = new Float32Array(values);
+			return vector.every(Number.isFinite) && vector.some((value) => value !== 0);
+		}, 'Expected a finite nonzero float32 vector');
+}
 
-export const vectorsSchema = z.object({
+export const embeddingSchema = vectorSchema(256);
+
+const baseSchema = z.object({
 	byId: z
-		.record(z.string().regex(/^osm:(node|way|relation)\/[1-9]\d*$/), embeddingSchema)
+		.record(z.string().regex(/^osm:(node|way|relation)\/[1-9]\d*$/), z.array(z.number()))
 		.refine((byId) => Object.keys(byId).length > 0),
 	datasetSha256: z.string().regex(/^[a-f0-9]{64}$/),
-	dims: z.literal(256),
-	model: z.literal('text-embedding-3-small'),
 });
+export const vectorsSchema = z.discriminatedUnion('model', [
+	baseSchema.extend({
+		byId: z
+			.record(z.string().regex(/^osm:(node|way|relation)\/[1-9]\d*$/), embeddingSchema)
+			.refine((byId) => Object.keys(byId).length > 0),
+		dims: z.literal(256),
+		model: z.literal('text-embedding-3-small'),
+	}),
+	baseSchema.extend({
+		byId: z
+			.record(z.string().regex(/^osm:(node|way|relation)\/[1-9]\d*$/), vectorSchema(384))
+			.refine((byId) => Object.keys(byId).length > 0),
+		dims: z.literal(384),
+		model: z.literal('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'),
+	}),
+]);
 interface PlaceVectors {
 	byId: Map<string, Float32Array>;
 	dims: number;
@@ -31,13 +49,15 @@ let cached: PlaceVectors | null | undefined;
 export function readVectors(): PlaceVectors | null {
 	if (cached !== undefined) return cached;
 	try {
-		const path = resolve('data/poi.vectors.json');
+		const path = resolve(process.env.EMBEDDING_INDEX_PATH || 'data/poi.vectors.json');
 		if (!existsSync(path)) {
 			cached = null;
 			return cached;
 		}
 		const parsed = vectorsSchema.parse(JSON.parse(readFileSync(path, 'utf8')) as unknown);
 		// A changed collection must never silently reuse vectors for old names or descriptions.
+		// Runtime places always come from this file. A custom CLI collection must never
+		// validate embeddings against different text while returning the default POI metadata.
 		const dataset = readFileSync(resolve('data/poi.json'), 'utf8');
 		if (createHash('sha256').update(dataset).digest('hex') !== parsed.datasetSha256) {
 			cached = null;
