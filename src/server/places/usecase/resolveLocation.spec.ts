@@ -4,6 +4,7 @@ import 'server-only';
 import { describe, expect, it, vi } from 'vitest';
 import { type PlacesContext } from './context';
 import { type PlacesDependencies } from './dependencies';
+import { AIRPORT_ALIASES, EXPO_ALIASES, LANDMARKS, mentions } from './landmarks';
 import { resolveLocation } from './resolveLocation';
 
 // Committed collection snapshot, not a network request or invented landmark coordinates.
@@ -47,7 +48,7 @@ describe('landmark resolution against the committed collection', () => {
 			const museum = place('osm:way/454857501');
 			expect(resolveLocation(context(), { text })).toMatchObject({
 				found: true,
-				label: museum.name,
+				label: 'Alem.ai (бывший Нур Алем), территория ЭКСПО',
 				matchedPlaceId: museum.id,
 				point: { lat: 51.089, lon: 71.416 },
 			});
@@ -78,24 +79,70 @@ describe('landmark resolution against the committed collection', () => {
 			expect(resolveLocation(context([wrong]), { text: 'Alem.ai' }).found).toBe(false);
 		}
 	});
-	it('does not collapse the museum, site and quarter into one vague EXPO location', () => {
-		expect(resolveLocation(context(), { text: 'Я у Экспо 2017' })).toMatchObject({ found: false, point: null });
-	});
-	it('still resolves the actual generic EXPO object when the user names EXPO', () => {
-		expect(resolveLocation(context([place('osm:way/454853233')]), { text: 'Я у Экспо 2017' })).toMatchObject({
+	it.each([
+		'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.',
+		'Я у здания Экспо 2017',
+		'Я возле EXPO',
+		'Я у Сферы Экспо',
+		'Я у Экспо',
+		'Я у Нур Алема',
+		'Я у музея Нур Алем',
+		'Я у Alem.ai',
+		'Я у Нур Алем на Экспо',
+	])('resolves the whole EXPO alias group to the single verified anchor: %s', (text) => {
+		const museum = place('osm:way/454857501');
+		expect(resolveLocation(context(), { text })).toMatchObject({
 			found: true,
-			matchedPlaceId: 'osm:way/454853233',
+			label: 'Alem.ai (бывший Нур Алем), территория ЭКСПО',
+			matchedPlaceId: museum.id,
+			point: { lat: 51.089, lon: 71.416 },
 		});
 	});
-	it('resolves EXPO to the museum when available, but preserves distinct EXPO ambiguity', () => {
-		const expo = place('osm:way/454853233');
-		const museum: Place = { ...expo, category: 'museum', id: 'osm:node/1', name: 'Нұр Әлем' };
-		expect(resolveLocation(context([museum]), { text: 'Я у Экспо' }).matchedPlaceId).toBe(museum.id);
-		expect(resolveLocation(context([expo, museum]), { text: 'Я у Экспо' }).found).toBe(false);
-		expect(resolveLocation(context([expo, museum]), { text: 'Я у Нур Алем на Экспо' }).matchedPlaceId).toBe(
-			museum.id,
-		);
-		expect(resolveLocation(context([expo]), { text: 'Я у Нур Алем на Экспо' }).found).toBe(false);
+	it('never anchors EXPO to the site or quarter outlines when the verified building is missing', () => {
+		const withoutMuseum = dataset.filter((item) => item.id !== 'osm:way/454857501');
+		for (const text of ['Я у Экспо 2017', 'Я возле EXPO']) {
+			expect(resolveLocation(context(withoutMuseum), { text })).toMatchObject({ found: false, point: null });
+		}
+	});
+	it('asks when another named dataset POI accompanies the landmark', () => {
+		expect(
+			resolveLocation(context(), { text: 'Я между Нур Алем и Национальный музей Республики Казахстан' }).found,
+		).toBe(false);
+	});
+	it.each(['Я между Нур Алем и AITU', 'Я на станции Байтерек', 'Я между Байтереком и Хан Шатыром'])(
+		'does not replace conflicting or typed locations with an anchor: %s',
+		(text) => {
+			expect(resolveLocation(context(), { text }).found).toBe(false);
+		},
+	);
+	it.each([
+		['Я у Байтерека', 'osm:way/230401645'],
+		['Я возле Байтерека', 'osm:way/230401645'],
+		['Я у Хан Шатыра', 'osm:way/460703779'],
+		['Я возле Мега Силк Вея', 'osm:way/499328514'],
+		['Я около Mega Silk Way', 'osm:way/499328514'],
+	])('recognises Russian case forms: %s', (text, id) => {
+		expect(resolveLocation(context(), { text })).toMatchObject({ found: true, matchedPlaceId: id });
+	});
+	it('matches case endings without false positives on unrelated words', () => {
+		const at = (text: string) => LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
+		expect(at('Иду от Ак Орды')).toHaveLength(1);
+		expect(at('Я у Экспо')).toEqual([EXPO_ALIASES]);
+		for (const text of ['Экспорт и экспертиза', 'Алтын орда', 'Хочу в бар Мега', 'Сфера услуг', 'Мегаполис']) {
+			expect(at(text)).toEqual([]);
+		}
+	});
+	it('treats being at the airport as a location but not travelling to it', () => {
+		const airport = (text: string) => AIRPORT_ALIASES.some((alias) => mentions(text, alias));
+		expect(airport('Я в аэропорту, рейс через 3 часа')).toBe(true);
+		expect(airport('Я у аэропорта')).toBe(true);
+		expect(airport('Еду в аэропорт')).toBe(false);
+		expect(airport('У меня 2 часа перед вылетом')).toBe(false);
+	});
+	it('accepts the model excerpt of an inflected landmark as stated by the user', () => {
+		const ctx = context();
+		ctx.userMessages = ['Я у Байтерека, хочу гулять'];
+		expect(resolveLocation(ctx, { text: 'Байтерек' }).matchedPlaceId).toBe('osm:way/230401645');
 	});
 	it('preserves genuine ambiguity between distinct malls and ignores input ordering', () => {
 		const mall = place('osm:way/499328514');

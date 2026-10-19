@@ -1,8 +1,10 @@
 import { DomainError } from '@server/kernel/errors';
+import { distanceM } from '@server/places/model/geo';
 import {
 	findPlacesInputSchema,
 	type FindPlacesResult,
 	findPlacesResultSchema,
+	type Place,
 	placeSchema,
 	planWalkInputSchema,
 } from '@server/places/model/places.schema';
@@ -10,8 +12,38 @@ import 'server-only';
 import { z } from 'zod';
 import { categoryNames } from './categoryNames';
 import { dependencies, type PlacesContext } from './context';
+import { normalizeLocation } from './landmarks';
 import { assertOrigin, origin } from './origin';
 import { semanticScores } from './semantic';
+
+const SAME_PLACE_M = 50;
+const ASTANA_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+/** The user is already at the landmark they named: it, and its same-name duplicates, are not suggestions. */
+function withoutStartingPoint(ctx: PlacesContext, places: readonly Place[]): Place[] {
+	const id = ctx.browserLocation === undefined ? ctx.resolvedLocation?.matchedPlaceId : null;
+	if (!id) return [...places];
+	const anchor = places.find((place) => place.id === id);
+	const names = new Set(
+		[anchor?.name, anchor?.nameEn].filter((name): name is string => Boolean(name)).map(normalizeLocation),
+	);
+	return places.filter(
+		(place) =>
+			place.id !== id &&
+			!(
+				anchor &&
+				distanceM(anchor, place) <= SAME_PLACE_M &&
+				[place.name, place.nameEn ?? ''].some((name) => names.has(normalizeLocation(name)))
+			),
+	);
+}
+
+/** Astana has been UTC+5 all year since 2024-03-01; no DST. */
+function astanaTime(at: Date): string {
+	const local = new Date(at.getTime() + ASTANA_OFFSET_MS);
+	const pad = (value: number) => String(value).padStart(2, '0');
+	return `${pad(local.getUTCDate())}.${pad(local.getUTCMonth() + 1)}, ${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())} по Астане`;
+}
 
 /** A walk's validated budget must filter the whole dataset before ranking's result limit. */
 export async function searchPlaces(
@@ -23,7 +55,7 @@ export async function searchPlaces(
 	const location = origin(ctx);
 
 	if (parsed.near !== undefined) assertOrigin(ctx, parsed.near);
-	const places = z.array(placeSchema).parse(dependencies(ctx).readPlaces());
+	const places = withoutStartingPoint(ctx, z.array(placeSchema).parse(dependencies(ctx).readPlaces()));
 	const semantic = await semanticScores(ctx, { places, query: parsed.query });
 	const at = parsed.at === undefined ? ctx.now : z.coerce.date().parse(parsed.at);
 	const candidates = dependencies(ctx).rankPlaces({
@@ -44,9 +76,8 @@ export async function searchPlaces(
 		note: semantic.note,
 		origin: location,
 		usedFilters: [
-			`Запрос: ${parsed.query}`,
 			`Пешком до ${parsed.maxWalkMinutes} минут`,
-			`Время проверки: ${at.toISOString()}`,
+			`Время проверки: ${astanaTime(at)}`,
 			...(durationMinutes === undefined ? [] : [`Ходьба и посещение до ${durationMinutes} минут`]),
 			...(parsed.categories === undefined
 				? []

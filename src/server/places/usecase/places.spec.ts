@@ -31,6 +31,13 @@ const place: Place = {
 	website: null,
 	wheelchair: null,
 };
+/** Same synthetic coordinates, but the identity EXPO aliases are verified to mean (OSM way 454857501). */
+const verifiedAnchor: Place = {
+	...place,
+	id: 'osm:way/454857501',
+	name: 'Alem.ai Международный центр искусственного интеллекта',
+	sourceUrl: 'https://www.openstreetmap.org/way/454857501',
+};
 const candidate: Candidate = {
 	distanceM: 100,
 	open: { confidence: 'none', note: 'Часы работы неизвестны', opensAt: null, status: 'unknown', until: null },
@@ -159,13 +166,17 @@ describe('places usecases', () => {
 	});
 	it('resolves aliases using dataset coordinates without guessing ambiguous places', () => {
 		const { ctx, deps } = fixture();
+		vi.mocked(deps.readPlaces).mockReturnValue([place, verifiedAnchor]);
 		expect(resolveLocation(ctx, { text: 'Я у Экспо 2017' })).toMatchObject({
 			found: true,
-			matchedPlaceId: place.id,
+			matchedPlaceId: verifiedAnchor.id,
 			point: { lat: 51.123, lon: 71.457 },
 		});
-		vi.mocked(deps.readPlaces).mockReturnValue([place, { ...place, id: 'osm:node/2' }]);
-		expect(resolveLocation(ctx, { text: 'Я у Экспо' }).found).toBe(false);
+		vi.mocked(deps.readPlaces).mockReturnValue([
+			{ ...place, name: 'Мост' },
+			{ ...place, id: 'osm:node/2', name: 'Мост' },
+		]);
+		expect(resolveLocation(ctx, { text: 'Я у Мост' }).found).toBe(false);
 	});
 	it('only returns a requested POI that exists in the dataset', () => {
 		const { ctx } = fixture();
@@ -207,7 +218,8 @@ describe('mock scenarios use the real dispatcher', () => {
 		expect(result.reply).not.toContain('открыто по данным');
 	});
 	it('resolves Expo from actual user text and reports the text source', async () => {
-		const { ctx } = fixture();
+		const { ctx, deps } = fixture();
+		vi.mocked(deps.readPlaces).mockReturnValue([place, verifiedAnchor]);
 		const result = await runAgent(ctx, { messages: [{ content: 'Я у Экспо, хочу что-то необычное', role: 'user' }] });
 		expect(result.toolCalls.map((call) => call.name)).toEqual(['resolve_location', 'find_places']);
 		expect(result.reply).toContain('из ваших слов');

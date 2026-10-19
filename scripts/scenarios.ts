@@ -10,7 +10,7 @@ const cases = [
 	{
 		id: 'expo',
 		query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.',
-		tools: ['resolve_location'],
+		tools: ['resolve_location', 'find_places'],
 	},
 	{
 		id: 'nur-alem',
@@ -42,6 +42,8 @@ const cases = [
 		tools: ['find_places'],
 	},
 	{
+		// Only `wheelchair=yes` qualifies; an honest empty answer is a valid outcome here.
+		allowEmpty: true,
 		id: 'accessible',
 		location: { lat: 51.128, lon: 71.43 },
 		query: 'Передвигаюсь на коляске, найди кафе в пределах 10 минут пешком.',
@@ -115,23 +117,19 @@ async function main() {
 			selected.every((id) =>
 				candidates.some((candidate) => candidate.place.id === id && candidate.open.status === 'open'),
 			);
+		// A case that expects tools must actually recommend something, not just call them.
+		const nonEmpty =
+			scenario.tools.length === 0 ||
+			('allowEmpty' in scenario && scenario.allowEmpty) ||
+			(candidates.length > 0 && selected.length > 0);
 		const passed =
 			selectionValid &&
 			routeValid &&
 			accessValid &&
 			nightValid &&
+			nonEmpty &&
 			result.toolCalls.every((tool) => tool.status === 'ok') &&
 			scenario.tools.every((name) => result.toolCalls.some((tool) => tool.name === name)) &&
-			(scenario.id !== 'expo' ||
-				(result.toolCalls.some(
-					(tool) =>
-						tool.name === 'resolve_location' &&
-						typeof tool.result === 'object' &&
-						tool.result !== null &&
-						'found' in tool.result &&
-						tool.result.found === false,
-				) &&
-					!result.toolCalls.some((tool) => tool.name === 'find_places'))) &&
 			(scenario.tools.length !== 0 || result.reply.includes('Где вы'));
 		failed ||= !passed;
 		records.push({
