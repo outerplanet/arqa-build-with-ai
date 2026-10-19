@@ -59,6 +59,7 @@ function fixture(
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.stubEnv('EMBEDDING_PROVIDER', 'openai');
+	vi.stubEnv('EMBEDDING_MODEL', '');
 	vi.stubEnv('LLM_PROVIDER', 'responses');
 	vi.stubEnv('LLM_BASE_URL', '');
 	vi.stubEnv('LLM_API_KEY', 'test-fixture-key');
