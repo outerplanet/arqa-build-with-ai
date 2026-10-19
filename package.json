@@ -17,6 +17,7 @@
 		"prepare:standalone": "node scripts/prepare-standalone.mjs",
 		"prepare:standalone:test": "node --test scripts/prepare-standalone.test.mjs",
 		"scenarios": "tsx scripts/scenarios.ts",
+		"scenarios:pdf": "tsx scripts/build-scenarios-pdf.ts",
 		"start": "next start",
 		"test": "vitest run --project unit",
 		"test:all": "vitest run",
