@@ -12,10 +12,12 @@ import 'server-only';
 import { z } from 'zod';
 import {
 	type Recommendation,
+	refinementNote,
 	renderRecommendations,
 	renderWalk,
 	type ReplyOptions,
 	routeFiltersLine,
+	unrecognizedLine,
 } from './formatReply';
 import { categoriesFor, scenarioFor } from './scenario';
 
@@ -124,7 +126,24 @@ export function answerForTools(ctx: PlacesContext, input: ReplyInput): Answer {
 				ctx.resolvedLocation?.label ??
 				(point ? `${point.lat}, ${point.lon}` : 'старт из результата инструмента');
 			const source = origin?.source ?? (ctx.browserLocation ? 'browser' : 'text');
-			reply = `Локация: ${label} (${source === 'browser' ? 'геолокация браузера' : 'из ваших слов'}).\n${routeFiltersLine(routeOptions)}\n\n${render.text}`;
+			const sourceText = source === 'browser' ? 'геолокация браузера' : 'из ваших слов';
+			// The origin is a chip too: a live route may come without any find_places call.
+			const start = source === 'browser' ? sourceText : `${label} (${sourceText})`;
+			const refined = refinementNote(routeOptions, {
+				chosen: route.success ? route.data.stops.map((stop) => stop.candidate) : [],
+				route: true,
+			});
+			const unrecognized = unrecognizedLine(routeOptions, source === 'browser' ? null : label);
+			reply = [
+				unrecognized,
+				`Локация: ${label} (${sourceText}).`,
+				// Its own paragraph: the chat reads chips only from a paragraph that starts with «Фильтры:».
+				routeFiltersLine(routeOptions, { start }),
+				refined,
+				render.text,
+			]
+				.filter(Boolean)
+				.join('\n\n');
 		}
 		return {
 			recommendations: recommendations.length ? recommendations : undefined,

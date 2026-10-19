@@ -14,7 +14,7 @@ import { planWalk } from '@server/places/usecase/planWalk';
 import { resolveLocation } from '@server/places/usecase/resolveLocation';
 import 'server-only';
 import { z } from 'zod';
-import { categoriesFor, scenarioFor } from './scenario';
+import { categoriesFor, hasRefinement, scenarioFor } from './scenario';
 
 /**
  * The tool registry: one place that knows what the agent can do.
@@ -119,12 +119,24 @@ export const TOOLS: readonly ToolSpec[] = [
 					at: ctx.now.toISOString(),
 					// Only categories from the user's interest override the model, never the location phrase.
 					categories: categoriesFor(preferences, { purpose: 'search', requested: args.categories }),
+					// «Открыто сейчас» and a price wish are applied after ranking (formatReply.ts), so they
+					// need a wider pool than the three places finally shown.
+					limit:
+						hasRefinement(preferences, 'openNow') ||
+						hasRefinement(preferences, 'budget') ||
+						hasRefinement(preferences, 'free')
+							? Math.max(args.limit, 10)
+							: args.limit,
 					// The schema fills 15 when the model omits it, so a time budget sets the radius unless
 					// the user named a walking limit, which nothing may exceed.
 					maxWalkMinutes:
 						preferences.walkLimitExplicit || preferences.durationMinutes === undefined
 							? Math.min(args.maxWalkMinutes, preferences.maxWalkMinutes)
 							: preferences.maxWalkMinutes,
+					// The user's own words, every turn of them, are the query — including a follow-up
+					// the parser did not understand, so retrieval still sees it. The model's paraphrase
+					// is used only when there are no user words at all: appending it would let the model
+					// steer the interest again (docs/decisions.md, «Инструменты поиска используют…»).
 					query: preferences.query || args.query,
 				},
 				preferNotable: preferences.sights,
