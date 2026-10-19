@@ -294,10 +294,10 @@ python3 -m venv ../.arqa-pdf-venv
 Для Windows:
 
 ```powershell
-py -3 -m venv .venv-pdf
-.venv-pdf\Scripts\python.exe -m pip install -r scripts\pdf-requirements.txt
-.venv-pdf\Scripts\python.exe scripts\export_pdf.py
-.venv-pdf\Scripts\python.exe -m unittest discover -s scripts -p export_pdf_test.py
+py -3 -m venv ../.arqa-pdf-venv
+../.arqa-pdf-venv/Scripts/python.exe -m pip install -r scripts/pdf-requirements.txt
+../.arqa-pdf-venv/Scripts/python.exe scripts/export_pdf.py
+../.arqa-pdf-venv/Scripts/python.exe -m unittest discover -s scripts -p export_pdf_test.py
 ```
 
 Скрипты не требуют shell-обёртки для запуска Python и поддерживают пути с пробелами.
