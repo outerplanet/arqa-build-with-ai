@@ -1,249 +1,187 @@
-# Agent Starter
+# Прогулки по Астане
 
-A Next.js starter for building an LLM agent quickly: a tool-calling loop that works against three
-different providers, a chat interface that shows the agent's work, a component library, a
-design-token system, and a code structure enforced by lint and tests rather than by convention.
+AI-помощник, который подсказывает, **куда сходить в Астане прямо сейчас** — рядом с вами, с учётом
+времени, работающих мест и ваших пожеланий. На каждую рекомендацию — «почему», сколько времени
+займёт, что там делать, откуда данные и насколько можно доверять часам работы.
 
-**There is no product in it.** The only tool is a domain-free clock, `get_current_time`, which
-exists so the wiring has something real to run. Add the product's tools beside it.
+Build with AI 2026 · секция AI for Smart City · кейс НИЦ Smart City «ИИ-помощник по прогулкам в
+городе Астана» (`docs/case.md`).
 
-> **Reviewers and judges: start at [Verifying this project](#verifying-this-project).** It runs the
-> main scenario with no API key and no database.
+<!--
+  Каркас README. Владелец — лид (Саян). Разделы с пометкой TODO заполняются по факту, когда
+  соответствующая часть работает. Перед сдачей в README не должно остаться ни одного TODO, и всё
+  написанное должно быть проверено свежим клоном.
+-->
+
+> **Жюри:** демо-видео — *TODO: ссылка на YouTube*. Тестовые сценарии с реальными ответами системы
+> и ограничения — `docs/scenarios.md`. Презентация — `docs/presentation.pdf`.
 
 ---
 
-## Quick start
+## Что это
+
+Вы пишете: «Я у Экспо, хочу что-то необычное на 1–2 часа, пешком». Ассистент:
+
+1. определяет, где вы (по геолокации браузера, если вы разрешили, или по словам «у Экспо»);
+2. ищет в базе мест Астаны, собранной из OpenStreetMap и Wikidata, — по смыслу запроса, расстоянию
+   и часам работы;
+3. отвечает 1–3 местами: расстояние и минуты пешком, **почему** именно это место, время на посещение,
+   **что делать там**, источник данных и честный статус часов работы;
+4. показывает места на карте и по запросу строит **мини-маршрут** из 2–3 остановок.
+
+В панели активности видно каждый вызов инструмента: что агент искал, с какими фильтрами и что
+нашёл. Ответ собирается только из этих результатов; всё, чего нет в данных, помечено как
+сгенерированная идея.
+
+## Быстрый старт
+
+Нужно: **Node.js ≥ 22** и **pnpm 10**.
+
+1. Node.js — LTS-установщик с <https://nodejs.org> или `winget install OpenJS.NodeJS.LTS`
+   (Windows), `brew install node` (macOS).
+2. pnpm — `npm install -g pnpm@10`. Проверка: `node -v` — `v22…` или новее, `pnpm -v` — `10…`.
 
 ```bash
 pnpm install
-cp .env.example .env
-pnpm dev                 # http://localhost:3000
+cp .env.example .env          # PowerShell: Copy-Item .env.example .env
+pnpm dev                      # http://localhost:3000
 ```
 
-That is the whole setup, and it works with **no API key and no database** — the example
-environment ships with `LLM_PROVIDER=mock`, a scripted agent that drives the real tools. No Docker,
-no migrations; the database stays dormant until you decide otherwise.
+Работает **без ключа, без базы данных и без Docker**: `.env.example` содержит `LLM_PROVIDER=mock` —
+сценарный агент, который вызывает настоящие инструменты над настоящими данными. Датасет и векторы
+уже лежат в `data/`.
 
-For a live model, set `LLM_PROVIDER=responses` and a real `LLM_API_KEY` in `.env`.
-
-`/design` renders every component and token in both themes.
-
----
-
-## Verifying this project
-
-The main scenario runs with **no credentials of any kind**:
+Для живой модели — в `.env`:
 
 ```bash
-pnpm install
-cp .env.example .env
-echo "LLM_PROVIDER=mock" >> .env
-pnpm dev
+LLM_PROVIDER=responses
+LLM_API_KEY=<ключ OpenAI>
 ```
 
-Open <http://localhost:3000> and send **“What time is it?”**. The agent calls a tool, the
-right-hand panel shows which tool it chose, what it passed, what came back and how long it took,
-and the answer is composed from that result.
+## Как проверить
 
-`LLM_PROVIDER=mock` runs a scripted agent through the **real** tool dispatcher. It is the product
-with the model removed, not a stub of it — a tool that would refuse still refuses.
+1. `pnpm dev`, открыть <http://localhost:3000>.
+2. Нажать одну из подсказок или написать: «Я у здания Экспо 2017, хочу что-то необычное на 1–2
+   часа, пешком».
+3. Ответ — 1–3 места по формату кейса; места на карте; в панели активности — вызовы
+   `resolve_location` и `find_places`.
+4. «Построй маршрут» — линия из 2–3 остановок на карте, с временем.
+5. Остальные сценарии и ожидаемые ответы — `docs/scenarios.md`.
 
-To check the same flow against a live model, set `LLM_PROVIDER=responses` and a real `LLM_API_KEY`.
+Автоматические проверки — `pnpm check`: типы, линтер при `--max-warnings 0` и юнит-тесты.
 
-The automated checks:
+## Данные
 
-```bash
-pnpm check
+**TODO (Адиль): итоговые цифры из `data/collect_summary.json` — сколько мест, по категориям, доля с
+часами работы и с описанием, дата сбора.**
+
+- **Источник** — OpenStreetMap через Overpass API (© участники OpenStreetMap, лицензия ODbL) и
+  Wikidata (CC0) для описаний и популярности.
+- **Сбор автоматизирован:** `pnpm collect` пересобирает `data/poi.json` с нуля — запрос по границам
+  Астаны, нормализация, дедупликация, обогащение из Wikidata. Итог — `data/collect_summary.json`.
+- **Эмбеддинги:** `pnpm embed` (нужен ключ) → `data/poi.vectors.json`, модель
+  `text-embedding-3-small`, 256 измерений. Файл закоммичен, чтобы запуск не требовал ключа.
+- Сервисы, чьи условия запрещают сбор (Google Maps, 2GIS, Яндекс), не используются.
+
+## Как работает RAG
+
+**TODO (Саян): уточнить по факту реализации.**
+
+1. **Локация.** Из браузера (по явному нажатию, округление до ~100 м) или из текста —
+   инструмент `resolve_location` сопоставляет «у Экспо», «возле Хан Шатыра» с ориентирами и местами
+   датасета.
+2. **Поиск (retrieval).** Инструмент `find_places`: эмбеддинг запроса → косинусная близость к
+   векторам мест (без ключа — лексический поиск со словарём синонимов) → фильтр по пешей
+   доступности, категориям и доступности для колясок → ранжирование:
+   `0,40·смысл + 0,25·близость + 0,15·открыто + 0,10·популярность + 0,10·совпадение тегов`.
+   Часы работы разбираются из OSM `opening_hours` с оценкой уверенности.
+3. **Генерация.** Модель получает найденных кандидатов и пишет ответ по формату кейса. Промпт
+   запрещает утверждать «открыто» без данных и требует помечать сгенерированное.
+4. **Мини-маршрут.** Инструмент `plan_walk` перебирает упорядоченные наборы из 2–3 мест и выбирает
+   лучший, который укладывается в ваше время с учётом ходьбы.
+
+## Приватность и этика
+
+- Координаты округляются до 3 знаков (~100 м) в браузере и ещё раз на сервере. Они **не хранятся и
+  не логируются**; базы данных нет.
+- Геолокация — только по нажатию, с пояснением, что передаётся.
+- У каждой рекомендации — источник (OSM, Wikidata или «сгенерированная идея») и статус часов работы
+  с уверенностью; «открыто сейчас» — только если это следует из данных.
+- Подробнее — `docs/scenarios.md`, раздел «Этика и приватность».
+
+## Ограничения
+
+**TODO: дополнить по результатам прогона сценариев.**
+
+- Полнота OSM неравномерна: у части мест нет часов работы и описаний.
+- Нет данных о событиях, ценах, загруженности и погоде.
+- Расстояния — по прямой ×1,3, а не по пешеходному графу.
+
+## Архитектура
+
+Одно приложение Next.js на TypeScript; сервер и интерфейс разделены по слоям, границы проверяет
+линтер. Подробно — `docs/architecture.md`.
+
+```
+scripts/collect.ts        pnpm collect: Overpass + Wikidata → data/poi.json
+scripts/embed.ts          pnpm embed: data/poi.json → data/poi.vectors.json
+src/server/places/
+  model/                  контракт (zod) и чистые функции: расстояния, часы работы, ранжирование, маршрут
+  repo/                   чтение data/*.json
+  usecase/                поиск мест, определение локации, мини-маршрут
+src/server/agent/         цикл агента, реестр инструментов, промпт, mock
+src/app/api/chat/         POST /api/chat
+src/views/                экран: чат, панель активности, карта MapLibre
 ```
 
-One command: typecheck, lint at `--max-warnings 0`, and the unit suite, run in parallel. Warnings
-are failures. It needs nothing running — no database, no API key, no network.
+**Стек:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Radix UI, Zod, OpenAI SDK (Responses
+API, эмбеддинги), MapLibre GL + OpenFreeMap, Vitest, ESLint.
 
----
+### Режимы модели
 
-## Architecture
-
-Two axes that meet only in `src/app/`.
-
-**The interface** is Feature-Sliced Design — `app → views → widgets → features → entities → shared`,
-importing strictly downward.
-
-**The server** is `src/server/`, which is not an FSD layer. Its tiers are
-`kernel`/`db` → `<domain>/model` → `<domain>/repo` → `<domain>/usecase` → `jobs`, also importing
-only downward. A repo never reaches another domain's repo; cross-domain work lives in a usecase.
-
-Both are enforced by `eslint-plugin-boundaries`, so a violation is a failed build rather than a
-review comment. `docs/architecture.md` is the specification.
-
-```
-src/
-  app/               Routes, layouts, the API route. Where the two axes meet.
-  views/             Screens. The FSD "pages" layer, aliased @pages/* — never src/pages/.
-  widgets/           AppShell: sidebar, header, theme toggle, toasts.
-  shared/ui/         17 primitives built on Radix. Tokens only, no hard-coded colour.
-  shared/lib/        Form helpers, theme script.
-  server/kernel/     ctx, env validation, domain errors.
-  server/db/         Prisma client, transactions, error mapping. Dormant by default.
-  server/agent/      The agent domain. The product's domain goes here or beside it.
-    model/           Zod schemas. *.schema.ts is the one thing the UI may import.
-    data/            JSON fixtures. Empty in the starter.
-    repo/            Readers and stores. Empty in the starter.
-    usecase/         Tool registry, agent loop, structured output, prompt.
-```
-
-### The agent
-
-| File | What it is |
+| `LLM_PROVIDER` | Что это |
 | --- | --- |
-| `server/agent/usecase/tools.ts` | The tool registry. Adding a tool is one object. |
-| `server/agent/usecase/agent.ts` | The loop, in three adapters. |
-| `server/agent/usecase/structured.ts` | `complete(schema, …)` — one call, typed object back. |
-| `server/agent/usecase/prompt.ts` | The system prompt and its hard rules. |
-| `server/agent/usecase/client.ts` | One client, one retry policy. |
-| `app/api/chat/route.ts` | `POST /api/chat`. The only network call the UI makes. |
+| `mock` | Без ключа и сети: сценарный агент вызывает настоящие инструменты. Для проверки и офлайн-демо |
+| `responses` | OpenAI Responses API — живая модель |
+| `chat` | Любой OpenAI-совместимый эндпоинт (`LLM_BASE_URL`) |
 
-**Adding a tool** — one object in `TOOLS`, and nothing else changes. The JSON Schema shown to the
-model is derived from the zod schema, so the contract and the validation cannot drift apart. The
-activity panel picks up the new tool's label automatically.
+## Команды
 
-```ts
-defineTool({
-  description: 'Written for the model: when to reach for this.',
-  handler: (ctx, args) => lookUpSomething(ctx, args),
-  label: 'Written for a human watching the panel',
-  name: 'look_up_something',
-  parameters: z.object({ id: z.string().describe('What this is') }),
-})
-```
-
-**Structured output** — anything of the form "read this and give me fields back" is one call:
-
-```ts
-const review = await complete(
-  z.object({ score: z.number(), summary: z.string(), tags: z.array(z.string()) }),
-  { prompt: submission, instructions: 'Score this against the rubric.' },
-);
-```
-
-Use `.nullable()` rather than `.optional()`: strict structured output requires every property to be
-present. Pass `fallback` for anything on the demo path, so `LLM_PROVIDER=mock` still runs.
-
-### Providers
-
-`LLM_PROVIDER` chooses how the agent talks to a model. The tools and the loop are identical in all
-three; only the wire format changes.
-
-| Value | Dialect | Hosted tools | Use it for |
-| --- | --- | --- | --- |
-| `responses` | OpenAI Responses API | `web_search`, `file_search` | The default. |
-| `chat` | Chat Completions | — | NVIDIA NIM, Groq, Together, vLLM. The fallback. |
-| `mock` | none | — | No key, no network. Demos and reviews. |
-
-Switching is a `.env` edit:
-
-```bash
-# OpenAI
-LLM_PROVIDER=responses   LLM_BASE_URL=                                    LLM_MODEL=gpt-5
-# NVIDIA
-LLM_PROVIDER=chat        LLM_BASE_URL=https://integrate.api.nvidia.com/v1 LLM_MODEL=…
-# Groq
-LLM_PROVIDER=chat        LLM_BASE_URL=https://api.groq.com/openai/v1      LLM_MODEL=openai/gpt-oss-120b
-```
-
-**Retrieval without infrastructure.** Point the script at a folder, paste the id it prints into
-`.env`, and the agent gains a `file_search` tool over those documents — no vector database, no
-embedding pipeline, no chunking:
-
-```bash
-pnpm tsx scripts/upload-files.ts ./path/to/documents
-```
-
----
-
-## The database, if you need one
-
-It is wired and dormant. Nothing requires it and `DATABASE_URL` is unset by default, because every
-service a reviewer has to stand up is another way for a review to end early.
-
-When something genuinely has to survive a restart:
-
-```bash
-pnpm db:up          # PostgreSQL in Docker on :5433, two roles, three databases
-pnpm db:migrate
-pnpm db:seed
-pnpm test:all       # unit + integration
-```
-
-Two roles on purpose: `app_migrator` owns the schema, `app_user` owns nothing, so a mistake in
-application code cannot drop a table. All database access goes through `src/server/db` — never
-import the Prisma client anywhere else.
-
----
-
-## Structural guards
-
-Tests that fail on mistakes which pass code review:
-
-- `src/app/globals.spec.ts` builds the stylesheet and asserts it is not empty. Tailwind's source
-  detection has silently emitted zero bytes in this project — clean log, 200 response, unstyled
-  page. It also enforces the token rules from `docs/design-system.md`.
-- `src/shared/ui/rawControls.spec.ts` fails on a raw `<input>`, `<select>` or `<textarea>` in a
-  screen layer.
-- `src/server/db/transaction.spec.ts` fails on `Promise.all` inside a transaction, which queues
-  instead of parallelising and is visible only with a stopwatch.
-- `src/server/agent/usecase/tools.spec.ts` asserts the dispatcher never throws, because a throw
-  there blanks the activity panel at the worst possible moment.
-
-Add to them rather than around them, and watch each new one fail on purpose before trusting it.
-
----
-
-## Scripts
-
-| | |
+| Команда | Что делает |
 | --- | --- |
-| `pnpm dev` | Next dev server |
-| `pnpm build` / `pnpm start` | Production build and serve |
-| `pnpm verify` | typecheck + lint (warnings are failures) |
-| `pnpm test` | Unit tests. Needs nothing running. |
-| `pnpm test:all` / `test:integration` | Adds the database tests |
+| `pnpm dev` | Dev-сервер на <http://localhost:3000> |
+| `pnpm build` / `pnpm start` | Продакшен-сборка и запуск |
+| `pnpm check` | Типы, линтер и юнит-тесты параллельно |
+| `pnpm collect` | Собрать датасет мест заново |
+| `pnpm embed` | Посчитать эмбеддинги мест (нужен ключ) |
 | `pnpm format` | Prettier |
-| `pnpm tsx scripts/upload-files.ts <dir>` | Build a hosted vector store for `file_search` |
-| `pnpm db:up` / `db:down` / `db:reset` / `db:migrate` / `db:seed` | The optional database |
 
-## Docs
+## Команда
 
-- `AGENTS.md` — how to work in this repository. Read it first; Codex and Claude Code both use it.
-- `docs/architecture.md` — the two axes, server tiers, transactions, migrations, testing
-- `docs/design-system.md` — tokens, palette, type, space, motion, accessibility
-- `docs/ui-patterns.md` — which control a task gets, how forms and tables behave
-- `docs/plan.md` — the scenario, the contract, and how the work was split between the team
+| Участник | Зона |
+| --- | --- |
+| Саян Кареев | Лид: контракт, агент и инструменты, промпт, README |
+| Абылай | Алгоритмы: расстояния, часы работы, ранжирование, мини-маршрут |
+| Адиль | Данные: сбор, качество, эмбеддинги; сценарии и презентация |
+| Ораз Исабеков | Шаблон проекта; экран — если участвует |
 
-## Third-party components and prior work
+<!-- TODO: поправить фамилии и зоны по факту. -->
 
-*Required disclosure. Keep this section accurate — competition rules require third-party and
-pre-existing components to be declared, and permit a prepared template only while it contains no
-functionality specific to the task.*
+## Сторонние компоненты и предварительные наработки
 
-**Pre-existing template.** This project was started from a general-purpose starter prepared before
-the competition: the Next.js application shell, the UI component library, the design-token system,
-the lint-enforced architecture, and a provider-agnostic LLM agent loop with one domain-free clock
-tool. It contained no functionality specific to the task. Everything addressing the task was
-built during the competitive part and is visible in this repository's commit history from the
-initial commit onward.
+**Заранее подготовленный шаблон.** Проект начат с универсального стартового шаблона, подготовленного
+до хакатона (первый коммит репозитория): оболочка приложения Next.js, цикл LLM-агента с реестром
+инструментов и одним инструментом часов без предметной логики, чат с панелью активности, библиотека
+UI-компонентов, дизайн-токены и архитектура, проверяемая линтером. Функциональности по задаче в нём
+не было. Всё, что решает задачу — сбор данных, поиск, инструменты, карта, — сделано командой во время
+хакатона и видно в истории коммитов.
 
-**Libraries.** Next.js, React, Tailwind CSS, Radix UI, Heroicons, Prisma, Zod, React Hook Form,
-date-fns, the OpenAI SDK, Vitest and ESLint, each under its own licence. The full dependency list
-is `package.json`.
+**Данные.** © участники OpenStreetMap, лицензия ODbL (<https://www.openstreetmap.org/copyright>);
+Wikidata, CC0. Тайлы карты — OpenFreeMap.
 
-**Models and data.** The agent calls a hosted language model; which one is a `.env` setting (see
-*Providers*). No model was trained or fine-tuned for this project.
+**Модели.** OpenAI через Responses API (ответы) и `text-embedding-3-small` (эмбеддинги), на
+условиях OpenAI API. Ничего не обучалось и не дообучалось. `LLM_PROVIDER=mock` модель не использует.
 
-- **OpenAI `gpt-5`**, through the OpenAI Responses API (`LLM_PROVIDER=responses`). Proprietary,
-  used under OpenAI's API terms.
-- **`openai/gpt-oss-120b`**, an open-weight model released by OpenAI under Apache 2.0, served by
-  Groq through its OpenAI-compatible Chat Completions API (`LLM_PROVIDER=chat`).
-- **`LLM_PROVIDER=mock`** uses no model at all: a scripted adapter in this repository that calls
-  the real tools with no key and no network.
-
-No external datasets are used. Fixture data under `src/server/*/data/` is written by hand.
+**Библиотеки** (полный список и версии — `package.json`): Next.js, React, React DOM, Tailwind CSS,
+Radix UI, Heroicons, clsx, Zod, OpenAI SDK, MapLibre GL, dotenv, server-only — MIT, Apache-2.0 или
+BSD; инструменты разработки — TypeScript, ESLint и плагины, Prettier, Vitest, tsx.

@@ -9,8 +9,10 @@ Read this before writing code. Then read the doc that covers what you are touchi
 - `docs/architecture.md` — the two axes, the server tiers, transactions, migrations, testing
 - `docs/design-system.md` — tokens, palette, type, space, motion
 - `docs/ui-patterns.md` — which control a task gets, how forms and tables behave
-- `docs/plan.md` — the scenario, the contract, and which lane you are in. Re-read it after every
-  pull.
+- `docs/plan.md` — the scenario, the contract, which lane you are in, and a ready prompt for each
+  lane. Re-read it after every pull.
+- `docs/case.md` — the task, word for word in substance. `docs/kickoff.md` — deadlines, what is
+  submitted, the judging criteria and the submission checklist.
 
 If the implementation conflicts with these documents, **stop and name the conflict** rather than
 silently inventing behaviour.
@@ -19,12 +21,16 @@ silently inventing behaviour.
 
 ## What this repository is
 
-A starter, not a product. It contains an agent loop, a tool registry, a chat interface that shows
-the agent's work, a component library and a design system. There is no domain: the only tool is a
-clock, `get_current_time`, and it exists only so the wiring has something real to run.
+**«Прогулки по Астане»** — a RAG city-walk assistant for the Build with AI 2026 hackathon (AI for
+Smart City section). A user says where they are and what they want; the agent searches a dataset
+of Astana places collected from OpenStreetMap and Wikidata, and answers with 1–3 places, each with
+why, how long, what to do there, its source and an honest opening-hours status. The places appear
+on a map.
 
-**The product's tools go beside it in `TOOLS`**, and the scripted branch in `runMock` is rewritten
-to drive the product's main scenario.
+It is built on a pre-existing starter (disclosed in the README): an agent loop, a tool registry, a
+chat interface that shows the agent's work, a component library and a design system. **The
+product's tools go beside `get_current_time` in `TOOLS`**, and the scripted branches of the mock
+adapter drive the six scenarios in `docs/scenarios.md`.
 
 ---
 
@@ -48,8 +54,6 @@ covers what you are changing — `pnpm vitest run src/server/agent/usecase/tools
 costs about 1.5s to start before it asserts anything, so the cost of a check is dominated by how
 often you run it, not by how long it takes.
 
-The database tests are `pnpm test:integration` and only matter if you turned the database on.
-
 ### Spend round trips, not caution
 
 The full gate takes seconds. **The cost is round trips**, so cut those and never cut a check.
@@ -62,15 +66,32 @@ The full gate takes seconds. **The cost is round trips**, so cut those and never
   `.next`, start it again. Never delete `.next` while it is running.
 - Verify CSS by computed style, not by screenshot. A screenshot of a stale stylesheet looks fine.
 
+### Lessons from the previous hackathon — each one cost real time
+
+- **Never write or edit a file through PowerShell `Set-Content`, `Out-File`, `>` or a heredoc.**
+  On this machine it turned Cyrillic into mojibake (`â€”`) in three files. Only the agent's file
+  tools. If it happened: restore the file from git and redo the edit with the file tools, then grep
+  the repository for `â€`.
+- **A finished agent worktree is removed** — `git worktree remove <path>`. A worktree left under
+  `.claude/worktrees` is picked up by `eslint .` and turns everybody's gate red.
+- **Before submitting, clone into a fresh directory and follow the README literally** — install,
+  data, check, build. Things that work on the author's laptop fail on a clean one.
+- **Remove what the product does not use** — packages, scripts, config. Dead weight shows up in
+  the disclosure table and in the questions.
+- **Every teammate's commit is reviewed by a subagent** before the lead builds on it: correctness
+  against the contract, the case's hard requirements, tests that actually assert.
+- **Interface text is Russian, everywhere**: buttons, aria labels, empty states, errors, the
+  activity panel. English left in a corner of the screen is the thing the jury notices.
+
 ---
 
 ## What you learn goes in the repository, not in your memory
 
 **Anything worth knowing tomorrow is written into a file and committed.** An agent's own memory —
 Claude Code's `~/.claude` store, Codex's equivalent — is on one laptop, for one tool, for one
-person. Three people and two different agents are working here. Knowledge that lives in a private
-store is knowledge the other four participants do not have, and it is invisible to the technical
-experts who read this repository afterwards.
+person. Four people and two different agents are working here. Knowledge that lives in a private
+store is knowledge the other participants do not have, and it is invisible to the jury who read
+this repository afterwards.
 
 So when you discover something durable, write it down here and commit it:
 
@@ -93,7 +114,7 @@ reasoning that nobody else can read. A written decision is also a demonstrable r
 1. The code has two axes. **Feature-Sliced Design for the interface** — `src/{app,views,widgets,
    features,entities,shared}`, importing strictly downward. **Tiered domain modules for the
    server** — `src/server/`, which is not an FSD layer.
-2. Inside `src/server/` the tiers are `kernel`/`db` → `<domain>/model` → `<domain>/repo` →
+2. Inside `src/server/` the tiers are `kernel` → `<domain>/model` → `<domain>/repo` →
    `<domain>/usecase` → `jobs`. Imports go only downward. A `repo` never imports another domain's
    `repo`; cross-domain work belongs in a `usecase`. A usecase lives in the domain of the data it
    primarily writes.
@@ -102,9 +123,9 @@ reasoning that nobody else can read. A written decision is also a demonstrable r
 4. Every file in `src/server/` starts with `import 'server-only'` — except `*.schema.ts`, which the
    interface is allowed to import and which may therefore depend on nothing but zod. No barrels in
    `src/server/`: deep imports only, because a barrel re-exporting siblings generates cycles.
-5. The FSD layers never import Prisma, `src/server/*/repo` or `src/server/db`. `src/server/**` never
-   imports React, Next, or anything from the FSD layers. Only `src/app/**` and `features/*/api` may
-   import a usecase. Components never touch the database.
+5. The FSD layers never import `src/server/*/repo`. `src/server/**` never imports React, Next, or
+   anything from the FSD layers. Only `src/app/**` and `features/*/api` may import a usecase.
+   Components never read the data files.
 6. Domain operations are plain functions with the signature `(ctx, input)`. `ctx` is always first.
    `ctx.now` is injected; `createCtx()` in `src/server/kernel/ctx.ts` is the only place allowed to
    call `new Date()`.
@@ -115,12 +136,12 @@ reasoning that nobody else can read. A written decision is also a demonstrable r
    meantime a number that disagrees with the events beneath it.
 9. Never expose provider tokens or database credentials to the browser. A provider's error message
    can carry an endpoint, a model name or part of a key: log it, never return it.
-10. If the database is on: PostgreSQL is the source of truth, all access goes through
-    `src/server/db`, all schema changes use migrations, and only a usecase opens a transaction. A
-    repo always receives a `tx`. Never `Promise.all` inside one — a transaction holds one
-    connection, so concurrent queries queue instead of parallelising.
-11. Prefer simple relational models over premature abstraction. Avoid adding dependencies. Do not
-    optimise for theoretical scale before the product works for one user.
+10. **There is no database.** The places are a static, committed file (`data/poi.json`, rebuilt by
+    `pnpm collect`) read synchronously and cached by `src/server/places/repo`. Nothing about the
+    user is stored: their coordinates are rounded to 3 decimals (~100 m) in the browser and again
+    on the server, and never logged or written anywhere.
+11. Avoid adding dependencies — `package.json` belongs to the lead; ask. Do not optimise for
+    theoretical scale before the product works for one user.
 
 Duplication in the interface is tolerated — extract to `widgets/` or `features/` only when a second
 consumer genuinely exists. Duplication in `src/server/` is not: two implementations of the same
@@ -128,9 +149,13 @@ rule means two different answers to the same question.
 
 ### Stack
 
-Next.js (App Router) + React + TypeScript · Tailwind · Radix UI primitives · Heroicons · Zod ·
-React Hook Form · date-fns · the OpenAI SDK · Server Actions for authenticated mutations, Route
-Handlers for webhooks and external APIs.
+Next.js (App Router) + React + TypeScript · Tailwind · Radix UI primitives · Heroicons · Zod · the
+OpenAI SDK (Responses API, embeddings) · MapLibre GL with OpenFreeMap tiles · data from
+OpenStreetMap (Overpass API) and Wikidata. Route Handlers for the chat.
+
+**Data sources are OpenStreetMap and Wikidata only.** Never scrape Google Maps, 2GIS, Yandex or
+any service whose terms forbid it. OSM data is ODbL: the attribution «© участники OpenStreetMap»
+is visible on the map and in the README.
 
 Do not introduce a second backend framework, microservices, GraphQL, Kubernetes, Redis, Kafka, a
 monorepo, a vector database or a separate frontend application. Do not use shadcn/ui or any kit
@@ -178,7 +203,18 @@ These are about the product being an agent, and they are the ones a reviewer wil
    how a reviewer verifies it without being handed a key. When you change the tools, update the
    scripted branches. It runs the real dispatcher, so it stays honest by construction.
 6. **The activity panel shows what the server reported it did**, never what the interface guessed it
-   would do.
+   would do. The same holds for the map: markers and routes come from tool results only.
+
+The case adds rules of its own — the jury checks them in every answer:
+
+7. **Every recommendation names its source**: OpenStreetMap, Wikidata, or «сгенерированная идея».
+   Anything the model says that is not in a tool result is marked as generated.
+8. **Never say a place is open unless `open.status` is `'open'`.** Unknown hours are said out loud:
+   «часы работы неизвестны — уточните перед выходом». The model never infers hours from a category.
+9. **Say what was used**: the location and where it came from (browser or the user's words), and
+   the filters applied. If there is no location at all, ask for it instead of guessing.
+10. **The answer shape is the case's**: 1–3 places, each with distance and minutes on foot, why,
+    time to spend, and what to do there. Short and concrete beats long.
 
 Adding a tool is one object in `TOOLS` — see the README. The JSON Schema is derived from the zod
 schema; never write it twice.
@@ -201,13 +237,23 @@ with UI-only state.
 
 ---
 
-# Competition rules
+# Competition rules — Build with AI 2026, AI for Smart City
 
-The rules of the specific event — dates, deliverables, judging criteria, and anything that carries
-disqualification — go in `docs/kickoff.md`, written from the organiser's documents before the
-first commit. Where that summary and the organiser's documents disagree, the documents win.
+The details — deadlines, what is submitted, the criteria, the checklist — are in
+`docs/kickoff.md`; the task is in `docs/case.md`. Where they and the organiser's documents
+disagree, the documents win.
 
-What holds at any event:
+**The shape of it:** the solution is uploaded to the organiser's form by **19 October, 23:59**
+(we submit by 23:30). The top 10 per section are selected on 20–21 October and pitch in person at
+AITU on 22 October. What is submitted: a public repository, a 5–7 minute presentation as PDF, a
+document of test scenarios and limitations, and a demo video on YouTube (unlisted). The jury
+mostly sees the video and the documents, so **the six scenarios in `docs/scenarios.md` answering
+well is worth more than anything else in this repository.**
+
+The section has no tool restriction (the Google-only rule belongs to the other section). Teams of
+up to four.
+
+What holds regardless:
 
 1. **This starter is a pre-existing template and is disclosed as one.** It contains no task
    functionality. The disclosure section in the README is not optional.
@@ -217,7 +263,12 @@ What holds at any event:
 4. **The main scenario is verifiable without anybody's personal keys.** That is what
    `LLM_PROVIDER=mock` is for.
 5. **The README lets a stranger run it**: what it does, architecture, technologies, install, run,
-   environment variables, and how to check the main scenario. Keep it true as you go.
+   environment variables, how the data is collected, and how to check the scenarios. Keep it true
+   as you go.
+6. **The dataset is collected by our own automated script** (`pnpm collect`) — the case requires
+   it. Never hand-edit `data/poi.json`; fix the script and re-run it.
+7. **No keys in the repository.** The OpenAI key lives in `.env` only and is handed to teammates in
+   person.
 
 **Every member commits their own lane under their own git identity.** Distinct commit authors are
 the easiest evidence of who did what; the other evidence is each person being able to explain and
@@ -232,23 +283,22 @@ cannot.
 ## Working in parallel
 
 Several agents and several people in one repository against a deadline collide unless paths have
-owners. Fill this in at the start and keep to it. One owner per path; if you need a file you do not own, say so
-rather than editing it.
+owners. One owner per path; if you need a file you do not own, say so rather than editing it. The
+full lanes, with tasks and ready prompts, are in `docs/plan.md`.
 
 | Path | Owner | Why them |
 | --- | --- | --- |
-| `src/server/<domain>/model/*.schema.ts` | **Lead, first, then frozen** | It is the contract the others build against, so it is written once, by the lead, before anything else starts. |
-| `src/server/<domain>/usecase/tools.ts` | Agent lane | Tool design is the heart of an agent. |
-| `src/server/<domain>/usecase/agent.ts`, `prompt.ts` | Agent lane | Prompt rules and the loop belong with the tools they bind. |
-| `src/app/api/**` | Agent lane | The route is a thin shell over the usecase that lane owns. |
-| `src/server/<domain>/data/*.json` | Data lane | Fixtures are the shape of the problem; getting them right is analysis, not typing. |
-| `src/server/<domain>/repo/*.ts` | Data lane | Pure synchronous functions with fixed signatures and unit tests. No framework knowledge needed. |
-| the algorithmic core, if the task has one | Data lane | Scheduling, matching, ranking, routing, graphs or DP go to whoever is strongest at algorithms, not to whoever is free. |
-| `src/views/**`, `src/app/page.tsx` | Lead | The screen and the contract change together. |
-| `README.md`, the demo script | Lead | It needs one voice. |
+| `src/server/places/model/places.schema.ts` | **Саян, first, then frozen** | The contract everyone builds against; written once, by the lead, before anything else. |
+| `src/server/places/usecase/**`, `src/server/agent/**`, `src/app/api/**` | Саян | Tools, prompt, mock and the loop belong together, with the person who integrates. |
+| `package.json`, `pnpm-lock.yaml`, `README.md`, `docs/plan.md`, `docs/decisions.md` | Саян | One owner for files everybody would otherwise conflict on. |
+| `src/server/places/model/{geo,hours,lexical,rank,route}.ts` | Абылай | Distances, opening-hours parsing, ranking and the walk planner are pure algorithms with tests — a competitive programmer's ground. |
+| `scripts/collect.ts`, `scripts/embed.ts`, `data/**`, `src/server/places/repo/**` | Адиль | He knows datasets: collection, cleaning, quality and the vectors. |
+| `docs/scenarios.md`, `docs/presentation*` | Адиль | He knows what the data can and cannot answer, so he writes the scenarios and limitations. |
+| `src/views/**`, `src/widgets/**`, `src/app/page.tsx`, `src/app/layout.tsx`, `src/app/globals.css` | Ораз if he takes part; otherwise Саян's second agent in a worktree | The screen: chat, map, cards. |
 
-**One person drives the agents' orchestration** — prompt writing and merging agent output sit with
-one person rather than being done three ways at once.
+Nobody types code by hand: **each person runs one or two agents** (Claude Code or Codex) with the
+prompts in `docs/plan.md`, reviews what they produce, and pushes. A second agent on the same laptop
+works in its own worktree.
 
 The schema file is the contract. Write it first, then everyone works against it in parallel. If it
 has to change, change it once, in one place, and say so — two people quietly adapting to each
@@ -277,7 +327,7 @@ shape that file already has, and hold it to these rules:
    and by what hour.
 6. **Each lane has something committable at every checkpoint.** The checkpoint table in the plan
    says what.
-7. **Features are cut across lanes, not within them.** A feature that needs all three lanes is
+7. **Features are cut across lanes, not within them.** A feature that needs three lanes is
    three tasks, one per lane, against the same contract — not one task that one person carries
    through three layers.
 
@@ -285,7 +335,7 @@ When you are working inside a lane, you work only in that lane's paths. If you n
 path you do not own, add a line under **Requests** in `docs/plan.md` and tell your person; do not
 make the edit.
 
-### Git, with three people and several agents
+### Git, with four people and several agents
 
 - **Everyone commits to `main`.** No feature branches between people: paths are disjoint, and a
   branch is merge time a hackathon does not have.
@@ -300,6 +350,9 @@ make the edit.
 - **`package.json` and `pnpm-lock.yaml` belong to the lead.** A lockfile conflict is unreadable.
   Need a dependency — ask; do not add it.
 - **Pull before you start a task, and have your agent re-read `docs/plan.md` after the pull.**
+- **Set your git identity once per laptop** before the first commit — `git config user.name` and
+  `git config user.email` with the address on your GitHub account. A commit under somebody else's
+  name is evidence of the wrong person's work.
 
 ### More than one agent on one laptop
 
@@ -336,18 +389,15 @@ Codex both follow Russian instructions without measurable loss, and most of the 
 English loanwords anyway. Do not translate your thinking into English before prompting; that is
 wasted time and it loses nuance.
 
-**The repository stays in English.** Code, identifiers, comments, commit messages, these docs. Not
-because English is better, but because a codebase that is half Russian and half English is one an
-agent follows inconsistently — it will mirror whatever language the surrounding lines are in, and
-you end up with mixed-language identifiers and comments that read like two different projects. One
-language in the files, any language in the chat.
+**Code stays in English.** Code, identifiers, comments, commit messages, and the technical docs
+(this file, `docs/architecture.md`, `docs/design-system.md`, `docs/ui-patterns.md`). A codebase
+that is half Russian and half English is one an agent follows inconsistently — it mirrors whatever
+language the surrounding lines are in.
 
-Two exceptions worth making deliberately:
+**Everything people and the jury read is in Russian**, decided deliberately:
 
-- **The README may open with a short Russian summary** above the English body. The technical
-  experts are Kazakhstani; a five-line Russian abstract costs nothing and removes any chance that
-  the person deciding whether your project runs is reading a second language while doing it.
-- **The product's own interface language is a product decision, not a code-style one.** The demo is
-  to a jury in Astana. Russian or Kazakh user-facing copy will very likely land better than
-  English. The Cyrillic font subset is already configured in `src/app/layout.tsx`, so this costs
-  nothing but deciding — decide it at the start and be consistent.
+- `README.md`, `docs/case.md`, `docs/kickoff.md`, `docs/plan.md`, `docs/decisions.md`,
+  `docs/scenarios.md` and the presentation. The jury is in Astana and two teammates are new to the
+  codebase.
+- **The interface** — every visible string and every aria label. Product text the model writes
+  (answers, notes in tool results meant for the user) is Russian too.

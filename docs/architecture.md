@@ -1,9 +1,15 @@
 # Technical Architecture
 
+> **This product has no database.** The starter's PostgreSQL/Prisma layer was removed: the places
+> are a static, committed file (`data/poi.json`, rebuilt by `pnpm collect`) read by
+> `src/server/places/repo`, and nothing about the user is stored. The sections below on database
+> access, transactions, roles, migrations and integration tests describe the starter and **do not
+> apply** — the tiers, the axes, validation, errors, dates and the gate still do.
+
 ## Decision summary
 
 One Next.js application. No separate backend, no microservices, no GraphQL, no message broker,
-no cache tier. PostgreSQL is the source of truth. Prisma is the only way to reach it.
+no cache tier, no database.
 
 | Concern      | Choice                                                     |
 | ------------ | ---------------------------------------------------------- |
@@ -11,14 +17,13 @@ no cache tier. PostgreSQL is the source of truth. Prisma is the only way to reac
 | Styling      | Tailwind CSS, semantic tokens only                         |
 | Components   | Radix UI primitives, styled here — no copied component kit |
 | Icons        | Heroicons                                                  |
-| Database     | PostgreSQL                                                 |
-| ORM          | Prisma + `prisma migrate`, hand-edited SQL where needed     |
+| Data         | `data/poi.json` from OpenStreetMap + Wikidata; vectors in `data/poi.vectors.json` |
+| Retrieval    | In-memory: cosine over 256-d embeddings, lexical fallback, geo and opening-hours filters |
+| Map          | MapLibre GL with OpenFreeMap tiles                         |
 | Validation   | Zod, one schema shared by client and server                |
-| Forms        | React Hook Form where a form benefits from it              |
-| Dates        | date-fns                                                   |
-| Mutations    | Server Actions; Route Handlers for webhooks and public APIs |
-| Tests        | Vitest, with a real PostgreSQL for integration             |
-| Local dev    | Docker Compose for the database; the app runs natively      |
+| Mutations    | None; Route Handler for the chat                           |
+| Tests        | Vitest unit tests                                          |
+| Local dev    | Native; nothing to start besides `pnpm dev`                |
 
 Do not add a second backend framework, a monorepo, Kubernetes, Redis or Kafka unless a written
 requirement makes it necessary. A starter's job is to be outgrown deliberately, not by accident.

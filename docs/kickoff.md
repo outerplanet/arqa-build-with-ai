@@ -1,47 +1,125 @@
-# Kickoff runbook
+# Регламент — Build with AI 2026, секция AI for Smart City
 
-Written from the organiser's documents before the first commit: the dates, what is submitted, the
-judging criteria, and every rule that carries disqualification. Until then this file is a
-checklist of what to fill in.
-
----
-
-## The event
-
-- **Dates and deadlines:**
-- **What is submitted, and where:**
-- **Judging criteria:**
-- **Rules that carry disqualification:**
-
-## Before the deadline
-
-- [ ] A teammate clones into a **fresh directory** and follows the README literally.
-- [ ] `.env.example` is current and copying it is enough to start.
-- [ ] The main scenario runs **without anybody's personal keys** — `LLM_PROVIDER=mock`.
-- [ ] The third-party disclosure section is present and names this starter.
-- [ ] `git shortlog -sne --all` shows every member with sane commit counts. **Keep the `--all`**:
-      without a revision argument it reads from standard input and, run from a script or an agent,
-      silently prints nothing.
+Кейс целиком — в `docs/case.md`. План и дорожки — в `docs/plan.md`. Правила работы в репозитории —
+в `AGENTS.md`. Если этот файл и документы организаторов расходятся, правы документы.
 
 ---
 
-## When something breaks
+## Сроки
 
-| Symptom | Do this |
+| Когда | Что |
 | --- | --- |
-| Rate limits, 429s | Already retried automatically. If it persists, switch `LLM_PROVIDER=chat` to another OpenAI-compatible endpoint. |
-| Credits exhausted | `LLM_PROVIDER=chat` with another provider's endpoint. |
-| No network at all | `LLM_PROVIDER=mock`. Update the scripted branches to match your tools — it calls the real dispatcher, so it stays honest. |
-| Model ignores a tool | Rewrite the tool `description` for *when to use it*, not what it returns. That is usually the whole fix. |
-| Browser disagrees with the source | Stop the dev server, delete `.next`, restart. Never delete it while running. |
-| Lint explodes with `␍` warnings | Something wrote CRLF. `pnpm format`. Use the file tools, not shell heredocs. |
-| The build works but the page is unstyled | `pnpm test` — `globals.spec.ts` catches Tailwind emitting an empty stylesheet. |
-| A commit went in under the wrong identity | `git commit --amend --author="Name <email>"` on the last one, if unpushed. Never rewrite pushed history. |
+| **19 октября, до 23:59** | **Загрузка решения в форму** (ссылка — на странице хакатона на gdg.community.dev). Свой запас: загружаем **до 23:30** |
+| 20–21 октября | Отбор топ-10 команд в каждой секции и команд на приз зрительских симпатий |
+| 21 октября | Оповещение команд |
+| 22 октября | Очный питч топ-10 в AITU (Мангилик Ел, C1). По странице GDG — примерно 15:00–21:00 по Астане; точное время пришлют |
 
-## The demo itself
+Команда — до 4 человек. Призовой фонд секции — 600 000 ₸.
 
-Ninety seconds. One person types one sentence. The agent picks its own tools, the panel fills with
-real calls, and it finishes with a concrete result.
+## Что сдаём
 
-Show a refusal if you have time — an agent that declines to do something it is not allowed to do is
-a far stronger argument for the engineering than one that always says yes.
+| Что | Где лежит | Что вставляем в форму |
+| --- | --- | --- |
+| Код | GitHub, **публичный** репозиторий | Ссылка |
+| Презентация PDF, 5–7 минут: бизнес-идея, ограничения, риски, план развития | `docs/presentation.pdf` | Файл или ссылка |
+| Документ «Тестовые сценарии и ограничения», включая этику и приватность | `docs/scenarios.md` → `docs/scenarios.pdf` | Файл или ссылка |
+| Демо-видео | YouTube, доступ **«по ссылке»** | Ссылка |
+
+**Поля формы откройте заранее**: файлы или только ссылки, лимиты размера, кто из команды
+отправляет. Если форма принимает только ссылки — PDF кладём в репозиторий и даём ссылку на файл на
+GitHub.
+
+## По чему судят — в порядке важности
+
+1. Релевантность и полезность рекомендаций.
+2. Контекстуальность: расстояние, время, категория пользователя, режим работы.
+3. Качество объяснений — «почему» у каждой рекомендации.
+4. UX и понятность демо.
+5. Креативность и фишки (мини-маршрут, доступность, групповые планы).
+6. Этика и приватность.
+7. Завершённость: документация, сценарии, презентация.
+
+Код жюри, скорее всего, не запускает — смотрят видео, презентацию и документ. **Видео и ответы на
+шести сценариях решают больше, чем архитектура.**
+
+## Жёсткие требования кейса — их проверяют в каждом ответе
+
+- **Источник помечен**: данные POI (OpenStreetMap / Wikidata) или сгенерированная идея.
+- **Нет уверенного «открыто сейчас» без данных.** Есть часы работы — «по данным OSM открыто до
+  22:00». Нет — «часы работы неизвестны, уточните перед выходом».
+- **Ясно, какие данные использованы**: локация (и откуда она — браузер или текст запроса),
+  фильтры, теги.
+- **Сбор данных автоматизирован**: `pnpm collect` пересобирает датасет с нуля.
+- **Приватность**: координаты пользователя округляются до ~100 м, нигде не хранятся и не
+  логируются. Базы данных нет.
+
+## Чего делать нельзя
+
+- **Парсить Google Maps, 2GIS, Яндекс и другие сервисы с условиями, запрещающими это.** Только
+  OpenStreetMap (лицензия ODbL — атрибуция обязательна: «© участники OpenStreetMap») и Wikidata
+  (CC0).
+- Выдумывать факты о месте: часы, цены, события. Сгенерированное — только с пометкой.
+- Коммитить ключи. Ключ OpenAI — только в `.env`, команде передаётся лично.
+- Утверждать, что шаблон написан на хакатоне: он раскрыт в README как подготовленный заранее.
+
+---
+
+## Каждому участнику перед началом
+
+```bash
+git clone <ссылка на репозиторий>
+cd build-with-ai
+git config user.name "Имя Фамилия"           # своё имя — коммиты должны быть под вашим авторством
+git config user.email "почта-из-github"
+pnpm install
+cp .env.example .env                          # PowerShell: Copy-Item .env.example .env
+# в .env: LLM_PROVIDER=responses и LLM_API_KEY=<ключ от лида>, либо оставить mock
+pnpm check                                    # должно закончиться GATE GREEN
+```
+
+Работаем только в `main`: `git pull --rebase` → коммит своих путей → `git push`. Пушат люди, не
+агенты.
+
+## Перед сдачей — чек-лист (22:30)
+
+- [ ] `pnpm check` — GATE GREEN, `pnpm build` проходит.
+- [ ] Свежий клон в новую папку, всё по README дословно — запускается, шесть сценариев отвечают.
+- [ ] В `mock` всё работает без ключа.
+- [ ] README: что это, как запустить, как собрать данные, как работает RAG, сценарии, приватность,
+      ограничения, раскрытие шаблона и источников (OSM, Wikidata, OpenAI).
+- [ ] `docs/scenarios.md` заполнен реальными ответами системы, экспортирован в PDF.
+- [ ] Презентация в PDF, 5–7 минут, прогнана вслух с таймером.
+- [ ] Видео на YouTube, доступ «по ссылке», ссылка открывается из окна инкогнито.
+- [ ] `git shortlog -sne --all` показывает всех участников. **`--all` обязателен**: без него
+      команда читает stdin и из скрипта или агента молча ничего не печатает.
+- [ ] Репозиторий публичный — проверено из окна инкогнито.
+- [ ] Форма отправлена до 23:30, скриншот подтверждения — в общий чат.
+
+---
+
+## Когда что-то сломалось
+
+| Симптом | Что делать |
+| --- | --- |
+| 429, лимиты | Повторы уже встроены. Не проходит — `LLM_PROVIDER=mock` для демо, и написать лиду |
+| Кончились деньги на ключе | `LLM_PROVIDER=mock`. Эмбеддинги уже посчитаны и лежат в `data/` |
+| Нет сети | `LLM_PROVIDER=mock` — сценарии идут через настоящие инструменты без модели |
+| Overpass отвечает 429 или 504 | Подождать минуту; в скрипте сбора — повтор с паузой и запасное зеркало `https://overpass.kumi.systems/api/interpreter` |
+| Модель не вызывает инструмент | Переписать `description` инструмента: *когда* его вызывать, а не что он возвращает |
+| Браузер показывает старое | Остановить dev-сервер, удалить `.next`, запустить снова. Не удалять при работающем сервере |
+| Линтер сыплет `␍` | Кто-то записал CRLF. `pnpm format`. Писать файлы только файловыми инструментами агента |
+| Кириллица превратилась в «â€”» | Файл записан через PowerShell `Set-Content`/`Out-File`. Восстановить из git и переписать файловыми инструментами |
+| Линтер падает на чужих файлах из `.claude/worktrees` | Агент-ворктри не удалён после слияния: `git worktree remove <путь>` |
+| Коммит ушёл под чужим именем | Если не запушен: `git commit --amend --author="Имя <email>"`. Запушенную историю не переписывать |
+
+## Демо и видео
+
+Видео — 2–3 минуты, записывается в 21:30–22:30 (OBS или встроенная запись экрана):
+
+1. Проблема одной фразой: «в незнакомом районе непонятно, куда пойти прямо сейчас».
+2. Сценарий с Экспо из кейса: локация → 1–3 места на карте, у каждого «почему», время, «что делать»,
+   источник и статус часов работы.
+3. Панель активности: видно, какие инструменты вызвал агент и что они вернули — это и есть RAG.
+4. Мини-маршрут на карте.
+5. Честный отказ или оговорка: «часы работы неизвестны», «сгенерированная идея».
+6. Как собираются данные: `pnpm collect` и итоговые цифры.
