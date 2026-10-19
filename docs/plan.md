@@ -38,6 +38,18 @@
 
 ## Контракт — Саян пишет первым, замораживается к 14:00
 
+Контракт реализован в `src/server/places/model/places.schema.ts`: схемы экспортируются под
+именами `geoPointSchema`, `placeSchema`, `openStatusSchema`, `candidateSchema`,
+`findPlacesInputSchema`, `findPlacesResultSchema`, `resolveLocationInputSchema`,
+`resolvedLocationSchema`, `planWalkInputSchema`, `walkPlanSchema`, `getPlaceInputSchema` и
+`categorySchema`; типы — под именами из контракта ниже. `FindPlacesInput` и `PlanWalkInput`
+описывают результат валидации: поля с default уже заполнены. Для аргументов до валидации
+используйте `z.input<typeof findPlacesInputSchema>` / `z.input<typeof planWalkInputSchema>`.
+Время при отсутствии `at` должен подставить usecase из `ctx.now`.
+
+Добавлены MapLibre и команды `collect` / `embed`. Скрипты `scripts/collect.ts` и
+`scripts/embed.ts` ещё должен создать Адиль; до этого эти две команды не выполнят сбор данных.
+
 Схема: `src/server/places/model/places.schema.ts` (только zod, без `server-only` — интерфейс её
 импортирует). Ниже — то, что в ней должно быть. Имена и поля менять только через лида.
 

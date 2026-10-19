@@ -5,7 +5,9 @@
 	"scripts": {
 		"build": "next build",
 		"check": "node scripts/check.mjs",
+		"collect": "tsx --conditions=react-server scripts/collect.ts",
 		"dev": "next dev",
+		"embed": "tsx --conditions=react-server scripts/embed.ts",
 		"format": "prettier --write .",
 		"format:affected": "pretty-quick",
 		"format:staged": "pretty-quick --staged",
@@ -26,6 +28,7 @@
 		"@heroicons/react": "^2.2.0",
 		"clsx": "^2.1.1",
 		"dotenv": "^17.4.2",
+		"maplibre-gl": "^6.15.0",
 		"next": "^16.3.4",
 		"openai": "^7.18.0",
 		"radix-ui": "^1.6.7",
