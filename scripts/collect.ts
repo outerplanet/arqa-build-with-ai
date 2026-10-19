@@ -1,9 +1,11 @@
 /* eslint-disable no-await-in-loop -- Sequential requests respect upstream rate limits. */
 /* eslint-disable no-console -- This offline CLI reports collection progress and failures to its operator. */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { setTimeout as pause } from 'node:timers/promises';
 import { z } from 'zod';
 import { CATEGORIES, type Category, type Place, placeSchema } from '../src/server/places/model/places.schema';
+import { publishCollection } from '../src/server/places/repo/publication';
 
 const bbox = [51.03, 71.25, 51.25, 71.65] as const;
 const headers = { 'User-Agent': 'AstanaWalks/1.0 (https://github.com/outerplanet/arqa-build-with-ai)' };
@@ -47,6 +49,7 @@ function category(tags: Record<string, string>): Category {
 	const found = CATEGORIES.find((value) => value !== 'other' && candidates.includes(value));
 	if (found !== undefined) return found;
 	if (tags.historic === 'memorial') return 'monument';
+	if (tags.museum !== undefined && tags.museum !== 'no') return 'museum';
 	if (tags.leisure === 'sports_centre' || tags.leisure === 'stadium') return 'sports';
 	return 'other';
 }
@@ -100,17 +103,94 @@ function distance(a: Place, b: Place): number {
 	return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(term)));
 }
 
+/** Reproducible fallback: copy public source rows, never invent missing landmarks. */
+function sampleFiles({
+	collectedAt,
+	places,
+	sourceText,
+}: {
+	collectedAt: string;
+	places: Place[];
+	sourceText: string;
+}): Record<string, string> {
+	const selected = new Map<string, Place>();
+	const landmarks = [
+		/^Байтерек$/i,
+		/^Хан Шатыр$/i,
+		/^(Нұр Әлем|Нур Алем|Nur Alem)$/i,
+		/^EXPO$/i,
+		/^Alem\.ai Международный центр искусственного интеллекта$/i,
+		/^Mega Silk Way$/i,
+		/^Центральный парк$/i,
+		/^Ботанический сад$/i,
+		/^Национальный музей Республики Казахстан$/i,
+		/Астана Опера/i,
+		/Дворец мира и согласия/i,
+	];
+	const missing: string[] = [];
+	for (const pattern of landmarks) {
+		const match =
+			places.find((place) => pattern.test(place.name) && place.category !== 'other') ??
+			places.find((place) => pattern.test(place.name));
+		if (match === undefined) missing.push(pattern.source);
+		else selected.set(match.id, match);
+	}
+	for (const desired of [
+		'cafe',
+		'cafe',
+		'cafe',
+		'playground',
+		'bar',
+		'theatre',
+		'monument',
+		'gallery',
+		...CATEGORIES,
+	]) {
+		if (selected.size >= 15) break;
+		const match = places.find((place) => place.category === desired && !selected.has(place.id));
+		if (match !== undefined) selected.set(match.id, match);
+	}
+	if (selected.size !== 15) throw new Error('Not enough source places for the fallback sample');
+	return {
+		'poi.sample.json': `${JSON.stringify([...selected.values()], null, 2)}\n`,
+		'sample_summary.json': `${JSON.stringify(
+			{
+				collectedAt,
+				count: selected.size,
+				missingLandmarkPatterns: missing,
+				selection: 'Named landmarks first, then category diversity; exact copies from poi.json.',
+				source: 'data/poi.json',
+				sourceSha256: createHash('sha256').update(sourceText).digest('hex'),
+			},
+			null,
+			2,
+		)}\n`,
+	};
+}
+
 async function main() {
+	if (process.argv.includes('--sample-only')) {
+		const sourceText = await readFile('data/poi.json', 'utf8');
+		const places = z.array(placeSchema).parse(JSON.parse(sourceText) as unknown);
+		const summary = z
+			.object({ collectedAt: z.string() })
+			.parse(JSON.parse(await readFile('data/collect_summary.json', 'utf8')) as unknown);
+		await publishCollection('data', sampleFiles({ collectedAt: summary.collectedAt, places, sourceText }));
+		return;
+	}
 	const startedAt = new Date().toISOString();
 	const selectors = [
 		'[amenity~"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university)$"]',
 		'[tourism]',
+		'[museum]',
+		'[amenity=exhibition_centre]',
 		'[leisure~"^(park|garden|playground|sports_centre|stadium)$"]',
 		'[historic]',
 		'[shop=mall]',
 		'[building~"^(museum|train_station)$"]',
 		'[aeroway=aerodrome]',
 		'[name~"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$",i]',
+		'[place=quarter][name~"^(ЭКСПО-2017|EXPO-2017)$",i]',
 	];
 	const query = `[out:json][timeout:90];(${selectors.map((selector) => `nwr${selector}["name"](${bbox.join(',')});`).join('')});out center tags;`;
 	let collected: z.infer<typeof responseSchema> | undefined;
@@ -118,7 +198,7 @@ async function main() {
 	for (const mirror of ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']) {
 		try {
 			collected = responseSchema.parse(
-				await request(mirror, { body: new URLSearchParams({ data: query }), method: 'POST' }),
+				await request(`${mirror}?${new URLSearchParams({ data: query }).toString()}`),
 			);
 			if (collected.remark !== undefined) throw new Error('Overpass returned incomplete data');
 			endpoint = mirror;
@@ -231,9 +311,23 @@ async function main() {
 		wikidataLinked: coverage(unique.filter((row) => /^Q[1-9]\d*$/.test(row.element.tags.wikidata ?? '')).length),
 		wikidataPopularity: coverage(places.filter((place) => place.popularity !== null).length),
 	};
-	await mkdir('data', { recursive: true });
-	await writeFile('data/poi.json', `${JSON.stringify(places, null, 2)}\n`);
-	await writeFile('data/collect_summary.json', `${JSON.stringify(summary, null, 2)}\n`);
+	const sourceText = `${JSON.stringify(places, null, 2)}\n`;
+	await publishCollection('data', {
+		'collect_raw.json': `${JSON.stringify(
+			{
+				collectedAt: summary.collectedAt,
+				endpoint,
+				overpass: collected,
+				query,
+				wikidata: Object.fromEntries(entities),
+			},
+			null,
+			2,
+		)}\n`,
+		'collect_summary.json': `${JSON.stringify(summary, null, 2)}\n`,
+		'poi.json': sourceText,
+		...sampleFiles({ collectedAt: summary.collectedAt, places, sourceText }),
+	});
 	console.log(JSON.stringify(summary, null, 2));
 }
 

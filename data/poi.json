@@ -16795,6 +16795,24 @@
     "wheelchair": null
   },
   {
+    "lat": 51.0910047,
+    "lon": 71.4141021,
+    "address": null,
+    "category": "other",
+    "description": null,
+    "descriptionSource": null,
+    "id": "osm:way/1456208623",
+    "name": "ЭКСПО-2017",
+    "nameEn": "EXPO-2017",
+    "openingHours": null,
+    "phone": null,
+    "popularity": null,
+    "sourceUrl": "https://www.openstreetmap.org/way/1456208623",
+    "tags": [],
+    "website": null,
+    "wheelchair": null
+  },
+  {
     "lat": 51.0938123,
     "lon": 71.4169498,
     "address": null,
@@ -19112,6 +19130,24 @@
     "sourceUrl": "https://www.openstreetmap.org/way/454853233",
     "tags": [],
     "website": null,
+    "wheelchair": null
+  },
+  {
+    "lat": 51.089252,
+    "lon": 71.4161925,
+    "address": "Мәңгілік Ел даңғылы В1",
+    "category": "museum",
+    "description": null,
+    "descriptionSource": null,
+    "id": "osm:way/454857501",
+    "name": "Alem.ai Международный центр искусственного интеллекта",
+    "nameEn": null,
+    "openingHours": null,
+    "phone": null,
+    "popularity": null,
+    "sourceUrl": "https://www.openstreetmap.org/way/454857501",
+    "tags": [],
+    "website": "https://alem.ai/kk/",
     "wheelchair": null
   },
   {

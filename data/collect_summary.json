@@ -15,7 +15,7 @@
     "fast_food": 118,
     "bar": 89,
     "nightclub": 3,
-    "museum": 8,
+    "museum": 9,
     "gallery": 2,
     "theatre": 9,
     "cinema": 9,
@@ -32,13 +32,13 @@
     "theme_park": 1,
     "sports": 28,
     "place_of_worship": 17,
-    "other": 169
+    "other": 170
   },
-  "collectedAt": "2026-10-19T10:00:46.075Z",
+  "collectedAt": "2026-10-19T10:19:33.838Z",
   "descriptions": {
     "count": 20,
-    "fraction": 0.018365472910927456,
-    "percent": 1.84
+    "fraction": 0.01833180568285976,
+    "percent": 1.83
   },
   "duplicatesRemoved": 9,
   "endpoint": "https://overpass-api.de/api/interpreter",
@@ -50,33 +50,33 @@
   ],
   "openingHours": {
     "count": 342,
-    "fraction": 0.3140495867768595,
-    "percent": 31.4
+    "fraction": 0.31347387717690195,
+    "percent": 31.35
   },
-  "osmBaseTimestamp": "2026-10-19T09:58:49Z",
+  "osmBaseTimestamp": "2026-10-19T10:18:05Z",
   "osmDescriptions": {
     "count": 3,
-    "fraction": 0.0027548209366391185,
-    "percent": 0.28
+    "fraction": 0.002749770852428964,
+    "percent": 0.27
   },
-  "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65););out center tags;",
-  "rawElements": 1099,
-  "startedAt": "2026-10-19T09:59:58.573Z",
+  "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[museum][\"name\"](51.03,71.25,51.25,71.65);nwr[amenity=exhibition_centre][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65);nwr[place=quarter][name~\"^(ЭКСПО-2017|EXPO-2017)$\",i][\"name\"](51.03,71.25,51.25,71.65););out center tags;",
+  "rawElements": 1101,
+  "startedAt": "2026-10-19T10:18:41.624Z",
   "status": "complete",
-  "total": 1089,
+  "total": 1091,
   "wikidataDescriptions": {
     "count": 17,
-    "fraction": 0.015610651974288337,
+    "fraction": 0.015582034830430797,
     "percent": 1.56
   },
   "wikidataLinked": {
     "count": 24,
-    "fraction": 0.02203856749311295,
+    "fraction": 0.021998166819431713,
     "percent": 2.2
   },
   "wikidataPopularity": {
     "count": 24,
-    "fraction": 0.02203856749311295,
+    "fraction": 0.021998166819431713,
     "percent": 2.2
   }
 }

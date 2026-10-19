@@ -1,9 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { getPlaceById, readPlaces } from './places';
 
 describe('collected places', () => {
+	it('ships 15 genuine validated sample rows copied from the collected dataset', () => {
+		const sample = JSON.parse(readFileSync('data/poi.sample.json', 'utf8')) as { id: string }[];
+		expect(sample).toHaveLength(15);
+		expect(new Set(sample.map((place) => place.id)).size).toBe(15);
+		for (const place of sample) expect(getPlaceById(place.id)).toEqual(place);
+	});
 	it('loads a validated nonempty dataset with unique OSM ids and caches it', () => {
 		const places = readPlaces();
 		expect(places.length).toBeGreaterThan(0);
@@ -47,5 +53,46 @@ describe('collected places', () => {
 			expect(metric.fraction).toBeCloseTo(count / places.length);
 			expect(metric.percent).toBe(Math.round((count / places.length) * 10000) / 100);
 		}
+	});
+});
+
+describe('dataset selection and validation', () => {
+	afterEach(() => {
+		vi.doUnmock('node:fs');
+		vi.resetModules();
+	});
+	async function load(files: Record<string, string>) {
+		vi.resetModules();
+		vi.doMock('node:fs', () => ({
+			existsSync: (path: string) => Object.keys(files).some((name) => path.endsWith(name)),
+			readFileSync: (path: string) => {
+				const key = Object.keys(files).find((name) => path.endsWith(name));
+				if (key === undefined) throw new Error('Unexpected read');
+				return files[key];
+			},
+		}));
+		return import('./places');
+	}
+	it('uses the sample only when the primary dataset is missing and caches the result', async () => {
+		const row = readPlaces()[0];
+		const repo = await load({ 'poi.sample.json': JSON.stringify([row]) });
+		expect(repo.readPlaces()).toEqual([row]);
+		expect(repo.readPlaces()).toBe(repo.readPlaces());
+	});
+	it('reports a missing primary and sample with recovery instructions', async () => {
+		const repo = await load({});
+		expect(() => repo.readPlaces()).toThrow('pnpm collect');
+	});
+	it.each(['[]', '[{}]', 'not json'])(
+		'rejects a broken primary without silently loading the sample: %s',
+		async (primary) => {
+			const repo = await load({ 'poi.json': primary, 'poi.sample.json': JSON.stringify([readPlaces()[0]]) });
+			expect(() => repo.readPlaces()).toThrow();
+		},
+	);
+	it('rejects repeated OSM ids even when both rows are valid', async () => {
+		const row = readPlaces()[0];
+		const repo = await load({ 'poi.json': JSON.stringify([row, row]) });
+		expect(() => repo.readPlaces()).toThrow('Duplicate POI ids');
 	});
 });

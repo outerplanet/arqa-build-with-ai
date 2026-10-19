@@ -11,6 +11,7 @@ export function readPlaces(): readonly Place[] {
 	if (cached !== undefined) return cached;
 	const fullPath = resolve('data/poi.json');
 	const path = existsSync(fullPath) ? fullPath : resolve('data/poi.sample.json');
+	if (!existsSync(path)) throw new Error('No POI dataset found. Run pnpm collect.');
 	const places = z
 		.array(placeSchema)
 		.min(1)

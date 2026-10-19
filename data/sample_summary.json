@@ -1,0 +1,12 @@
+{
+  "collectedAt": "2026-10-19T10:19:33.838Z",
+  "count": 15,
+  "missingLandmarkPatterns": [
+    "^(Нұр Әлем|Нур Алем|Nur Alem)$",
+    "^Центральный парк$",
+    "Дворец мира и согласия"
+  ],
+  "selection": "Named landmarks first, then category diversity; exact copies from poi.json.",
+  "source": "data/poi.json",
+  "sourceSha256": "4a7a3ff284be2aff8beb90ffab6ec6721eb5228a66c8632888d70eb682518621"
+}
