@@ -1,8 +1,9 @@
 import 'server-only';
 import { describe, expect, it } from 'vitest';
 import { lexicalScores } from './lexical';
+import { type Place } from './places.schema';
 
-const PLACES = [
+const FIELDS = [
 	{
 		category: 'cafe',
 		description: 'Тихая кофейня',
@@ -14,7 +15,21 @@ const PLACES = [
 	{ category: 'playground', description: null, id: 'kids', name: 'Детская площадка', nameEn: null, tags: ['kids'] },
 	{ category: 'viewpoint', description: 'Красивый вид', id: 'view', name: 'Орёл', nameEn: null, tags: ['view'] },
 	{ category: 'bar', description: null, id: 'night', name: 'Бар', nameEn: null, tags: ['night'] },
-];
+] satisfies Pick<Place, 'category' | 'description' | 'id' | 'name' | 'nameEn' | 'tags'>[];
+
+const PLACES: Place[] = FIELDS.map((place, index) => ({
+	address: null,
+	descriptionSource: null,
+	lat: 51.1,
+	lon: 71.4,
+	openingHours: null,
+	phone: null,
+	popularity: null,
+	sourceUrl: `https://www.openstreetmap.org/node/${index + 1}`,
+	website: null,
+	wheelchair: null,
+	...place,
+}));
 
 describe('lexical retrieval without a provider', () => {
 	it('handles empty queries and empty datasets', () => {

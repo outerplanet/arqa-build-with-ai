@@ -1,14 +1,5 @@
 import 'server-only';
-
-// Only retrieval fields are needed; any Place from the documented contract fits this input.
-interface SearchablePlace {
-	category: string;
-	description: string | null;
-	id: string;
-	name: string;
-	nameEn: string | null;
-	tags: string[];
-}
+import { type Place } from './places.schema';
 
 const SYNONYMS: Record<string, readonly string[]> = {
 	вид: ['viewpoint', 'view'],
@@ -52,7 +43,7 @@ function matchesFamily(word: string, stem: string): boolean {
 	return word.startsWith(stem);
 }
 
-export function lexicalScores(query: string, places: readonly SearchablePlace[]): Map<string, number> {
+export function lexicalScores(query: string, places: readonly Place[]): Map<string, number> {
 	const words = [...new Set(tokens(query))];
 	const scores = new Map<string, number>();
 	for (const place of places) {

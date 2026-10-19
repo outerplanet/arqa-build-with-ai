@@ -1,13 +1,6 @@
 import 'server-only';
+import { type OpenStatus } from './places.schema';
 
-// Structurally matches the documented OpenStatus; replace with its import once published.
-interface HoursResult {
-	confidence: 'high' | 'low' | 'none';
-	note: string;
-	opensAt: string | null;
-	status: 'closed' | 'open' | 'unknown';
-	until: string | null;
-}
 interface Rule {
 	days: number[];
 	intervals: { end: number; start: number }[];
@@ -69,8 +62,8 @@ function clockText(minute: number): string {
 	return `${String(Math.floor(withinDay / 60)).padStart(2, '0')}:${String(withinDay % 60).padStart(2, '0')}`;
 }
 
-export function openStatus(raw: string | null, at: Date): HoursResult {
-	const unknown: HoursResult = {
+export function openStatus(raw: string | null, at: Date): OpenStatus {
+	const unknown: OpenStatus = {
 		confidence: 'none',
 		note: 'часы работы неизвестны — уточните перед выходом',
 		opensAt: null,

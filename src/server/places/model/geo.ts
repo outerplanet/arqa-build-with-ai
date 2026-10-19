@@ -1,10 +1,5 @@
 import 'server-only';
-
-// Structural input until the lead publishes GeoPoint; no runtime schema is duplicated here.
-interface Coordinates {
-	lat: number;
-	lon: number;
-}
+import { type GeoPoint } from './places.schema';
 
 const EARTH_RADIUS_M = 6_371_008.8;
 
@@ -12,7 +7,7 @@ function radians(degrees: number): number {
 	return (degrees * Math.PI) / 180;
 }
 
-export function distanceM(a: Coordinates, b: Coordinates): number {
+export function distanceM(a: GeoPoint, b: GeoPoint): number {
 	const halfLat = radians(b.lat - a.lat) / 2;
 	const halfLon = radians(b.lon - a.lon) / 2;
 	const haversine =
@@ -25,7 +20,7 @@ export function walkMinutes(meters: number): number {
 	return Math.ceil((Math.max(0, meters) * 1.3) / 75);
 }
 
-export function roundPoint(point: Coordinates, decimals = 3): Coordinates {
+export function roundPoint(point: GeoPoint, decimals = 3): GeoPoint {
 	const factor = 10 ** decimals;
 	return { lat: Math.round(point.lat * factor) / factor, lon: Math.round(point.lon * factor) / factor };
 }
