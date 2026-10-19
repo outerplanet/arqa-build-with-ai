@@ -123,7 +123,7 @@ export function PlaceCards({ candidates, error, onRetry, onSelect, pending, sele
 								</p>
 								<div className="mt-3">
 									<Badge
-										className="max-w-full whitespace-normal"
+										className="max-w-full shrink whitespace-normal!"
 										tone={
 											open.status === 'open' ? 'success' : open.status === 'closed' ? 'neutral' : 'warning'
 										}

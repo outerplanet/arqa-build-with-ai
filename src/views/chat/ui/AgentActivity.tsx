@@ -100,7 +100,9 @@ export function AgentActivity({ pending, toolCalls }: AgentActivityProps) {
 	return (
 		<Card
 			action={<CpuChipIcon aria-hidden className="text-fg-subtle size-5" />}
-			className="h-full"
+			// Fill the column beside the map on wide screens only. `h-full` here made the panel as tall
+			// as the whole column on a phone and squeezed the chat card until its content overflowed.
+			className="xl:flex-1"
 			description="Что ассистент сделал за последний ход"
 			title="Действия ассистента"
 		>

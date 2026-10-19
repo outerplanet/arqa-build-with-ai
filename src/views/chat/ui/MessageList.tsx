@@ -5,6 +5,7 @@ import { parseInlineMarkdown } from '@shared/lib';
 import { Avatar } from '@shared/ui/Avatar';
 import clsx from 'clsx';
 import { Fragment, useEffect, useRef } from 'react';
+import { splitLinks } from '../model/links';
 
 /** The agent is thinking: same bubble geometry as a real reply, so the column does not jump. */
 function PendingBubble() {
@@ -24,6 +25,25 @@ function PendingBubble() {
 	);
 }
 
+/** Plain text with its allow-listed Markdown links turned into real anchors. */
+function LinkedText({ text }: { text: string }) {
+	return splitLinks(text).map((part, index) =>
+		part.kind === 'link' ? (
+			<a
+				className="text-accent-fg underline underline-offset-2 hover:no-underline"
+				href={part.href}
+				key={`p-${String(index)}`}
+				rel="noopener noreferrer"
+				target="_blank"
+			>
+				{part.text}
+			</a>
+		) : (
+			<Fragment key={`p-${String(index)}`}>{part.text}</Fragment>
+		),
+	);
+}
+
 /**
  * An assistant reply with its light Markdown applied. Only the assistant's text goes through
  * this: what the user typed is shown exactly as typed. Lines are rejoined with a newline and the
@@ -34,10 +54,10 @@ function AssistantText({ content }: { content: string }) {
 		const segments = line.segments.map((segment, segmentIndex) =>
 			segment.bold ? (
 				<strong className="font-semibold" key={`s-${String(segmentIndex)}`}>
-					{segment.text}
+					<LinkedText text={segment.text} />
 				</strong>
 			) : (
-				<Fragment key={`s-${String(segmentIndex)}`}>{segment.text}</Fragment>
+				<LinkedText key={`s-${String(segmentIndex)}`} text={segment.text} />
 			),
 		);
 
