@@ -1,30 +1,42 @@
 import 'server-only';
 import { type Place } from './places.schema';
 
+// Retrieval preferences for a city walk, not a hard filter or evidence of access/opening.
+const WALK_CATEGORIES = ['park', 'garden', 'viewpoint', 'artwork', 'monument', 'attraction'];
 const SYNONYMS: Record<string, readonly string[]> = {
 	бала: ['playground', 'zoo', 'museum', 'kids'],
+	бесплат: ['free'],
+	вайф: ['wifi'],
+	веранд: ['outdoor_seating'],
 	вид: ['viewpoint', 'view'],
 	галере: ['gallery'],
 	дет: ['playground', 'zoo', 'museum', 'kids'],
 	достопримечательност: ['attraction', 'monument', 'artwork'],
 	зоопарк: ['zoo'],
+	интернет: ['wifi'],
 	кафе: ['cafe'],
 	кино: ['cinema'],
 	кітап: ['library'],
 	кітапхан: ['library'],
+	коляск: ['wheelchair'],
 	коф: ['cafe'],
+	маршрут: WALK_CATEGORIES,
 	музе: ['museum'],
 	мұражай: ['museum'],
 	ноч: ['bar', 'nightclub', 'night'],
 	памятник: ['monument'],
 	парк: ['park', 'garden'],
 	площадк: ['playground'],
+	прогул: WALK_CATEGORIES,
 	ребен: ['playground', 'zoo', 'museum', 'kids'],
 	ресторан: ['restaurant'],
 	розетк: ['power_sockets'],
 	саябақ: ['park', 'garden'],
+	серуен: WALK_CATEGORIES,
 	смотров: ['viewpoint', 'view'],
 	театр: ['theatre'],
+	тегін: ['free'],
+	террас: ['outdoor_seating'],
 	тих: ['library', 'park', 'cafe'],
 	түн: ['bar', 'nightclub', 'night'],
 	тыныш: ['library', 'park', 'cafe'],
@@ -42,16 +54,48 @@ function normalize(word: string): string {
 		: lowered;
 }
 
+// Query framing should not dilute wishes; keep these words searchable in POI names/descriptions.
+const QUERY_STOP_WORDS = new Set(
+	[
+		'меня',
+		'места',
+		'место',
+		'минут',
+		'минуту',
+		'минуты',
+		'мной',
+		'найди',
+		'найти',
+		'недалеко',
+		'от',
+		'пожалуйста',
+		'построй',
+		'рядом',
+		'составь',
+		'сходить',
+		'час',
+		'часа',
+		'часов',
+	].map(normalize),
+);
+
 function tokens(text: string): string[] {
 	return (
-		text
-			.normalize('NFKC')
-			.toLowerCase()
-			.replaceAll('ё', 'е')
-			.match(/[\p{L}\p{N}_]+/gu) ?? []
-	)
-		.filter((word) => !STOP_WORDS.has(word))
-		.map(normalize);
+		(
+			text
+				.normalize('NFKC')
+				.toLowerCase()
+				.replaceAll('ё', 'е')
+				// Join conventional network spellings before punctuation splits them into two tokens.
+				.replaceAll(
+					/(?<![\p{L}\p{N}_])(?:wi[\s\u2010-\u2015-]+fi|вай[\s\u2010-\u2015-]+фай)(?![\p{L}\p{N}_])/gu,
+					'wifi',
+				)
+				.match(/[\p{L}\p{N}_]+/gu) ?? []
+		)
+			.filter((word) => !STOP_WORDS.has(word))
+			.map(normalize)
+	);
 }
 
 function matchesFamily(word: string, stem: string): boolean {
@@ -69,7 +113,11 @@ function expansionsFor(word: string): string[] {
 
 /** Both retrieval and ranking expand each normalized query token through this one path. */
 function queryTerms(query: string): Map<string, readonly string[]> {
-	return new Map(tokens(query).map((word) => [word, [word, ...expansionsFor(word).map(normalize)]]));
+	return new Map(
+		tokens(query)
+			.filter((word) => !QUERY_STOP_WORDS.has(word))
+			.map((word) => [word, [word, ...expansionsFor(word).map(normalize)]]),
+	);
 }
 
 /** Only report tags present in the dataset and explicitly matched by the query. */

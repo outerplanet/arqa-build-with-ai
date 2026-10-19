@@ -33,6 +33,14 @@ const PLACES: Place[] = FIELDS.map((place, index) => ({
 
 describe('shared query tag matching', () => {
 	it.each([
+		['Wi-Fi', 'wifi'],
+		['вай-фай', 'wifi'],
+		['интернет', 'wifi'],
+		['терраса', 'outdoor_seating'],
+		['веранда', 'outdoor_seating'],
+		['бесплатно', 'free'],
+		['тегін', 'free'],
+		['коляской', 'wheelchair'],
 		['розетками', 'power_sockets'],
 		['ребёнком', 'kids'],
 		['балалар', 'kids'],
@@ -63,6 +71,22 @@ describe('shared query tag matching', () => {
 });
 
 describe('lexical retrieval without a provider', () => {
+	it('keeps conversational framing from diluting a specific category request', () => {
+		const places = [{ ...PLACES[0]!, category: 'museum' as const, id: 'museum', name: 'Тестовый музей' }];
+		expect(lexicalScores('Хочу сходить в музей рядом со мной', places)).toEqual(lexicalScores('музей', places));
+		expect(lexicalScores('Пожалуйста, найди мне кофе недалеко от меня', PLACES)).toEqual(
+			lexicalScores('кофе', PLACES),
+		);
+	});
+	it.each(['прогулка', 'прогуляться', 'маршрут', 'серуен'])(
+		'retrieves outdoor walk categories for %s without inferring facilities',
+		(query) => {
+			const park = { ...PLACES[0]!, category: 'park' as const, id: 'park', name: 'Тестовый сквер', tags: [] };
+			const scores = lexicalScores(query, [...PLACES, park]);
+			expect(scores.get('park')).toBeGreaterThan(scores.get('coffee')!);
+			expect(matchingTags(query, ['kids', 'power_sockets', 'wifi'])).toEqual([]);
+		},
+	);
 	it.each([
 		['кофейн', 'coffee'],
 		['МҰРАЖАЙ', 'museum'],

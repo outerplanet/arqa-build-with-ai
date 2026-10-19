@@ -53,6 +53,38 @@ afterEach(() => {
 });
 
 describe('connected places algorithms', () => {
+	it('recognizes a Wi-Fi request through default ranking using actual collected tags', async () => {
+		const tagged = placesDependencies
+			.readPlaces()
+			.find((place) => place.category === 'cafe' && place.tags.includes('wifi'));
+		expect(tagged).toBeDefined();
+		if (tagged === undefined) throw new Error('The collected fixture must include a cafe with Wi-Fi');
+		const ctx: PlacesContext = { browserLocation: tagged, now: new Date('2026-10-19T12:00:00+05:00') };
+		const found = await findPlaces(ctx, { categories: ['cafe'], limit: 10, query: 'Кофе с Wi-Fi' });
+		expect(found.candidates.some((candidate) => candidate.why.tags.includes('wifi'))).toBe(true);
+		for (const candidate of found.candidates) {
+			expect(candidate.why.tags.every((tag) => candidate.place.tags.includes(tag))).toBe(true);
+		}
+	});
+	it('uses sights for a generic city walk with the real default dependencies', async () => {
+		const ctx: PlacesContext = { now: new Date('2026-10-19T12:00:00+05:00') };
+		const result = await runAgent(ctx, {
+			location: POINT,
+			messages: [{ content: 'Построй маршрут на 90 минут', role: 'user' }],
+		});
+		const call = result.toolCalls.find((tool) => tool.name === 'plan_walk');
+		expect(call?.status).toBe('ok');
+		const route = walkPlanSchema.parse(call?.result);
+		expect(route.stops.length).toBeGreaterThan(0);
+		expect(route.totalMinutes).toBeLessThanOrEqual(90);
+		expect(
+			route.stops.every((stop) =>
+				['artwork', 'attraction', 'garden', 'monument', 'park', 'viewpoint'].includes(
+					stop.candidate.place.category,
+				),
+			),
+		).toBe(true);
+	});
 	it('connects the default data repositories to the validated tool dispatcher', async () => {
 		const ctx: PlacesContext = { browserLocation: POINT, now: new Date('2026-10-19T12:00:00+05:00') };
 		const result = await executeTool(ctx, { args: { categories: ['cafe'], query: 'кофе' }, name: 'find_places' });
