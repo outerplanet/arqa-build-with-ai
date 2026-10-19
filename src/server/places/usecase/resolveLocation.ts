@@ -16,10 +16,24 @@ import {
 	LANDMARKS,
 	MEGA_ALIASES,
 	mentions,
+	mentionsExact,
+	namePattern,
 	normalizeLocation,
 	NUR_ALEM_ALIASES,
 } from './landmarks';
 import { roundLocation } from './origin';
+
+/** EXPO, its sphere, Nur Alem and Alem.ai are one verified anchor: the former Nur Alem building. */
+const EXPO_AREA: readonly (readonly string[])[] = [EXPO_ALIASES, NUR_ALEM_ALIASES, ALEM_AI_ALIASES];
+const EXPO_AREA_LABEL = 'Alem.ai (бывший Нур Алем), территория ЭКСПО';
+
+const UNRESOLVED: ResolvedLocation = {
+	confidence: 'low',
+	found: false,
+	label: null,
+	matchedPlaceId: null,
+	point: null,
+};
 
 function named(place: Place, aliases: readonly string[]): boolean {
 	return [place.name, place.nameEn ?? ''].some((name) =>
@@ -30,7 +44,8 @@ function named(place: Place, aliases: readonly string[]): boolean {
 function historicalMuseum(place: Place): boolean {
 	// data/nur-alem-history.json preserves OSM way 454857501 versions 11–12:
 	// name:ru="Музей Нур Алем". Version 15 names the SAME object Alem.ai.
-	// Resolve the historical identity only; use its current dataset label and coordinates.
+	// The EXPO sphere is that building; the separate EXPO site and quarter outlines are areas
+	// whose centroids are not where a visitor "at EXPO" stands, so they are never the anchor.
 	return (
 		place.id === 'osm:way/454857501' &&
 		place.sourceUrl === 'https://www.openstreetmap.org/way/454857501' &&
@@ -59,6 +74,33 @@ function coalesceVerifiedMall(matches: readonly Place[]): readonly Place[] {
 	return matches;
 }
 
+function landmarkMatches(places: readonly Place[], aliases: readonly string[]): readonly Place[] {
+	if (EXPO_AREA.includes(aliases)) return places.filter(historicalMuseum);
+	return coalesceVerifiedMall(
+		places.filter(
+			(place) => named(place, aliases) && (aliases !== BAYTEREK_ALIASES || place.category === 'monument'),
+		),
+	);
+}
+
+/** Another named dataset POI beside the landmark ("между Нур Алем и Национальным музеем") is a question. */
+function mentionsAnotherPlace(
+	text: string,
+	{ aliases, anchor, places }: { aliases: readonly string[]; anchor: Place; places: readonly Place[] },
+): boolean {
+	const remaining = [...aliases]
+		.sort((left, right) => right.length - left.length)
+		.reduce((value, alias) => value.replace(namePattern(alias, 'gu'), ' '), ` ${normalizeLocation(text)} `);
+	// Multiword names only: single-word venues ("Нур", "Мост", "Вечер") are ordinary words too.
+	return places.some(
+		(place) =>
+			place.id !== anchor.id &&
+			[place.name, place.nameEn ?? ''].some(
+				(name) => normalizeLocation(name).includes(' ') && mentionsExact(remaining, name),
+			),
+	);
+}
+
 export function resolveLocation(
 	ctx: PlacesContext,
 	input: z.input<typeof resolveLocationInputSchema>,
@@ -67,36 +109,32 @@ export function resolveLocation(
 	if (ctx.userMessages !== undefined && !ctx.userMessages.some((message) => mentions(message, text))) {
 		throw new DomainError('validation', { constraint: 'location_unconfirmed' });
 	}
-	const explicitMuseum = [...NUR_ALEM_ALIASES, ...ALEM_AI_ALIASES].some((alias) => mentions(text, alias));
-	const groups = LANDMARKS.filter(
-		(aliases) => aliases.some((alias) => mentions(text, alias)) && !(explicitMuseum && aliases === EXPO_ALIASES),
-	);
-	// EXPO can mean its landmark museum, but the specific museum never means the broad EXPO area.
-	if (!explicitMuseum && groups.includes(EXPO_ALIASES)) groups.push(NUR_ALEM_ALIASES);
-	const matches = coalesceVerifiedMall(
-		dependencies(ctx)
-			.readPlaces()
-			.filter((place) => {
-				if (groups.length > 0) {
-					return groups.some((aliases) => {
-						if (aliases === ALEM_AI_ALIASES) return historicalMuseum(place);
-						if (aliases === NUR_ALEM_ALIASES && historicalMuseum(place)) return true;
-						return named(place, aliases) && (aliases !== BAYTEREK_ALIASES || place.category === 'monument');
-					});
-				}
-				return [place.name, place.nameEn ?? ''].filter(Boolean).some((name) => mentions(text, name));
-			}),
-	);
-	// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
-	if (matches.length !== 1) {
-		return { confidence: 'low', found: false, label: null, matchedPlaceId: null, point: null };
+	const places = dependencies(ctx).readPlaces();
+	const groups = LANDMARKS.filter((aliases) => aliases.some((alias) => mentions(text, alias)));
+	let place: Place | undefined;
+
+	if (groups.length === 0) {
+		const matches = places.filter((item) =>
+			[item.name, item.nameEn ?? ''].filter(Boolean).some((name) => mentionsExact(text, name)),
+		);
+		// Ambiguity is a question, not an arbitrary choice of one branch or one campus.
+		if (matches.length !== 1) return UNRESOLVED;
+		[place] = matches;
+	} else {
+		// A station or stop named after a landmark is a different place from the landmark.
+		if (/(?:^| )(?:станци|остановк)/u.test(normalizeLocation(text))) return UNRESOLVED;
+		const perGroup = groups.map((aliases) => landmarkMatches(places, aliases));
+		const ids = new Set(perGroup.flat().map((item) => item.id));
+		// Every named landmark must be the same single verified object, or we ask.
+		if (perGroup.some((matches) => matches.length !== 1) || ids.size !== 1) return UNRESOLVED;
+		place = perGroup[0]![0]!;
+		if (mentionsAnotherPlace(text, { aliases: groups.flat(), anchor: place, places })) return UNRESOLVED;
 	}
-	const [place] = matches;
 
 	return resolvedLocationSchema.parse({
 		confidence: 'high',
 		found: true,
-		label: place!.name,
+		label: groups.some((aliases) => EXPO_AREA.includes(aliases)) ? EXPO_AREA_LABEL : place!.name,
 		matchedPlaceId: place!.id,
 		point: roundLocation(place!),
 	});
