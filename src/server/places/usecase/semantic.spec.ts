@@ -6,6 +6,8 @@ import { type PlacesDependencies, type PlaceVectors } from './dependencies';
 import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, semanticScores } from './semantic';
 
 const sdk = vi.hoisted(() => ({ create: vi.fn(), createClient: vi.fn() }));
+const local = vi.hoisted(() => ({ embed: vi.fn() }));
+vi.mock('./localEmbedding', () => ({ localEmbedding: local.embed }));
 vi.mock('@server/agent/usecase/client', () => ({
 	createClient: sdk.createClient,
 	withRetry: <T>(call: () => Promise<T>) => call(),
@@ -56,6 +58,7 @@ function fixture(
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	vi.stubEnv('EMBEDDING_PROVIDER', 'openai');
 	vi.stubEnv('LLM_PROVIDER', 'responses');
 	vi.stubEnv('LLM_BASE_URL', '');
 	vi.stubEnv('LLM_API_KEY', 'test-fixture-key');
@@ -69,6 +72,45 @@ afterEach(() => {
 });
 
 describe('semantic search provider boundaries', () => {
+	it.each([
+		{ chat: 'mock', provider: 'local' },
+		{ chat: 'mock', provider: '' },
+		{ chat: 'responses', provider: 'local' },
+	])(
+		'uses local vectors without chat credentials or OpenAI (provider=$provider, chat=$chat)',
+		async ({ chat, provider }) => {
+			vi.stubEnv('EMBEDDING_PROVIDER', provider);
+			vi.stubEnv('LLM_PROVIDER', chat);
+			vi.stubEnv('LLM_API_KEY', '');
+			const model = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2';
+			const embedding = [1, ...Array<number>(383).fill(0)];
+			local.embed.mockResolvedValue({ embedding, model });
+			const { ctx, deps } = fixture({
+				byId: new Map(places.map((place) => [place.id, new Float32Array(embedding)])),
+				dims: 384,
+				model,
+			});
+			const result = await semanticScores(ctx, { places, query });
+			expect(result.note).toBeNull();
+			expect(result.scores.get(places[0]!.id)).toBe(1);
+			expect(local.embed).toHaveBeenCalledWith(query);
+			expect(deps.readVectors).toHaveBeenCalledTimes(1);
+			expect(sdk.createClient).not.toHaveBeenCalled();
+		},
+	);
+	it('falls back when the offline model is unavailable without exposing private text', async () => {
+		vi.stubEnv('EMBEDDING_PROVIDER', 'local');
+		const model = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2';
+		local.embed.mockRejectedValue(new Error(query));
+		const { ctx } = fixture({
+			byId: new Map(places.map((place) => [place.id, new Float32Array([1, ...Array<number>(383).fill(0)])])),
+			dims: 384,
+			model,
+		});
+		const result = await semanticScores(ctx, { places, query });
+		expect(result.scores).toEqual(lexical);
+		expect(result.note).not.toContain(query);
+	});
 	it.each([
 		{ baseURL: '', provider: 'mock' },
 		{ baseURL: '', provider: 'chat' },
@@ -159,6 +201,7 @@ describe('semantic search response handling', () => {
 		expect(result.scores.get(places[0]!.id)).toBeCloseTo(0.6);
 		expect(result.scores.get(places[1]!.id)).toBe(0);
 		expect(result.scores.get(places[2]!.id)).toBe(0);
+		expect(result.similarities?.get(places[2]!.id)).toBe(-1);
 		expect(sdk.create).toHaveBeenCalledWith(
 			{ dimensions: EMBEDDING_DIMENSIONS, encoding_format: 'float', input: query, model: EMBEDDING_MODEL },
 			{ maxRetries: 0, timeout: 8000 },

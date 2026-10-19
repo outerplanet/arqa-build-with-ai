@@ -1,14 +1,16 @@
 import { createClient, withRetry } from '@server/agent/usecase/client';
+import { embeddingConfig, LOCAL_EMBEDDING_MODEL } from '@server/kernel/embeddingConfig';
 import { readEnv } from '@server/kernel/env';
 import { type Place } from '@server/places/model/places.schema';
 import 'server-only';
 import { dependencies, type PlacesContext } from './context';
+import { localEmbedding } from './localEmbedding';
 
 export const EMBEDDING_MODEL = 'text-embedding-3-small';
 export const EMBEDDING_DIMENSIONS = 256;
 
-function normalize(vector: Float32Array | readonly number[]): number[] | null {
-	if (vector.length !== EMBEDDING_DIMENSIONS) return null;
+function normalize(vector: Float32Array | readonly number[], dimensions: number): number[] | null {
+	if (vector.length !== dimensions) return null;
 	let scale = 0;
 
 	for (const value of vector) {
@@ -30,7 +32,7 @@ function cosine(query: readonly number[], vector: readonly number[]): number {
 		dot += query[index]! * vector[index]!;
 	}
 
-	return Math.max(0, Math.min(1, dot));
+	return Math.max(-1, Math.min(1, dot));
 }
 
 export async function semanticScores(
@@ -39,51 +41,66 @@ export async function semanticScores(
 ): Promise<{
 	note: string | null;
 	scores: Map<string, number>;
+	similarities?: Map<string, number>;
 }> {
 	const deps = dependencies(ctx);
 	const lexical = () => ({
 		note: 'Использован лексический поиск без эмбеддингов.',
 		scores: deps.lexicalScores(input.query, input.places),
 	});
-	const env = readEnv();
-
-	// Never send a third-party provider's credentials to OpenAI; mock must stay offline.
-	if (env.LLM_PROVIDER !== 'responses' || env.LLM_BASE_URL !== undefined || env.LLM_API_KEY === undefined) {
+	let config: ReturnType<typeof embeddingConfig>;
+	try {
+		config = embeddingConfig();
+	} catch {
 		return lexical();
 	}
+	if (config.provider === 'lexical') return lexical();
+	const local = config.provider === 'local';
+	const model = local ? LOCAL_EMBEDDING_MODEL : EMBEDDING_MODEL;
+	const dimensions = local ? 384 : EMBEDDING_DIMENSIONS;
+	if (config.model !== undefined && config.model !== model) return lexical();
 	try {
+		// Local inference is independent of chat credentials. Only the OpenAI backend
+		// reads its provider settings; mock and third-party endpoints never send a query.
+		if (!local) {
+			const env = readEnv();
+			if (env.LLM_PROVIDER !== 'responses' || env.LLM_BASE_URL !== undefined || env.LLM_API_KEY === undefined)
+				return lexical();
+		}
 		const vectors = deps.readVectors();
 
-		if (vectors?.model !== EMBEDDING_MODEL || vectors.dims !== EMBEDDING_DIMENSIONS) return lexical();
+		if (vectors?.model !== model || vectors.dims !== dimensions) return lexical();
 		const normalizedVectors = new Map<string, number[]>();
 
 		for (const place of input.places) {
 			const vector = vectors.byId.get(place.id);
-			const normalized = vector === undefined ? null : normalize(vector);
+			const normalized = vector === undefined ? null : normalize(vector, dimensions);
 
 			if (normalized !== null) normalizedVectors.set(place.id, normalized);
 		}
 		// There is nothing to compare to; do not disclose a query for an unusable dataset.
 		if (normalizedVectors.size === 0) return lexical();
-		const client = createClient();
-		const response = await withRetry(() =>
-			client.embeddings.create(
-				{
-					dimensions: EMBEDDING_DIMENSIONS,
-					encoding_format: 'float',
-					input: input.query,
-					model: EMBEDDING_MODEL,
-				},
-				{ maxRetries: 0, timeout: 8000 },
-			),
-		);
-		const embedding = response.data[0]?.embedding;
+		const response = local
+			? ((await localEmbedding(input.query)) as { embedding: unknown; model: string })
+			: await withRetry(() =>
+					createClient().embeddings.create(
+						{
+							dimensions: EMBEDDING_DIMENSIONS,
+							encoding_format: 'float',
+							input: input.query,
+							model: EMBEDDING_MODEL,
+						},
+						{ maxRetries: 0, timeout: 8000 },
+					),
+				);
+		const embedding = 'embedding' in response ? response.embedding : response.data[0]?.embedding;
 
-		if (!Array.isArray(embedding) || response.model !== EMBEDDING_MODEL) return lexical();
-		const query = normalize(embedding);
+		if (!Array.isArray(embedding) || response.model !== model) return lexical();
+		const query = normalize(embedding, dimensions);
 
 		if (query === null) return lexical();
 		const scores = deps.lexicalScores(input.query, input.places);
+		const similarities = new Map<string, number>();
 		let matched = 0;
 
 		for (const place of input.places) {
@@ -91,7 +108,8 @@ export async function semanticScores(
 			const score = vector === undefined ? null : cosine(query, vector);
 
 			if (score !== null) {
-				scores.set(place.id, score);
+				scores.set(place.id, Math.max(0, score));
+				similarities.set(place.id, score);
 				matched += 1;
 			}
 		}
@@ -102,6 +120,7 @@ export async function semanticScores(
 					? null
 					: 'Для части мест использован лексический поиск: подходящие векторы отсутствуют.',
 			scores,
+			similarities,
 		};
 	} catch {
 		// No provider details or input text in logs, errors or persisted caches.

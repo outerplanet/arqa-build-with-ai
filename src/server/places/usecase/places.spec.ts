@@ -120,6 +120,7 @@ describe('places usecases', () => {
 		});
 	});
 	it('passes validated filters, lexical scores and injected time to ranking', async () => {
+		vi.stubEnv('EMBEDDING_PROVIDER', 'openai');
 		const { ctx, deps } = fixture();
 		ctx.browserLocation = { lat: 51.123456, lon: 71.456789 };
 		const result = await findPlaces(ctx, { accessibleOnly: true, categories: ['museum'], query: 'музей' });

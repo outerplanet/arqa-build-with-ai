@@ -27,6 +27,16 @@ function files(payload: unknown) {
 }
 
 describe('optional place vectors', () => {
+	it('loads multilingual local vectors without confusing their dimensions with OpenAI', async () => {
+		files({
+			...valid(),
+			byId: { 'osm:node/1': [1, ...Array<number>(383).fill(0)] },
+			dims: 384,
+			model: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
+		});
+		const { readVectors } = await import('./vectors');
+		expect(readVectors()?.dims).toBe(384);
+	});
 	it('caches absence without repeatedly checking the filesystem', async () => {
 		vi.mocked(existsSync).mockReturnValue(false);
 		const { readVectors } = await import('./vectors');
