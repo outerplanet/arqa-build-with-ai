@@ -3,7 +3,7 @@
 import { MapPinIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { type GeoPoint } from '@server/places/model/places.schema';
 import { Button } from '@shared/ui/Button';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function LocationConsent({
 	location,
@@ -14,7 +14,21 @@ export function LocationConsent({
 }) {
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const requestGeneration = useRef(0);
+	useEffect(
+		() => () => {
+			requestGeneration.current += 1;
+		},
+		[],
+	);
+	const remove = useCallback(() => {
+		requestGeneration.current += 1;
+		setPending(false);
+		setError(null);
+		onChange(undefined);
+	}, [onChange]);
 	const locate = useCallback(() => {
+		const generation = ++requestGeneration.current;
 		setError(null);
 		if (!('geolocation' in navigator)) {
 			setError('Браузер не поддерживает геолокацию. Напишите ориентир в сообщении.');
@@ -23,6 +37,7 @@ export function LocationConsent({
 		setPending(true);
 		navigator.geolocation.getCurrentPosition(
 			({ coords }) => {
+				if (generation !== requestGeneration.current) return;
 				onChange({
 					lat: Math.round(coords.latitude * 1000) / 1000,
 					lon: Math.round(coords.longitude * 1000) / 1000,
@@ -30,6 +45,7 @@ export function LocationConsent({
 				setPending(false);
 			},
 			(cause) => {
+				if (generation !== requestGeneration.current) return;
 				setError(
 					cause.code === 1
 						? 'Доступ к геолокации не разрешён. Можно написать ориентир.'
@@ -52,11 +68,11 @@ export function LocationConsent({
 					<MapPinIcon aria-hidden className="size-4 shrink-0" />
 					{pending ? 'Определяем точку…' : location ? 'Обновить геолокацию' : 'Использовать мою геолокацию'}
 				</Button>
-				{location && (
+				{(location || pending) && (
 					<Button
 						aria-label="Убрать геолокацию из следующих запросов"
 						className="min-h-10"
-						onClick={() => onChange(undefined)}
+						onClick={remove}
 						variant="ghost"
 					>
 						<XMarkIcon aria-hidden className="size-4" />

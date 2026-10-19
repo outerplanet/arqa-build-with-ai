@@ -39,6 +39,29 @@ describe('map result boundary', () => {
 		walkMinutes: 2,
 		why: { distance: 1, open: 0, popularity: 0, semantic: 0.5, tags: [] },
 	};
+	it('shows only server recommended IDs and only route stops when a plan exists', () => {
+		const other = { ...candidate, place: { ...candidate.place, id: 'osm:node/2' } };
+		const search = {
+			candidates: [candidate, other],
+			note: null,
+			origin: { label: null, point: { lat: 51.1, lon: 71.4 }, source: 'browser' },
+			usedFilters: [],
+		};
+		const plan = {
+			legs: [],
+			note: 'По прямой',
+			stops: [{ arriveAtMinute: 2, candidate, order: 1 }],
+			totalMinutes: 22,
+		};
+		expect(readPlacesResults([call('find_places', search)], [other.place.id]).candidates).toEqual([other]);
+		expect(readPlacesResults([call('find_places', search)]).candidates).toEqual([]);
+		expect(
+			readPlacesResults([call('find_places', search), call('plan_walk', plan)], [other.place.id]).candidates,
+		).toEqual([candidate]);
+		expect(
+			readPlacesResults([call('plan_walk', plan), call('find_places', search)], [other.place.id]).plan,
+		).toBeNull();
+	});
 	it('uses route order, deduplicates search results and rejects a valid but failed tool', () => {
 		const search = {
 			candidates: [candidate],

@@ -9,13 +9,16 @@ import {
 } from '@server/places/model/places.schema';
 
 /** Only the validated result of a successful places tool may reach a marker or card. */
-export function readPlacesResults(calls: readonly ToolCall[]) {
+export function readPlacesResults(calls: readonly ToolCall[], recommendedPlaceIds: readonly string[] = []) {
 	let search: FindPlacesResult | null = null;
 	let plan: WalkPlan | null = null;
 	for (const call of calls.filter((item) => item.status === 'ok')) {
 		if (call.name === 'find_places') {
 			const parsed = findPlacesResultSchema.safeParse(call.result);
-			if (parsed.success) search = parsed.data;
+			if (parsed.success) {
+				search = parsed.data;
+				plan = null;
+			}
 		}
 		if (call.name === 'plan_walk') {
 			const parsed = walkPlanSchema.safeParse(call.result);
@@ -24,7 +27,9 @@ export function readPlacesResults(calls: readonly ToolCall[]) {
 	}
 	const candidates: Candidate[] = [];
 	const seen = new Set<string>();
-	for (const candidate of [...(plan?.stops.map((stop) => stop.candidate) ?? []), ...(search?.candidates ?? [])]) {
+	for (const candidate of plan?.stops.map((stop) => stop.candidate) ??
+		search?.candidates.filter((item) => recommendedPlaceIds.includes(item.place.id)) ??
+		[]) {
 		if (!seen.has(candidate.place.id)) {
 			seen.add(candidate.place.id);
 			candidates.push(candidate);

@@ -38,10 +38,10 @@ export function ChatScreen({
 	subtitle = 'Места рядом, честные часы работы и короткий маршрут пешком.',
 	title = 'Куда пойдём в Астане?',
 }: ChatScreenProps) {
-	const { error, messages, retry, send, status, toolCalls } = useChat();
+	const { error, messages, recommendedPlaceIds, retry, send, status, toolCalls } = useChat();
 	const [location, setLocation] = useState<GeoPoint>();
 	const [selection, setSelection] = useState<string | null>(null);
-	const results = useMemo(() => readPlacesResults(toolCalls), [toolCalls]);
+	const results = useMemo(() => readPlacesResults(toolCalls, recommendedPlaceIds), [recommendedPlaceIds, toolCalls]);
 	const pending = status === 'sending';
 	const selectedId = results.candidates.some((candidate) => candidate.place.id === selection) ? selection : null;
 	const sendMessage = (content: string) => send(content, location);
@@ -83,7 +83,7 @@ export function ChatScreen({
 							<Callout tone="danger">
 								<div className="flex flex-wrap items-center gap-2" role="alert">
 									<span>{error}</span>
-									<Button onClick={retry} variant="secondary">
+									<Button onClick={() => retry(location)} variant="secondary">
 										Повторить
 									</Button>
 								</div>
@@ -111,7 +111,7 @@ export function ChatScreen({
 					>
 						<div className="flex flex-wrap items-center justify-between gap-2">
 							<h2 className="font-semibold">
-								{results.plan ? 'Остановки и места рядом' : 'Места для вашей прогулки'}
+								{results.plan ? 'Остановки маршрута' : 'Места для вашей прогулки'}
 							</h2>
 							{results.candidates.length > 0 && !results.plan && (
 								<Button

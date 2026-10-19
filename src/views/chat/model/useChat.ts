@@ -20,7 +20,8 @@ export type ChatStatus = 'error' | 'idle' | 'sending';
 export interface UseChat {
 	error: string | null;
 	messages: readonly ChatMessage[];
-	retry: () => void;
+	recommendedPlaceIds: readonly string[];
+	retry: (location?: GeoPoint) => void;
 	send: (content: string, location?: GeoPoint) => void;
 	status: ChatStatus;
 	toolCalls: readonly ToolCall[];
@@ -29,16 +30,17 @@ export interface UseChat {
 export function useChat(): UseChat {
 	const [messages, setMessages] = useState<readonly ChatMessage[]>([]);
 	const [toolCalls, setToolCalls] = useState<readonly ToolCall[]>([]);
+	const [recommendedPlaceIds, setRecommendedPlaceIds] = useState<readonly string[]>([]);
 	const [status, setStatus] = useState<ChatStatus>('idle');
 	const [error, setError] = useState<string | null>(null);
 	const inFlight = useRef(false);
-	const lastRequest = useRef<ReturnType<typeof buildChatRequest> | null>(null);
+	const lastHistory = useRef<readonly ChatMessage[] | null>(null);
 
 	const exchange = useCallback(async (history: readonly ChatMessage[], location?: GeoPoint) => {
 		if (inFlight.current) return;
 		inFlight.current = true;
 		const request = buildChatRequest(history, location);
-		lastRequest.current = request;
+		lastHistory.current = history;
 		setStatus('sending');
 		setError(null);
 
@@ -69,6 +71,7 @@ export function useChat(): UseChat {
 
 			setMessages([...history, { content: parsed.data.reply, role: 'assistant' }]);
 			setToolCalls(parsed.data.toolCalls);
+			setRecommendedPlaceIds(parsed.data.recommendedPlaceIds ?? []);
 			setStatus('idle');
 		} catch (cause) {
 			// The user's message stays in the transcript, so retry resends it rather than making
@@ -91,10 +94,13 @@ export function useChat(): UseChat {
 		[exchange, messages],
 	);
 
-	const retry = useCallback(() => {
-		const request = lastRequest.current;
-		if (request !== null) void exchange(request.messages, request.location);
-	}, [exchange]);
+	const retry = useCallback(
+		(location?: GeoPoint) => {
+			const history = lastHistory.current;
+			if (history !== null) void exchange(history, location);
+		},
+		[exchange],
+	);
 
-	return { error, messages, retry, send, status, toolCalls };
+	return { error, messages, recommendedPlaceIds, retry, send, status, toolCalls };
 }
