@@ -18,7 +18,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import Paragraph, SimpleDocTemplate
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +32,7 @@ ACCENT = colors.HexColor("#007A8F")
 MUTED = colors.HexColor("#52656D")
 WIDTH, HEIGHT = 960, 540
 SUMMARY = json.loads((ROOT / "data/collect_summary.json").read_text())
+HTTP_PROBES = json.loads((ROOT / "docs/presentation-http-probes.json").read_text())
 
 
 def paragraph(text, size=24, color=INK, bold=False):
@@ -58,6 +59,9 @@ def slides():
     total = f'{SUMMARY["total"]:,}'.replace(",", " ")
     collected = datetime.fromisoformat(SUMMARY["collectedAt"].replace("Z", "+00:00"))
     local = collected.astimezone(timezone(timedelta(hours=5))).strftime("%d.%m.%Y %H:%M")
+    checked = datetime.fromisoformat(HTTP_PROBES["at"].replace("Z", "+00:00"))
+    verified = checked.astimezone(timezone(timedelta(hours=5))).strftime("%d.%m.%Y %H:%M")
+    commit = HTTP_PROBES["sourceGitCommit"][:7]
     return [
         ("Прогулки по Астане", [
             "Умный AI-помощник<br/>для пеших маршрутов",
@@ -76,7 +80,7 @@ def slides():
         ], f"Сбор: {local} по Астане · © участники OpenStreetMap, ODbL · Wikidata, CC0<br/>openstreetmap.org/copyright · wikidata.org/wiki/Wikidata:Licensing · openstreetmap.org/way/454857501/history"),
         ("RAG и короткий маршрут", [
             "Инструменты: resolve_location, find_places, get_place, plan_walk.",
-            "Поиск по POI: лексика, фильтры, расстояние. Эмбеддинги предусмотрены как дополнительный сигнал.",
+            "Поиск по POI: лексика, фильтры, расстояние. Скрипт эмбеддингов готов, векторы ожидают ключа.",
             "Маршрут: 2–3 остановки в бюджете ходьбы и посещений. Расстояние по прямой ×1,3.",
             "Временное подключение проверено: реальный маршрут на 79 минут. Обычный API пока использует заглушки.",
         ], "Next.js · Проверка Zod · Статические файлы · Без базы данных и хранения геолокации"),
@@ -85,7 +89,7 @@ def slides():
             "Фактический ответ текущего приложения: «Данные мест и алгоритмы поиска ещё не подключены».",
             "Экран: чат и журнал действий есть. Карта, геолокация и карточки POI пока отсутствуют.",
             "Это статус готовности демо. Успешный ответ с картой пока не подтверждён.",
-        ], "Серверный mock проверен без ключа · Полный протокол: docs/scenarios.md"),
+        ], f"Повторная HTTP-проверка: {verified} по Астане · Коммит {commit} · docs/scenarios.md"),
         ("Ответственное AI и Smart City", [
             "У факта есть источник. Сгенерированная идея обозначается явно.",
             "Координаты округляются до трёх знаков, около 100 м. Это не гарантия анонимности.",
@@ -127,8 +131,10 @@ def build_scenarios():
     styles = {
         "title": ParagraphStyle("title", fontName="AstanaBold", fontSize=23, leading=28, textColor=INK, spaceAfter=16),
         "heading": ParagraphStyle("heading", fontName="AstanaBold", fontSize=15, leading=19, textColor=ACCENT, spaceBefore=15, spaceAfter=9, keepWithNext=True),
-        "body": ParagraphStyle("body", fontName="Astana", fontSize=10.5, leading=15, textColor=INK, spaceAfter=7),
-        "quote": ParagraphStyle("quote", fontName="Astana", fontSize=10.5, leading=15, textColor=ACCENT, leftIndent=15, spaceAfter=9),
+        "body": ParagraphStyle("body", fontName="Astana", fontSize=10.5, leading=14.5, textColor=INK, spaceAfter=6),
+        "fact": ParagraphStyle("fact", fontName="Astana", fontSize=10.5, leading=14.5, textColor=INK, spaceAfter=6, keepWithNext=True),
+        "sequence": ParagraphStyle("sequence", fontName="Astana", fontSize=10.5, leading=14.5, textColor=INK, spaceAfter=6, keepWithNext=True),
+        "quote": ParagraphStyle("quote", fontName="Astana", fontSize=10.5, leading=14.5, textColor=ACCENT, leftIndent=15, spaceAfter=8, keepWithNext=True),
     }
     blocks = re.split(r"\n\s*\n", (ROOT / "docs/scenarios.md").read_text().strip())
     content = []
@@ -139,13 +145,17 @@ def build_scenarios():
             content.append(Paragraph(rich(block[3:]), styles["heading"]))
         elif block.startswith("> "):
             content.append(Paragraph(rich(block.replace("\n", " ")[2:]), styles["quote"]))
+        elif block.startswith("**Фактически"):
+            content.append(Paragraph(rich(block.replace("\n", " ")), styles["fact"]))
         elif block.startswith("- ") or re.match(r"\d+\. ", block):
             # Keep wrapped list items together, splitting at explicit Markdown item starts.
-            for item in re.split(r"\n(?=- |\d+\. )", block):
-                content.append(Paragraph(rich(item.replace("\n", " ")), styles["body"]))
+            items = re.split(r"\n(?=- |\d+\. )", block)
+            ordered = bool(re.match(r"\d+\. ", block))
+            for index, item in enumerate(items):
+                style = styles["sequence"] if ordered and index < len(items) - 1 else styles["body"]
+                content.append(Paragraph(rich(item.replace("\n", " ")), style))
         else:
             content.append(Paragraph(rich(block.replace("\n", " ")), styles["body"]))
-    content.append(Spacer(1, 8))
     document = SimpleDocTemplate(str(ROOT / "docs/scenarios.pdf"), pagesize=A4,
         rightMargin=45, leftMargin=45, topMargin=42, bottomMargin=42,
         title="Прогулки по Астане: тестовые сценарии и ограничения", author="Адиль / команда проекта")
