@@ -14,8 +14,6 @@
 		"lint": "eslint . --ext .ts,.tsx --max-warnings 0 --cache --cache-location .cache/eslint/ --cache-strategy content",
 		"lint:fix": "eslint . --ext .ts,.tsx --max-warnings 0 --cache --cache-location .cache/eslint/ --cache-strategy content --fix",
 		"lint:no-cache": "eslint . --ext .ts,.tsx --max-warnings 0 --no-cache",
-		"pdf": "python3 scripts/export_pdf.py",
-		"pdf:test": "python3 -m unittest discover -s scripts -p export_pdf_test.py",
 		"prepare:standalone": "node scripts/prepare-standalone.mjs",
 		"prepare:standalone:test": "node --test scripts/prepare-standalone.test.mjs",
 		"scenarios": "tsx scripts/scenarios.ts",

@@ -1,3 +1,0 @@
-# Export-only dependencies. These are not application dependencies.
-pypandoc-binary==1.17
-reportlab==4.4.10
