@@ -44,6 +44,16 @@ export const placeSchema = geoPointSchema.extend({
 	description: z.string().nullable(),
 	descriptionSource: z.enum(['osm', 'wikidata', 'generated']).nullable(),
 	id: placeIdSchema,
+	/** A freely licensed photo from Wikimedia Commons, linked from the place's Wikidata item (P18). */
+	image: z
+		.object({
+			author: z.string().nullable(),
+			license: z.string().nullable(),
+			pageUrl: z.url(),
+			url: z.url(),
+		})
+		.nullable()
+		.optional(),
 	name: z.string().trim().min(1),
 	nameEn: z.string().nullable(),
 	openingHours: z.string().nullable(),
