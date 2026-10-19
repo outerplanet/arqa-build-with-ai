@@ -56,10 +56,10 @@ export const recommendationSchema = z.object({
 });
 
 export const chatResponseSchema = z.object({
-	/** Server selection shared with the text reply; every id still needs a validated tool result. */
-	recommendedPlaceIds: z.array(z.string()).optional(),
 	/** Structured form of the same recommendations for the cards; absent when nothing is recommended. */
 	recommendations: z.array(recommendationSchema).optional(),
+	/** Server selection shared with the text reply; every id still needs a validated tool result. */
+	recommendedPlaceIds: z.array(z.string()).optional(),
 	reply: z.string(),
 	toolCalls: z.array(toolCallSchema),
 });
