@@ -1,0 +1,82 @@
+{
+  "attribution": [
+    "© участники OpenStreetMap, ODbL https://www.openstreetmap.org/copyright",
+    "Wikidata, CC0 https://www.wikidata.org/wiki/Wikidata:Licensing"
+  ],
+  "bbox": [
+    51.03,
+    71.25,
+    51.25,
+    71.65
+  ],
+  "byCategory": {
+    "cafe": 305,
+    "restaurant": 168,
+    "fast_food": 118,
+    "bar": 89,
+    "nightclub": 3,
+    "museum": 8,
+    "gallery": 2,
+    "theatre": 9,
+    "cinema": 9,
+    "park": 35,
+    "garden": 3,
+    "playground": 1,
+    "viewpoint": 0,
+    "attraction": 16,
+    "monument": 36,
+    "artwork": 13,
+    "mall": 51,
+    "library": 8,
+    "zoo": 0,
+    "theme_park": 1,
+    "sports": 28,
+    "place_of_worship": 17,
+    "other": 169
+  },
+  "collectedAt": "2026-10-19T10:00:46.075Z",
+  "descriptions": {
+    "count": 20,
+    "fraction": 0.018365472910927456,
+    "percent": 1.84
+  },
+  "duplicatesRemoved": 9,
+  "endpoint": "https://overpass-api.de/api/interpreter",
+  "failedWikidataBatches": 0,
+  "limitations": [
+    "Выборка именованных POI в bbox, не полный реестр Астаны.",
+    "Наличие opening_hours не означает проверенную актуальность или статус «открыто».",
+    "Описания могут быть краткими. Популярность из числа sitelinks, не пользовательский рейтинг."
+  ],
+  "openingHours": {
+    "count": 342,
+    "fraction": 0.3140495867768595,
+    "percent": 31.4
+  },
+  "osmBaseTimestamp": "2026-10-19T09:58:49Z",
+  "osmDescriptions": {
+    "count": 3,
+    "fraction": 0.0027548209366391185,
+    "percent": 0.28
+  },
+  "query": "[out:json][timeout:90];(nwr[amenity~\"^(cafe|restaurant|fast_food|bar|nightclub|theatre|cinema|library|place_of_worship|university)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[tourism][\"name\"](51.03,71.25,51.25,71.65);nwr[leisure~\"^(park|garden|playground|sports_centre|stadium)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[historic][\"name\"](51.03,71.25,51.25,71.65);nwr[shop=mall][\"name\"](51.03,71.25,51.25,71.65);nwr[building~\"^(museum|train_station)$\"][\"name\"](51.03,71.25,51.25,71.65);nwr[aeroway=aerodrome][\"name\"](51.03,71.25,51.25,71.65);nwr[name~\"^(Нұр Әлем|Нур Алем|Nur Alem|EXPO|Экспо)$\",i][\"name\"](51.03,71.25,51.25,71.65););out center tags;",
+  "rawElements": 1099,
+  "startedAt": "2026-10-19T09:59:58.573Z",
+  "status": "complete",
+  "total": 1089,
+  "wikidataDescriptions": {
+    "count": 17,
+    "fraction": 0.015610651974288337,
+    "percent": 1.56
+  },
+  "wikidataLinked": {
+    "count": 24,
+    "fraction": 0.02203856749311295,
+    "percent": 2.2
+  },
+  "wikidataPopularity": {
+    "count": 24,
+    "fraction": 0.02203856749311295,
+    "percent": 2.2
+  }
+}
