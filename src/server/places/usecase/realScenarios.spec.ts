@@ -15,7 +15,6 @@ const BAYTEREK = 'osm:way/230401645';
 beforeEach(() => {
 	vi.stubEnv('LLM_PROVIDER', 'mock');
 	// Deterministic ranking: no Python process or weights cache in a unit run.
-	vi.stubEnv('EMBEDDING_PROVIDER', 'lexical');
 	resetEnvCache();
 });
 afterEach(() => {

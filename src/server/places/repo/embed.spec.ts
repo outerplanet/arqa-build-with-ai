@@ -61,7 +61,7 @@ const previousExitCode = process.exitCode;
 beforeEach(() => {
 	vi.resetModules();
 	vi.clearAllMocks();
-	state.env = { OPENAI_API_KEY: 'unit-test-key' };
+	state.env = { LLM_API_KEY: 'unit-test-key' };
 	process.exitCode = undefined;
 	log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 	error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -115,6 +115,21 @@ describe('offline embedding CLI', () => {
 		expect(readFile).not.toHaveBeenCalled();
 		expect(state.create).not.toHaveBeenCalled();
 		expect(writeFile).not.toHaveBeenCalled();
+		expect(process.exitCode).toBe(1);
+	});
+	it('refuses a key configured for a custom LLM_BASE_URL', async () => {
+		state.env = { LLM_API_KEY: 'unit-test-key', LLM_BASE_URL: 'https://provider.invalid/v1' };
+		await run();
+		expect(readFile).not.toHaveBeenCalled();
+		expect(state.create).not.toHaveBeenCalled();
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(process.exitCode).toBe(1);
+		expect(JSON.stringify(error.mock.calls)).not.toContain('unit-test-key');
+	});
+	it('does not accept OPENAI_API_KEY: LLM_API_KEY is the single documented variable', async () => {
+		state.env = { OPENAI_API_KEY: 'unit-test-key' };
+		await run();
+		expect(state.create).not.toHaveBeenCalled();
 		expect(process.exitCode).toBe(1);
 	});
 	it.each(['incomplete', 'provider', 'changed-dataset'])('preserves the old target on %s', async (failure) => {

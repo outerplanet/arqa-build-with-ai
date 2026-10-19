@@ -18,9 +18,8 @@
 [результаты проверки](docs/live-check-2026-10-19.json).
 Добавлены карта OpenFreeMap, карточки, геолокация по кнопке и линия маршрута по прямой.
 Текст, карточки и маркеры используют один серверный выбор рекомендаций.
-Создан и подключён индекс **1091 × 384** настоящих векторов локальной мультиязычной модели
-`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`. Для семантического поиска нужны
-Python-зависимости и локальный кэш весов; без них приложение сохраняет лексический поиск.
+Создан и закоммичен индекс **1091 × 256** векторов OpenAI `text-embedding-3-small`.
+Семантический поиск работает с ключом OpenAI; без ключа и в `mock` — лексический поиск.
 
 ## Запуск
 
@@ -58,21 +57,18 @@ pnpm start
 Сборка использует `next/font/google`: ей нужен доступ к файлам Inter. Браузер получает шрифт
 с самого приложения. Для сборки без ключа сохраните `LLM_PROVIDER=mock` в `.env`.
 Если окружение блокирует служебный порт Turbopack, используйте `pnpm build --webpack`.
-Этот вариант production-сборки проверен после интеграции локальных векторов.
 
 Для отдельного standalone-пакета после сборки выполните:
 
 ```bash
 pnpm prepare:standalone
 pnpm prepare:standalone:test
-LLM_PROVIDER=mock EMBEDDING_PROVIDER=lexical node .next/standalone/server.js
+LLM_PROVIDER=mock node .next/standalone/server.js
 ```
 
 Подготовка копирует ресурсы интерфейса и удаляет файлы `.env*` из пакета; исходный `.env`
-сохраняется. Передавайте настройки процесса при запуске на сервере. Python и веса модели
-в пакет не входят. Для локального семантического поиска установите их отдельно и передайте
-`EMBEDDING_PROVIDER=local`, **абсолютные** `EMBEDDING_PYTHON` и `EMBEDDING_CACHE`:
-standalone-сервер работает из каталога пакета. В PowerShell задайте переменные через `$env:`.
+сохраняется. Передавайте настройки процесса при запуске на сервере. `data/poi.json` и
+`data/poi.vectors.json` входят в пакет. В PowerShell задайте переменные через `$env:`.
 
 ## Режимы модели
 
@@ -106,68 +102,33 @@ standalone-сервер работает из каталога пакета. В 
 Перед вылетом ассистент напоминает о времени дороги, регистрации и досмотра и не отдаёт весь
 запас прогулке. Указанный бюджет ограничивает суммарное время ходьбы и посещения.
 
-По умолчанию `EMBEDDING_PROVIDER=local`: запрос кодируется локально в 384 измерения,
-сопоставляется с индексом по cosine similarity, затем применяются географические фильтры,
-часы и ранжирование. Лексика используется как резерв; совпадения тегов учитываются отдельно.
-Базы векторов и отдельного сервиса нет: индекс — статический JSON, поиск — в памяти сервера.
-SHA-256 датасета, модель, размерность и векторы проверяются перед использованием.
-При несовместимом индексе или недоступной модели ответ явно сообщает о лексическом поиске.
+Запрос пользователя превращается в вектор и сравнивается с векторами мест по косинусному
+сходству, затем применяются географические фильтры, часы и ранжирование. Лексика — резерв;
+совпадения тегов учитываются отдельно. Базы векторов и отдельного сервиса нет: индекс —
+статический JSON, поиск — в памяти сервера.
 
-### Локальные эмбеддинги без ключа
+### Эмбеддинги (векторы мест)
 
-```bash
-python3 -m venv ../.arqa-vectors-venv
-../.arqa-vectors-venv/bin/python -m pip install -r scripts/vector-requirements.txt
-# Индекс уже в Git. Скачиваем только веса, не меняя данные и векторы.
-../.arqa-vectors-venv/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import model; model(offline=False)'
-```
+Вектор — это 256 чисел, которыми модель OpenAI `text-embedding-3-small` описывает смысл текста
+места: название, категория, теги, описание. Близкие по смыслу места и запросы получают близкие
+векторы, поэтому «где выпить кофе» находит кофейни, даже если слова не совпадают.
 
-Окружение создаётся рядом с репозиторием: иначе ESLint сканирует JS-файлы Python-пакетов.
-Только после изменения POI пересоберите индекс командой
-`../.arqa-vectors-venv/bin/python scripts/embed.py` либо активируйте окружение и выполните
-`pnpm embed:local`. В Windows используйте явный интерпретатор:
-
-```powershell
-py -3 -m venv ../.arqa-vectors-venv
-../.arqa-vectors-venv/Scripts/python.exe -m pip install -r scripts/vector-requirements.txt
-../.arqa-vectors-venv/Scripts/python.exe -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import model; model(offline=False)'
-```
-
-В Windows задайте в `.env` `EMBEDDING_PYTHON=../.arqa-vectors-venv/Scripts/python.exe`.
-Настройки macOS/Linux:
-
-```dotenv
-EMBEDDING_PROVIDER=local
-EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
-EMBEDDING_PYTHON=../.arqa-vectors-venv/bin/python
-EMBEDDING_CACHE=.cache/embeddings
-EMBEDDING_INDEX_PATH=data/poi.vectors.json
-```
-
-Индекс уже закоммичен, но кэш весов и виртуальное окружение не включены в репозиторий.
-После первого скачивания генерация вектора запроса работает только с локальными файлами,
-в том числе при `LLM_PROVIDER=mock`; ключ OpenAI не требуется. Запрос передаётся Python через
-stdin, не сохраняется и не логируется. При обновлении POI пересоберите индекс и перезапустите
-сервер. `EMBEDDING_PROVIDER=lexical` явно отключает семантический поиск.
-Кодировка канала Python принудительно UTF-8, включая кириллицу и казахские буквы.
-
-Python API `vector_search(query: str, top_k: int = 5)` в `scripts/vector_search.py` возвращает
-тексты, метаданные и косинусное сходство от −1 до 1. Пример вызова из корня проекта:
+Векторы всех мест лежат в `data/poi.vectors.json` и закоммичены: чтобы пользоваться ими,
+ключ не нужен. Пересобрать файл нужно только после `pnpm collect`:
 
 ```bash
-../.arqa-vectors-venv/bin/python -c 'import sys; sys.path.insert(0, "scripts"); from vector_search import vector_search; print(vector_search("музей и искусство", top_k=3))'
+# в .env: LLM_API_KEY=<ключ OpenAI>, LLM_BASE_URL пустой
+pnpm embed
 ```
 
-В TypeScript используется `src/server/places/usecase/vectorSearch.ts` с проверкой входа.
-Пути CLI задаются через `EMBEDDING_INDEX_PATH` и `EMBEDDING_DATASET_PATH`; приложение всегда
-сверяет индекс с настоящим `data/poi.json`.
+Скрипт проверяет ответ и пишет файл атомарно; модель, размерность и SHA-256 `data/poi.json`
+записаны в самом файле. После пересборки перезапустите сервер.
 
-Необязательный альтернативный режим — `pnpm embed`: официальный OpenAI
-`text-embedding-3-small`, 256 измерений, ключ из локального `.env` (`OPENAI_API_KEY` либо
-прямой OpenAI `LLM_API_KEY`). Он заменяет тот же файл индекса; после генерации переключите
-`EMBEDDING_PROVIDER=openai` и `EMBEDDING_MODEL=text-embedding-3-small`.
-Онлайн-кодирование запросов поддерживается только с `LLM_PROVIDER=responses`, прямым OpenAI
-ключом и без `LLM_BASE_URL`. В mock, при стороннем эндпоинте или ошибке используется лексика.
+Чтобы превратить в вектор сам запрос пользователя, нужен ключ: семантический поиск работает
+при `LLM_PROVIDER=responses`, заданном `LLM_API_KEY` и пустом `LLM_BASE_URL`. В остальных
+случаях — `mock`, сторонний эндпоинт, нет ключа, устаревший индекс или ошибка API — используется
+лексический поиск, и результат инструмента прямо об этом сообщает. Текст запроса и координаты
+не сохраняются и не логируются.
 
 ## Подключение работы команды
 
@@ -238,10 +199,9 @@ Python API `vector_search(query: str, top_k: int = 5)` в `scripts/vector_search
 и **Wikidata**, [CC0](https://www.wikidata.org/wiki/Wikidata:Licensing).
 Google Maps, 2GIS и Яндекс не используются.
 
-`data/vector_summary.json` фиксирует модель, размерность, число векторов, SHA-256 исходного
-датасета и время индексации. Текущий локальный индекс создан **19 октября 2026** на всех
-1091 POI. Он содержит семантические представления исходных полей, а не новые описания мест.
-Сбор POI и локальная индексация не требуют OpenAI.
+`data/poi.vectors.json` создан командой `pnpm embed` **19 октября 2026** на всех 1091 POI.
+Он содержит семантические представления исходных полей, а не новые описания мест.
+Сбор POI не требует OpenAI.
 
 ## API и приватность
 
@@ -271,11 +231,9 @@ location?: { lat: number, lon: number } }` и возвращает `{ reply, too
 Для повторного HTTP-прогона запустите приложение с `LLM_PROVIDER=mock`, затем `pnpm scenarios`:
 скрипт сохраняет результаты в `docs/presentation-http-probes.json` и завершает работу с ошибкой
 при нарушении ожиданий. Его локальные тестовые координаты не являются геолокацией участника.
-Предыдущие проверки живой модели записаны отдельно в `docs/live-check-2026-10-19.json`.
-Совместный прогон OpenAI и локальной модели —
-[docs/live-semantic-check-2026-10-19.json](docs/live-semantic-check-2026-10-19.json):
-шесть сценариев, пять поисков без лексического резерва и уточнение «Экспо»;
-маршрут на 105 минут и загрузка CSS проверены также из standalone-пакета. План и зоны
+Предыдущие проверки живой модели записаны отдельно в `docs/live-check-2026-10-19.json` и
+`docs/live-semantic-check-2026-10-19.json`; они сделаны до текущих исправлений и с заменённой
+локальной моделью эмбеддингов. План и зоны
 ответственности — [docs/plan.md](docs/plan.md), требования сдачи — [docs/kickoff.md](docs/kickoff.md).
 
 Проект рассчитан на один город. Полнота OSM не гарантируется. Данных о погоде, ценах, событиях,
@@ -304,18 +262,6 @@ py -3 -m venv ../.arqa-pdf-venv
 Фактический прогон этой версии выполнен на macOS ARM64; Windows/Linux проверены
 на уровне путей, кодировки и анализа кода, но не запускались на отдельных ОС.
 
-Повторить матрицу поиска без API-ключей после установки модели:
-
-```bash
-node --conditions=react-server --import tsx scripts/qa.ts
-python3 scripts/qa_report.py
-```
-
-Для первой команды задайте `EMBEDDING_PYTHON` и `EMBEDDING_CACHE` в окружении процесса.
-Скрипт включает mock и фиксирует 21:00 по Астане; проверяет 13 запросов с векторами,
-те же 13 с лексикой и отказ Python. Полные результаты — `docs/qa-search-matrix.json`.
-Вторая команда обновляет приложение с дословными логами в `docs/scenarios.md`.
-В Windows вместо `python3` используйте `py -3 -X utf8`.
 Pandoc разбирает фактические `docs/presentation.md` и `docs/scenarios.md`, ReportLab формирует
 слайды и документ A4. Каждый заголовок первого уровня презентации начинает слайд; HTML-комментарии
 служат заметками докладчика и не печатаются. Копии текста в Python нет.
@@ -327,10 +273,9 @@ Pandoc разбирает фактические `docs/presentation.md` и `docs
 Нужен локальный шрифт с кириллицей: Arial или DejaVu Sans. На Linux установите DejaVu Sans;
 нестандартную папку задайте через `ASTANA_PDF_FONT_DIR`.
 
-Дополнительные Python-проверки:
+Проверки экспорта:
 
 ```bash
-../.arqa-vectors-venv/bin/python -m unittest discover -s scripts -p vector_search_test.py
 ../.arqa-pdf-venv/bin/python -m unittest discover -s scripts -p export_pdf_test.py
 ```
 
@@ -346,9 +291,8 @@ Pandoc разбирает фактические `docs/presentation.md` и `docs
 Стек: Next.js, React, TypeScript, Tailwind CSS, Radix UI, Heroicons, Zod и OpenAI SDK.
 Карта использует MapLibre GL и тайлы OpenFreeMap. Остальные пакеты и
 версии перечислены в `package.json` и `pnpm-lock.yaml`.
-Локальные эмбеддинги: Sentence Transformers, PyTorch и готовая модель
-`paraphrase-multilingual-MiniLM-L12-v2`; версия Python-зависимостей зафиксирована в
-`scripts/vector-requirements.txt`. Экспорт документов: Pandoc (`pypandoc-binary`) и ReportLab,
+Модели: OpenAI Responses API и эмбеддинги OpenAI `text-embedding-3-small` (256 измерений).
+Экспорт документов: Pandoc (`pypandoc-binary`) и ReportLab,
 версии в `scripts/pdf-requirements.txt`. Собственное обучение модели не выполняется.
 
 Источники датасета: © участники OpenStreetMap,

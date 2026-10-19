@@ -11,7 +11,6 @@ const ctx = { browserLocation: point, now: new Date('2026-10-19T10:00:00Z') };
 
 beforeEach(() => {
 	vi.stubEnv('LLM_PROVIDER', 'mock');
-	vi.stubEnv('EMBEDDING_PROVIDER', 'lexical');
 	resetEnvCache();
 });
 afterEach(() => {

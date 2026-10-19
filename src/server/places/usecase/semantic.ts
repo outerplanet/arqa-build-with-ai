@@ -1,10 +1,8 @@
 import { createClient, withRetry } from '@server/agent/usecase/client';
-import { embeddingConfig, LOCAL_EMBEDDING_MODEL } from '@server/kernel/embeddingConfig';
 import { readEnv } from '@server/kernel/env';
 import { type Place } from '@server/places/model/places.schema';
 import 'server-only';
 import { dependencies, type PlacesContext } from './context';
-import { localEmbedding } from './localEmbedding';
 
 export const EMBEDDING_MODEL = 'text-embedding-3-small';
 export const EMBEDDING_DIMENSIONS = 256;
@@ -48,55 +46,41 @@ export async function semanticScores(
 		note: 'Использован лексический поиск без эмбеддингов.',
 		scores: deps.lexicalScores(input.query, input.places),
 	});
-	let config: ReturnType<typeof embeddingConfig>;
 	try {
-		config = embeddingConfig();
-	} catch {
-		return lexical();
-	}
-	if (config.provider === 'lexical') return lexical();
-	const local = config.provider === 'local';
-	const model = local ? LOCAL_EMBEDDING_MODEL : EMBEDDING_MODEL;
-	const dimensions = local ? 384 : EMBEDDING_DIMENSIONS;
-	if (config.model !== undefined && config.model !== model) return lexical();
-	try {
-		// Local inference is independent of chat credentials. Only the OpenAI backend
-		// reads its provider settings; mock and third-party endpoints never send a query.
-		if (!local) {
-			const env = readEnv();
-			if (env.LLM_PROVIDER !== 'responses' || env.LLM_BASE_URL !== undefined || env.LLM_API_KEY === undefined)
-				return lexical();
-		}
+		// Only a direct OpenAI connection embeds the query. Mock and third-party endpoints never
+		// receive it, so the demo without a key stays offline and uses lexical search.
+		const env = readEnv();
+		if (env.LLM_PROVIDER !== 'responses' || env.LLM_BASE_URL !== undefined || env.LLM_API_KEY === undefined)
+			return lexical();
 		const vectors = deps.readVectors();
 
-		if (vectors?.model !== model || vectors.dims !== dimensions) return lexical();
+		if (vectors?.model !== EMBEDDING_MODEL || vectors.dims !== EMBEDDING_DIMENSIONS) return lexical();
 		const normalizedVectors = new Map<string, number[]>();
 
 		for (const place of input.places) {
 			const vector = vectors.byId.get(place.id);
-			const normalized = vector === undefined ? null : normalize(vector, dimensions);
+			const normalized = vector === undefined ? null : normalize(vector, EMBEDDING_DIMENSIONS);
 
 			if (normalized !== null) normalizedVectors.set(place.id, normalized);
 		}
 		// There is nothing to compare to; do not disclose a query for an unusable dataset.
 		if (normalizedVectors.size === 0) return lexical();
-		const response = local
-			? ((await localEmbedding(input.query)) as { embedding: unknown; model: string })
-			: await withRetry(() =>
-					createClient().embeddings.create(
-						{
-							dimensions: EMBEDDING_DIMENSIONS,
-							encoding_format: 'float',
-							input: input.query,
-							model: EMBEDDING_MODEL,
-						},
-						{ maxRetries: 0, timeout: 8000 },
-					),
-				);
-		const embedding = 'embedding' in response ? response.embedding : response.data[0]?.embedding;
+		const response = await withRetry(() =>
+			createClient().embeddings.create(
+				{
+					dimensions: EMBEDDING_DIMENSIONS,
+					encoding_format: 'float',
+					input: input.query,
+					model: EMBEDDING_MODEL,
+				},
+				{ maxRetries: 0, timeout: 8000 },
+			),
+		);
+		// The SDK types are not a runtime guarantee: shape, model and numbers are checked here.
+		const embedding = response.data[0]?.embedding;
 
-		if (!Array.isArray(embedding) || response.model !== model) return lexical();
-		const query = normalize(embedding, dimensions);
+		if (!Array.isArray(embedding) || response.model !== EMBEDDING_MODEL) return lexical();
+		const query = normalize(embedding, EMBEDDING_DIMENSIONS);
 
 		if (query === null) return lexical();
 		const scores = deps.lexicalScores(input.query, input.places);
