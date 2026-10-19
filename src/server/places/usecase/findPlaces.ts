@@ -4,18 +4,22 @@ import {
 	type FindPlacesResult,
 	findPlacesResultSchema,
 	placeSchema,
+	planWalkInputSchema,
 } from '@server/places/model/places.schema';
 import 'server-only';
 import { z } from 'zod';
+import { categoryNames } from './categoryNames';
 import { dependencies, type PlacesContext } from './context';
 import { assertOrigin, origin } from './origin';
 import { semanticScores } from './semantic';
 
-export async function findPlaces(
+/** A walk's validated budget must filter the whole dataset before ranking's result limit. */
+export async function searchPlaces(
 	ctx: PlacesContext,
-	input: z.input<typeof findPlacesInputSchema>,
+	input: { durationMinutes?: number; filters: z.input<typeof findPlacesInputSchema> },
 ): Promise<FindPlacesResult> {
-	const parsed = findPlacesInputSchema.parse(input);
+	const parsed = findPlacesInputSchema.parse(input.filters);
+	const durationMinutes = planWalkInputSchema.shape.durationMinutes.optional().parse(input.durationMinutes);
 	const location = origin(ctx);
 
 	if (parsed.near !== undefined) assertOrigin(ctx, parsed.near);
@@ -26,10 +30,12 @@ export async function findPlaces(
 		accessibleOnly: parsed.accessibleOnly,
 		at,
 		categories: parsed.categories,
+		durationMinutes,
 		limit: parsed.limit,
 		maxWalkMinutes: parsed.maxWalkMinutes,
 		origin: location.point,
 		places,
+		query: parsed.query,
 		semantic: semantic.scores,
 	});
 
@@ -41,7 +47,10 @@ export async function findPlaces(
 			`Запрос: ${parsed.query}`,
 			`Пешком до ${parsed.maxWalkMinutes} минут`,
 			`Время проверки: ${at.toISOString()}`,
-			...(parsed.categories === undefined ? [] : [`Категории: ${parsed.categories.join(', ')}`]),
+			...(durationMinutes === undefined ? [] : [`Ходьба и посещение до ${durationMinutes} минут`]),
+			...(parsed.categories === undefined
+				? []
+				: [`Категории: ${parsed.categories.map((category) => categoryNames[category]).join(', ')}`]),
 			...(parsed.accessibleOnly === true ? ['Только места с подтверждённой доступностью для колясок'] : []),
 		],
 	});
@@ -56,4 +65,11 @@ export async function findPlaces(
 		throw new DomainError('validation', { constraint: 'invalid_place_results' });
 	}
 	return result;
+}
+
+export async function findPlaces(
+	ctx: PlacesContext,
+	input: z.input<typeof findPlacesInputSchema>,
+): Promise<FindPlacesResult> {
+	return searchPlaces(ctx, { filters: input });
 }

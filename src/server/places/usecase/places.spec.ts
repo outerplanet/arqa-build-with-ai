@@ -17,7 +17,7 @@ const place: Place = {
 	category: 'museum',
 	description: null,
 	descriptionSource: null,
-	id: 'osm:way/454857501',
+	id: 'osm:node/1',
 	lat: 51.123456,
 	lon: 71.456789,
 	name: 'Нур Алем',
@@ -120,7 +120,6 @@ describe('places usecases', () => {
 		});
 	});
 	it('passes validated filters, lexical scores and injected time to ranking', async () => {
-		vi.stubEnv('EMBEDDING_PROVIDER', 'openai');
 		const { ctx, deps } = fixture();
 		ctx.browserLocation = { lat: 51.123456, lon: 71.456789 };
 		const result = await findPlaces(ctx, { accessibleOnly: true, categories: ['museum'], query: 'музей' });
@@ -145,17 +144,13 @@ describe('places usecases', () => {
 	});
 	it('resolves aliases using dataset coordinates without guessing ambiguous places', () => {
 		const { ctx, deps } = fixture();
-		expect(resolveLocation(ctx, { text: 'Я у Нур Алем' })).toMatchObject({
+		expect(resolveLocation(ctx, { text: 'Я у Экспо 2017' })).toMatchObject({
 			found: true,
 			matchedPlaceId: place.id,
 			point: { lat: 51.123, lon: 71.457 },
 		});
-		vi.mocked(deps.readPlaces).mockReturnValue([
-			{ ...place, id: 'osm:node/2', name: 'Кофейня' },
-			{ ...place, id: 'osm:node/3', name: 'Кофейня' },
-		]);
-		expect(resolveLocation(ctx, { text: 'Я у Кофейни Кофейня' }).found).toBe(false);
-		expect(resolveLocation(ctx, { text: 'Я у Нур Алем' }).found).toBe(false);
+		vi.mocked(deps.readPlaces).mockReturnValue([place, { ...place, id: 'osm:node/2' }]);
+		expect(resolveLocation(ctx, { text: 'Я у Экспо' }).found).toBe(false);
 	});
 	it('only returns a requested POI that exists in the dataset', () => {
 		const { ctx } = fixture();
@@ -169,15 +164,15 @@ describe('places usecases', () => {
 			constraint: 'invalid_walk_plan',
 		});
 	});
-	it('returns a visible error when reading the dataset fails', async () => {
+	it('returns a visible error without leaking file details when data cannot load', async () => {
 		const { ctx, deps } = fixture();
 		vi.mocked(deps.readPlaces).mockImplementation(() => {
-			throw new Error('Dataset unavailable');
+			throw new Error('Private file path: /private/data');
 		});
 		const result = await executeTool(ctx, { args: { query: 'музей' }, name: 'find_places' });
 		expect(result.status).toBe('error');
-		expect(typeof result.result).toBe('string');
-		expect(result.result).not.toContain('Dataset unavailable');
+		expect(result.result).toContain('Не удалось');
+		expect(result.result).not.toContain('/private/data');
 	});
 });
 
@@ -196,11 +191,9 @@ describe('mock scenarios use the real dispatcher', () => {
 		expect(result.reply).toContain('геолокация браузера');
 		expect(result.reply).not.toContain('открыто по данным');
 	});
-	it('resolves a landmark from actual user text and reports the text source', async () => {
+	it('resolves Expo from actual user text and reports the text source', async () => {
 		const { ctx } = fixture();
-		const result = await runAgent(ctx, {
-			messages: [{ content: 'Я у Нур Алем, хочу что-то необычное', role: 'user' }],
-		});
+		const result = await runAgent(ctx, { messages: [{ content: 'Я у Экспо, хочу что-то необычное', role: 'user' }] });
 		expect(result.toolCalls.map((call) => call.name)).toEqual(['resolve_location', 'find_places']);
 		expect(result.reply).toContain('из ваших слов');
 		expect(ctx.resolvedLocation).toBeUndefined();

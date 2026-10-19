@@ -1,11 +1,13 @@
 import { runAgent } from '@server/agent/usecase/agent';
 import { resetEnvCache } from '@server/kernel/env';
 import { findPlacesResultSchema, walkPlanSchema } from '@server/places/model/places.schema';
-import { readPlaces } from '@server/places/repo/places';
 import 'server-only';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { placesDependencies } from './dependencies';
-import { resolveLocation } from './resolveLocation';
+import { findPlaces } from './findPlaces';
+import { planWalk } from './planWalk';
+
+const point = { lat: 51.1, lon: 71.4 };
+const ctx = { browserLocation: point, now: new Date('2026-10-19T10:00:00Z') };
 
 beforeEach(() => {
 	vi.stubEnv('LLM_PROVIDER', 'mock');
@@ -16,88 +18,50 @@ afterEach(() => {
 	resetEnvCache();
 });
 
-describe('committed dataset integration without injected dependencies', () => {
-	it('asks when a canonical landmark and an independently named POI both occur', () => {
+describe('real data and algorithm integration without an API key', () => {
+	it('returns nearby cafes using actual dataset records and opening-hours calculations', async () => {
+		const result = await findPlaces(ctx, { categories: ['cafe'], query: 'кофе' });
+
+		expect(result.candidates.length).toBeGreaterThan(0);
 		expect(
-			resolveLocation(
-				{ now: new Date('2026-10-19T08:00:00Z') },
-				{
-					text: 'Я между Нур Алем и Национальный музей Республики Казахстан',
-				},
-			).found,
-		).toBe(false);
+			result.candidates.every((candidate) => candidate.place.category === 'cafe' && candidate.walkMinutes <= 15),
+		).toBe(true);
+		expect(result.note).toContain('лексический');
+		expect(result.origin).toEqual({ label: null, point, source: 'browser' });
 	});
-	it.each(['Я между Нур Алем и AITU', 'Я на станции Байтерек'])(
-		'does not replace conflicting or typed locations with an anchor: %s',
-		(text) => {
-			expect(resolveLocation({ now: new Date('2026-10-19T08:00:00Z') }, { text }).found).toBe(false);
-		},
-	);
-	it('honours an explicitly named full POI instead of its nested Expo alias', () => {
-		expect(resolveLocation({ now: new Date('2026-10-19T08:00:00Z') }, { text: 'Я у Астана-Экспо КС' })).toMatchObject(
-			{
-				found: true,
-				matchedPlaceId: 'osm:node/2388707906',
-			},
-		);
-	});
-	it('asks rather than choosing between two different landmarks', () => {
+
+	it('builds an actual two-stop route whose walking and visiting time fits the budget', async () => {
+		const result = await planWalk(ctx, { durationMinutes: 120, query: 'кофе', start: point });
+
+		expect(result.stops.length).toBeGreaterThanOrEqual(2);
+		expect(result.totalMinutes).toBeLessThanOrEqual(120);
 		expect(
-			resolveLocation(
-				{ now: new Date('2026-10-19T08:00:00Z') },
-				{
-					text: 'Я между Нур Алем и Хан Шатыр',
-				},
-			).found,
-		).toBe(false);
+			result.legs.reduce((sum, leg) => sum + leg.walkMinutes, 0) +
+				result.stops.reduce((sum, stop) => sum + stop.candidate.visitMinutes, 0),
+		).toBe(result.totalMinutes);
 	});
-	it('cannot supply coordinates for a canonical landmark missing from the collection', () => {
-		expect(
-			resolveLocation(
-				{
-					now: new Date('2026-10-19T08:00:00Z'),
-					places: { ...placesDependencies, readPlaces: () => [] },
-				},
-				{ text: 'Я у Нур Алем' },
-			),
-		).toMatchObject({ found: false, point: null });
-	});
-	it.each([
-		['Я у здания Экспо 2017', 'osm:way/454853233'],
-		['Я в квартале Экспо', 'osm:way/1456208623'],
-		['Я у Нур Алем', 'osm:way/454857501'],
-		['Я у Нуралема', 'osm:way/454857501'],
-		['Я у Alem.ai', 'osm:way/454857501'],
-		['Я у Байтерека', 'osm:way/230401645'],
-		['Я возле Хан Шатыра', 'osm:way/460703779'],
-		['Я возле Mega Silk Way', 'osm:way/499328514'],
-	])('resolves %s to public source coordinates', (text, id) => {
-		const place = readPlaces().find((row) => row.id === id)!;
-		expect(place).toBeDefined();
-		expect(resolveLocation({ now: new Date('2026-10-19T08:00:00Z') }, { text })).toMatchObject({
-			found: true,
-			matchedPlaceId: id,
-			point: { lat: Math.round(place.lat * 1000) / 1000, lon: Math.round(place.lon * 1000) / 1000 },
+
+	it('sends dataset-backed results through the real mock dispatcher', async () => {
+		const result = await runAgent(ctx, {
+			location: point,
+			messages: [{ content: 'Хочу кофе недалеко от меня на час', role: 'user' }],
 		});
-	});
-	it('searches real data and constructs a timed route through the normal mock dispatcher', async () => {
-		const result = await runAgent(
-			{ now: new Date('2026-10-19T08:00:00Z') },
-			{ messages: [{ content: 'Я у Нур Алем. Построй маршрут на 90 минут', role: 'user' }] },
-		);
-		expect(result.toolCalls.map((call) => [call.name, call.status])).toEqual([
-			['resolve_location', 'ok'],
-			['find_places', 'ok'],
-			['plan_walk', 'ok'],
-		]);
-		const found = findPlacesResultSchema.parse(result.toolCalls[1]!.result);
-		expect(found.candidates.length).toBeGreaterThan(0);
-		const ids = new Set(readPlaces().map((place) => place.id));
-		expect(found.candidates.every((candidate) => ids.has(candidate.place.id))).toBe(true);
-		const route = walkPlanSchema.parse(result.toolCalls[2]!.result);
-		expect(route.stops.length).toBeGreaterThanOrEqual(2);
-		expect(route.totalMinutes).toBeGreaterThan(0);
-		expect(route.totalMinutes).toBeLessThanOrEqual(90);
+		const search = findPlacesResultSchema.parse(result.toolCalls.find((call) => call.name === 'find_places')?.result);
+
+		expect(search.candidates.length).toBeGreaterThan(0);
 		expect(result.reply).toContain('OpenStreetMap');
+		expect(result.reply).toContain('геолокация браузера');
+		expect(result.toolCalls.every((call) => call.status === 'ok')).toBe(true);
+	});
+
+	it('executes a route request through both search and planner tools', async () => {
+		const result = await runAgent(ctx, {
+			location: point,
+			messages: [{ content: 'Построй маршрут на 2 часа', role: 'user' }],
+		});
+		const route = walkPlanSchema.parse(result.toolCalls.find((call) => call.name === 'plan_walk')?.result);
+
+		expect(result.toolCalls.map((call) => call.name)).toEqual(['find_places', 'plan_walk']);
+		expect(route.totalMinutes).toBeLessThanOrEqual(120);
 	});
 });

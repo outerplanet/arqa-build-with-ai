@@ -1,6 +1,6 @@
 import 'server-only';
 import { describe, expect, it } from 'vitest';
-import { lexicalScores } from './lexical';
+import { lexicalScores, matchingTags } from './lexical';
 import { type Place } from './places.schema';
 
 const FIELDS = [
@@ -31,7 +31,84 @@ const PLACES: Place[] = FIELDS.map((place, index) => ({
 	...place,
 }));
 
+describe('shared query tag matching', () => {
+	it.each([
+		['Wi-Fi', 'wifi'],
+		['вай-фай', 'wifi'],
+		['интернет', 'wifi'],
+		['терраса', 'outdoor_seating'],
+		['веранда', 'outdoor_seating'],
+		['бесплатно', 'free'],
+		['тегін', 'free'],
+		['коляской', 'wheelchair'],
+		['розетками', 'power_sockets'],
+		['ребёнком', 'kids'],
+		['балалар', 'kids'],
+		['ТҮНГІ', 'night'],
+		['СМОТРОВАЯ', 'view'],
+		['WiFi', 'wifi'],
+	])('uses identical tag terms in lexical retrieval and matching: %s', (query, tag) => {
+		const tagged = {
+			...PLACES[0]!,
+			category: 'other' as const,
+			description: null,
+			name: 'Тест',
+			nameEn: null,
+			tags: [tag],
+		};
+		expect(matchingTags(query, tagged.tags)).toEqual([tag]);
+		expect(lexicalScores(query, [tagged]).get(tagged.id)).toBe(0.8);
+	});
+	it.each(['', '  ', '?!', 'Я хочу', 'детектив', 'видео'])('does not invent tags for %j', (query) => {
+		expect(matchingTags(query, ['kids', 'power_sockets', 'view', 'wifi'])).toEqual([]);
+	});
+	it('returns only existing tags, deduplicates them and never mutates the input', () => {
+		const tags = Object.freeze(['wifi', 'power_sockets', 'kids', 'power_sockets']);
+		expect(matchingTags('РЕБЁНКОМ, розетками розетками', tags)).toEqual(['kids', 'power_sockets']);
+		expect(matchingTags('розетка', [])).toEqual([]);
+		expect(tags).toEqual(['wifi', 'power_sockets', 'kids', 'power_sockets']);
+	});
+});
+
 describe('lexical retrieval without a provider', () => {
+	it('keeps conversational framing from diluting a specific category request', () => {
+		const places = [{ ...PLACES[0]!, category: 'museum' as const, id: 'museum', name: 'Тестовый музей' }];
+		expect(lexicalScores('Хочу сходить в музей рядом со мной', places)).toEqual(lexicalScores('музей', places));
+		expect(lexicalScores('Пожалуйста, найди мне кофе недалеко от меня', PLACES)).toEqual(
+			lexicalScores('кофе', PLACES),
+		);
+	});
+	it.each(['прогулка', 'прогуляться', 'маршрут', 'серуен'])(
+		'retrieves outdoor walk categories for %s without inferring facilities',
+		(query) => {
+			const park = { ...PLACES[0]!, category: 'park' as const, id: 'park', name: 'Тестовый сквер', tags: [] };
+			const scores = lexicalScores(query, [...PLACES, park]);
+			expect(scores.get('park')).toBeGreaterThan(scores.get('coffee')!);
+			expect(matchingTags(query, ['kids', 'power_sockets', 'wifi'])).toEqual([]);
+		},
+	);
+	it.each([
+		['кофейн', 'coffee'],
+		['МҰРАЖАЙ', 'museum'],
+		['балалар', 'kids'],
+		['кофе', 'coffee'],
+	])('retrieves Russian prefixes and Kazakh categories: %s', (query, id) => {
+		const places = [...PLACES, { ...PLACES[0]!, category: 'museum' as const, id: 'museum', name: 'Тест' }];
+		expect(lexicalScores(query, places).get(id)).toBeGreaterThan(0);
+	});
+	it('matches Kazakh names, Unicode normalization and repeated whitespace deterministically', () => {
+		const places = [{ ...PLACES[0]!, name: 'Бәйтерек — саябақ', nameEn: null }];
+		const expected = lexicalScores('Бәйтерек саябақ', places);
+		expect(lexicalScores('  БӘЙТЕРЕК,   САЯБАҚ! ', places)).toEqual(expected);
+		expect(lexicalScores('Бәйтерек саябақ'.normalize('NFD'), places)).toEqual(expected);
+	});
+	it('weights exact names above descriptions and tolerates absent optional metadata', () => {
+		const places = [PLACES[0]!, { ...PLACES[0]!, description: 'Кофе', id: 'description', name: 'Тест' }];
+		const scores = lexicalScores('кофе', places);
+		expect(scores.get('coffee')).toBeGreaterThan(scores.get('description')!);
+		const incomplete = { ...PLACES[0]!, description: undefined, tags: undefined } as unknown as Place;
+		expect(lexicalScores('кофе', [incomplete]).get('coffee')).toBe(1);
+	});
 	it('handles empty queries and empty datasets', () => {
 		expect([...lexicalScores('', PLACES).values()]).toEqual([0, 0, 0, 0]);
 		expect(lexicalScores('кофе', []).size).toBe(0);

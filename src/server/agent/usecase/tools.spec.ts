@@ -1,5 +1,6 @@
 import { chatToolDefinitions, executeTool, responsesToolDefinitions, TOOLS } from '@server/agent/usecase/tools';
 import { type Ctx } from '@server/kernel/ctx';
+import { type PlacesContext } from '@server/places/usecase/context';
 import { describe, expect, it, vi } from 'vitest';
 
 const ctx: Ctx = { now: new Date('2026-01-15T09:30:00.000Z') };
@@ -31,6 +32,36 @@ describe('the tool registry', () => {
 });
 
 describe('executeTool', () => {
+	it('keeps user interests and time budget when the live model omits route filters', async () => {
+		const rankPlaces = vi.fn(() => []);
+		const planWalk = vi.fn(() => ({ legs: [], note: 'Нет подходящих остановок', stops: [], totalMinutes: 0 }));
+		const context: PlacesContext = {
+			...ctx,
+			browserLocation: { lat: 51.089, lon: 71.405 },
+			places: {
+				getPlaceById: () => null,
+				lexicalScores: () => new Map(),
+				planWalk,
+				rankPlaces,
+				readPlaces: () => [],
+				readVectors: () => null,
+			},
+			userMessages: ['Я возле Mega, хочу прогуляться 30–60 минут'],
+		};
+		const call = await executeTool(context, {
+			args: { durationMinutes: 120, start: context.browserLocation },
+			name: 'plan_walk',
+		});
+		expect(call.status).toBe('ok');
+		expect(rankPlaces).toHaveBeenCalledWith(
+			expect.objectContaining({ categories: ['park', 'garden', 'viewpoint', 'artwork'] }),
+		);
+		expect(planWalk).toHaveBeenCalledWith(expect.objectContaining({ durationMinutes: 60 }));
+		await executeTool(context, { args: { at: '2020-01-01T00:00:00Z', query: 'прогулка' }, name: 'find_places' });
+		expect(rankPlaces).toHaveBeenLastCalledWith(
+			expect.objectContaining({ at: ctx.now, query: context.userMessages!.join('\n') }),
+		);
+	});
 	it('waits for an asynchronous handler before reporting its result', async () => {
 		const handler = vi.spyOn(TOOLS[0]!, 'handler').mockResolvedValue({ completed: true });
 

@@ -1,12 +1,19 @@
 import 'server-only';
 
 /** Aliases, not a second POI database: coordinates and sources always come from the dataset. */
+export const EXPO_ALIASES = ['экспо', 'expo', 'экспо 2017', 'expo 2017'] as const;
+export const NUR_ALEM_ALIASES = ['нур алем', 'нұр әлем', 'нұр алем', 'нур әлем', 'nur alem'] as const;
+export const ALEM_AI_ALIASES = ['alem.ai', 'alem.ai международный центр искусственного интеллекта'] as const;
+export const BAYTEREK_ALIASES = ['байтерек', 'бәйтерек', 'baiterek', 'bayterek'] as const;
+export const MEGA_ALIASES = ['mega silk way', 'mega silkway astana', 'мега силк вей', 'мега шелковый путь'] as const;
+
 export const LANDMARKS: readonly (readonly string[])[] = [
-	['экспо', 'expo', 'экспо 2017', 'expo 2017'],
-	['нур алем', 'нуралем', 'нуралема', 'нур алема', 'нұр әлем', 'nur alem', 'alem.ai'],
-	['байтерек', 'байтерека', 'бәйтерек', 'baiterek', 'bayterek'],
-	['хан шатыр', 'хан шатыра', 'khan shatyr'],
-	['mega silk way', 'мега силк вей', 'мега шелковый путь'],
+	EXPO_ALIASES,
+	NUR_ALEM_ALIASES,
+	ALEM_AI_ALIASES,
+	BAYTEREK_ALIASES,
+	['хан шатыр', 'khan shatyr'],
+	MEGA_ALIASES,
 	['нурлы жол', 'нұрлы жол', 'nurly zhol'],
 	['астана 1', 'astana 1'],
 	['аэропорт', 'airport', 'нурсултан назарбаев', 'nursultan nazarbayev international airport'],
@@ -15,21 +22,6 @@ export const LANDMARKS: readonly (readonly string[])[] = [
 	['ену', 'enu', 'евразийский национальный университет'],
 	['aitu', 'astana it university', 'астана ит университет'],
 ];
-
-/**
- * Named public landmarks, not general deduplication. IDs and object types are verified in
- * data/collect_raw.json: EXPO is an exhibition building, EXPO-2017 is a quarter; Baiterek's
- * monument is distinct from the namesake rail station. Mega's building carries its address
- * and hours, unlike the nearby mall label node. Nur Alem's former name on this exact way is
- * confirmed by OSM versions 11–12 in data/nur-alem-history.json. Never copy coordinates here.
- */
-export const LANDMARK_IDS: ReadonlyMap<readonly string[], string> = new Map([
-	[LANDMARKS[0]!, 'osm:way/454853233'],
-	[LANDMARKS[1]!, 'osm:way/454857501'],
-	[LANDMARKS[2]!, 'osm:way/230401645'],
-	[LANDMARKS[3]!, 'osm:way/460703779'],
-	[LANDMARKS[4]!, 'osm:way/499328514'],
-]);
 
 export function normalizeLocation(text: string): string {
 	return text

@@ -45,7 +45,7 @@ describe('planWalk', () => {
 	it('returns a walk accepted by the shared contract', () => {
 		expect(() => walkPlanSchema.parse(plan([candidate('osm:node/1'), candidate('osm:node/2')]))).not.toThrow();
 	});
-	it('returns no single-stop fallback for empty, too short, single or closed inputs', () => {
+	it('returns an empty route for empty, too short or closed inputs', () => {
 		for (const candidates of [[], [candidate('a')], [candidate('a'), candidate('b')]]) {
 			const result = plan(candidates, 1);
 			expect(result.stops).toEqual([]);
@@ -55,7 +55,7 @@ describe('planWalk', () => {
 		const closed = candidate('closed');
 		closed.open = openStatus('off', new Date('2026-10-19T07:00:00Z'));
 		expect(plan([closed, { ...closed, place: { ...closed.place, id: 'other' } }]).stops).toEqual([]);
-		expect(plan([candidate('only')]).stops).toEqual([]);
+		expect(plan([candidate('only')]).stops).toHaveLength(1);
 	});
 
 	it('retains unknown hours, accepts an exact budget and caps stops at two or three', () => {
@@ -64,7 +64,7 @@ describe('planWalk', () => {
 		const candidates = [candidate('a'), unknown, candidate('c'), candidate('d')];
 		expect(plan(candidates, 20).stops).toHaveLength(2);
 		expect(plan(candidates, 20).totalMinutes).toBe(20);
-		expect(plan(candidates, 19).stops).toEqual([]);
+		expect(plan(candidates, 19).stops).toHaveLength(1);
 		expect(plan(candidates, 100, 2).stops).toHaveLength(2);
 		expect(plan(candidates, 100, 99).stops).toHaveLength(3);
 	});
@@ -91,6 +91,10 @@ describe('planWalk', () => {
 		);
 		expect(result.stops.map((stop) => stop.candidate.place.id).sort()).toEqual(['high', 'middle']);
 	});
+	it('minimizes walking for the same set despite floating-point summation order', () => {
+		const result = plan([candidate('a', 71.44, 0.1), candidate('b', 71.435, 0.2), candidate('c', 71.431, 0.3)], 90);
+		expect(result.stops.map((stop) => stop.candidate.place.id)).toEqual(['c', 'b', 'a']);
+	});
 
 	it('considers only the first twelve and never repeats a place id or mutates input', () => {
 		const candidates = Array.from({ length: 13 }, (_, index) => candidate(String(index), START.lon, index / 13));
@@ -98,10 +102,43 @@ describe('planWalk', () => {
 		const result = plan(candidates, 20);
 		expect(result.stops.map((stop) => stop.candidate.place.id).sort()).toEqual(['10', '11']);
 		expect(candidates).toEqual(snapshot);
-		expect(plan([candidate('same'), candidate('same')]).stops).toEqual([]);
+		expect(plan([candidate('same'), candidate('same')]).stops).toHaveLength(1);
+	});
+	it.each([30, 60, 90])('includes all walking and visits within a %i minute budget', (budget) => {
+		const result = plan([candidate('a', 71.431), candidate('b', 71.434), candidate('c', 71.438)], budget);
+		expect(result.stops.length).toBeGreaterThan(0);
+		expect(result.totalMinutes).toBeLessThanOrEqual(budget);
+		expect(result.totalMinutes).toBe(
+			result.legs.reduce((sum, leg) => sum + leg.walkMinutes, 0) +
+				result.stops.reduce((sum, stop) => sum + stop.candidate.visitMinutes, 0),
+		);
+	});
+	it('honours a single-stop cap and rejects invalid starts, coordinates and numeric inputs', () => {
+		expect(plan([candidate('a'), candidate('b')], 60, 1).stops).toHaveLength(1);
+		for (const value of [NaN, Infinity, -1]) {
+			expect(plan([candidate('a')], value).stops).toEqual([]);
+			expect(plan([candidate('a')], 60, value).stops).toEqual([]);
+		}
+		for (const lon of [NaN, Infinity, 181]) expect(plan([candidate('bad', lon)]).stops).toEqual([]);
+		expect(
+			planWalk({ candidates: [candidate('a')], durationMinutes: 60, maxStops: 3, start: { lat: 91, lon: 71.43 } })
+				.stops,
+		).toEqual([]);
+		expect(plan([candidate('far', 72)]).stops).toEqual([]);
+	});
+	it('rejects negative visits and invalid scores rather than creating time', () => {
+		expect(plan([candidate('bad', START.lon, 1, -20), candidate('ok')], 5).stops).toEqual([]);
+		expect(plan([candidate('bad', START.lon, Infinity)]).stops).toEqual([]);
+	});
+	it('chooses the same tied route regardless of input order and warns about unknown hours', () => {
+		const a = candidate('a');
+		const b = candidate('b');
+		b.open = openStatus(null, new Date('2026-10-19T07:00:00Z'));
+		expect(plan([a, b])).toEqual(plan([b, a]));
+		expect(plan([b]).note).toContain('часы работы неизвестны');
 	});
 
-	it('matches an independent exhaustive oracle for ordered pairs and triples', () => {
+	it('matches an independent exhaustive oracle for singles, pairs and triples', () => {
 		const candidates = [
 			candidate('a', 71.431, 0.3),
 			candidate('b', 71.445, 0.9),
@@ -111,9 +148,9 @@ describe('planWalk', () => {
 		for (const budget of [20, 30, 40, 50]) {
 			let optimum = -1;
 			for (const first of candidates)
-				for (const second of candidates)
+				for (const second of [null, ...candidates])
 					for (const third of [null, ...candidates]) {
-						const sequence = third ? [first, second, third] : [first, second];
+						const sequence = second ? (third ? [first, second, third] : [first, second]) : [first];
 						if (new Set(sequence.map((entry) => entry.place.id)).size === sequence.length) {
 							let elapsed = 0;
 							let previous = START;

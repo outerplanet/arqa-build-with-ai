@@ -22,7 +22,7 @@ function durationFrom(text: string): number | undefined {
 }
 
 /** Parse preferences only: facilities and flight transport times are never inferred. */
-export function scenarioFor(text: string): Scenario {
+function parseScenario(text: string): Scenario {
 	const query = text.trim();
 	const lower = query.toLowerCase().replaceAll('ё', 'е');
 	const flight = /вылет|рейс|самолет|аэропорт/u.test(lower);
@@ -34,9 +34,10 @@ export function scenarioFor(text: string): Scenario {
 	let categories: Category[] | undefined;
 	if (/ребен|детск|площадк|интерактив/u.test(lower)) categories = ['playground', 'museum', 'zoo'];
 	else if (/кофе|кафе|кофейн|розетк|библиотек/u.test(lower)) categories = ['cafe', 'library'];
-	else if (/прогул|парк|набережн|свеж[а-я]*\s+воздух/u.test(lower))
+	else if (/прогул|гуля|парк|набережн|свеж[а-я]*\s+воздух/u.test(lower))
 		categories = ['park', 'garden', 'viewpoint', 'artwork'];
 	else if (/музе|галере|выставк/u.test(lower)) categories = ['museum', 'gallery'];
+	else if (night) categories = ['bar', 'nightclub', 'viewpoint', 'artwork', 'attraction'];
 	else if (/достопримеч|турист|необыч|экспо|expo/u.test(lower))
 		categories = ['attraction', 'museum', 'viewpoint', 'artwork', 'monument'];
 	else if (/поесть|ресторан|обед|ужин/u.test(lower)) categories = ['restaurant', 'cafe', 'fast_food'];
@@ -46,4 +47,28 @@ export function scenarioFor(text: string): Scenario {
 	const budgetText = lower.replace(/\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/gu, '');
 	const durationMinutes = durationFrom(budgetText);
 	return { accessibleOnly, categories, durationMinutes, flight, maxWalkMinutes, night, query, route };
+}
+
+/** Later explicit preferences replace earlier ones; route followups retain the original interest. */
+export function scenarioFor(text: string): Scenario {
+	const turns = text
+		.split('\n')
+		.filter((line) => line.trim())
+		.map(parseScenario);
+	const latest = turns.at(-1) ?? parseScenario('');
+	return {
+		...latest,
+		accessibleOnly: turns.some((turn) => turn.accessibleOnly) || undefined,
+		categories: turns.findLast((turn) => turn.categories !== undefined)?.categories,
+		durationMinutes: turns.findLast((turn) => turn.durationMinutes !== undefined)?.durationMinutes,
+		flight: turns.some((turn) => turn.flight),
+		maxWalkMinutes:
+			turns.findLast((turn) =>
+				/(?:до|в пределах|не больше|не более)\s*\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/u.test(
+					turn.query.toLowerCase(),
+				),
+			)?.maxWalkMinutes ?? latest.maxWalkMinutes,
+		night: turns.some((turn) => turn.night),
+		query: text.trim(),
+	};
 }

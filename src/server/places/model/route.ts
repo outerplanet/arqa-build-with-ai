@@ -1,6 +1,9 @@
 import 'server-only';
 import { distanceM, walkMinutes } from './geo';
-import { type Candidate, type GeoPoint, type WalkPlan } from './places.schema';
+import { type Candidate, type GeoPoint, geoPointSchema, type WalkPlan } from './places.schema';
+
+// Reordering the same scores can change their sum by a floating-point rounding error.
+const SCORE_EPSILON = 1e-12;
 
 export function planWalk(input: {
 	candidates: readonly Candidate[];
@@ -8,15 +11,44 @@ export function planWalk(input: {
 	maxStops: number;
 	start: GeoPoint;
 }): WalkPlan {
-	const pool = input.candidates.slice(0, 12).filter((candidate) => candidate.open.status !== 'closed');
-	const maxStops = Math.min(3, Math.max(2, Math.floor(input.maxStops)));
+	const empty: WalkPlan = {
+		legs: [],
+		note: 'За указанное время подходящих мест для прогулки не найдено.',
+		stops: [],
+		totalMinutes: 0,
+	};
+	if (
+		!geoPointSchema.safeParse(input.start).success ||
+		!Number.isFinite(input.durationMinutes) ||
+		input.durationMinutes < 0 ||
+		!Number.isFinite(input.maxStops) ||
+		input.maxStops < 1
+	)
+		return empty;
+	const pool = input.candidates
+		.slice(0, 12)
+		.filter(
+			(candidate) =>
+				candidate.open.status !== 'closed' &&
+				geoPointSchema.safeParse(candidate.place).success &&
+				Number.isFinite(candidate.score) &&
+				candidate.score >= 0 &&
+				candidate.score <= 1 &&
+				Number.isFinite(candidate.visitMinutes) &&
+				candidate.visitMinutes >= 0,
+		)
+		.sort((a, b) => (a.place.id < b.place.id ? -1 : a.place.id > b.place.id ? 1 : 0));
+	const maxStops = Math.min(3, Math.floor(input.maxStops));
 	let best: Candidate[] = [];
 	let bestScore = -Infinity;
 	let bestMinutes = Infinity;
 
 	function search(state: { current: GeoPoint; minutes: number; score: number; stops: Candidate[] }): void {
 		const { current, minutes, score, stops } = state;
-		if (stops.length >= 2 && (score > bestScore || (score === bestScore && minutes < bestMinutes))) {
+		if (
+			stops.length >= 1 &&
+			(score > bestScore + SCORE_EPSILON || (Math.abs(score - bestScore) <= SCORE_EPSILON && minutes < bestMinutes))
+		) {
 			best = [...stops];
 			bestScore = score;
 			bestMinutes = minutes;
@@ -53,8 +85,8 @@ export function planWalk(input: {
 	return {
 		legs,
 		note: best.length
-			? 'Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены.'
-			: 'За указанное время маршрут из двух доступных мест не найден; часы работы неизвестных мест уточните.',
+			? `Время ходьбы: расстояния по прямой ×1,3 при скорости 75 м/мин; посещения включены.${best.some((candidate) => candidate.open.status === 'unknown') ? ' У части мест часы работы неизвестны — уточните перед выходом.' : ''}`
+			: empty.note,
 		stops,
 		totalMinutes: elapsed,
 	};

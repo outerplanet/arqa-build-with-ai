@@ -38,6 +38,66 @@ function input(places: ReturnType<typeof place>[], extra: Partial<RankInput> = {
 }
 
 describe('rankPlaces', () => {
+	it('adds a bounded tag bonus only for a matching internal query', () => {
+		const original = place('a', { tags: ['kids', 'power_sockets', 'wifi'] });
+		const base = input([original], { semantic: new Map([['a', 0.6]]) });
+		const withoutQuery = rankPlaces(base)[0]!;
+		for (const query of ['', '  ', '?!', 'галактика']) {
+			expect(rankPlaces({ ...base, query })[0]).toEqual(withoutQuery);
+		}
+		const matched = rankPlaces({ ...base, query: 'розетка розетка ребёнок' })[0]!;
+		expect(matched.why.tags).toEqual(['kids', 'power_sockets']);
+		expect(matched.score - withoutQuery.score).toBeCloseTo(0.1);
+		expect(matched.why.semantic).toBe(withoutQuery.why.semantic);
+		expect(matched.place).toBe(original);
+	});
+	it('uses shared query tag matching with or without supplied relevance scores', () => {
+		const places = [place('coffee', { name: 'Кофе', tags: ['power_sockets'] }), place('bar', { category: 'bar' })];
+		for (const semantic of [
+			new Map<string, number>(),
+			new Map([
+				['bar', 0.5],
+				['coffee', 0.5],
+			]),
+		]) {
+			const result = rankPlaces(input(places, { query: 'кофе розетка', semantic }));
+			expect(result[0]!.place.id).toBe('coffee');
+			expect(result[0]!.why.tags).toEqual(['power_sockets']);
+			expect(result[1]!.why.tags).toEqual([]);
+			expect(result[0]!.why.semantic).toBe(semantic.get('coffee') ?? 0);
+			expect(result[1]!.why.semantic).toBe(semantic.get('bar') ?? 0);
+		}
+	});
+	it('applies an optional total time budget independently of the walking radius', () => {
+		const places = [place('museum', { category: 'museum' }), place('cafe')];
+		expect(rankPlaces(input(places, { durationMinutes: 30 })).map((entry) => entry.place.id)).toEqual(['cafe']);
+		expect(rankPlaces(input(places, { durationMinutes: 29 }))).toEqual([]);
+	});
+	it.each(['2026-10-19T22:00:00+05:00', '2026-10-20T01:00:00+05:00', '2026-10-20T05:59:00+05:00'])(
+		'only returns verified open places at night: %s',
+		(at) => {
+			const places = [
+				place('unknown', { openingHours: null }),
+				place('closed', { openingHours: 'off' }),
+				place('open'),
+			];
+			expect(rankPlaces(input(places, { at: new Date(at) })).map((entry) => entry.place.id)).toEqual(['open']);
+		},
+	);
+	it('prefers relevant places and then nearby places when other signals tie', () => {
+		const places = [place('near'), place('far', { lon: 71.435 })];
+		expect(rankPlaces(input(places)).map((entry) => entry.place.id)).toEqual(['near', 'far']);
+		expect(rankPlaces(input(places, { semantic: new Map([['far', 1]]) }))[0]!.place.id).toBe('far');
+	});
+	it('rejects invalid coordinates, invalid instants and invalid numeric bounds', () => {
+		expect(rankPlaces(input([place('bad', { lon: 181 })]))).toEqual([]);
+		expect(rankPlaces(input([place('a')], { origin: { lat: 91, lon: 71.43 } }))).toEqual([]);
+		expect(rankPlaces(input([place('a')], { at: new Date(NaN) }))).toEqual([]);
+		for (const value of [NaN, Infinity, -1]) {
+			expect(rankPlaces(input([place('a')], { limit: value }))).toEqual([]);
+			expect(rankPlaces(input([place('a')], { maxWalkMinutes: value }))).toEqual([]);
+		}
+	});
 	it('returns candidates accepted by the shared contract', () => {
 		const result = rankPlaces(input([place('osm:node/1')]));
 		expect(() => candidateSchema.array().parse(result)).not.toThrow();

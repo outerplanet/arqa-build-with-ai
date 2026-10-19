@@ -1,27 +1,12 @@
 import { lexicalScores } from '@server/places/model/lexical';
-import {
-	type Candidate,
-	type Category,
-	type GeoPoint,
-	type Place,
-	type WalkPlan,
-} from '@server/places/model/places.schema';
-import { rankPlaces } from '@server/places/model/rank';
+import { type Candidate, type GeoPoint, type Place, type WalkPlan } from '@server/places/model/places.schema';
+import { type RankInput, rankPlaces } from '@server/places/model/rank';
 import { planWalk } from '@server/places/model/route';
 import { getPlaceById, readPlaces } from '@server/places/repo/places';
 import { readVectors } from '@server/places/repo/vectors';
 import 'server-only';
 
-export interface RankInput {
-	accessibleOnly?: boolean;
-	at: Date;
-	categories?: Category[];
-	limit: number;
-	maxWalkMinutes: number;
-	origin: GeoPoint;
-	places: readonly Place[];
-	semantic: Map<string, number>;
-}
+export type { RankInput };
 
 export interface PlaceVectors {
 	byId: Map<string, Float32Array>;
@@ -29,7 +14,7 @@ export interface PlaceVectors {
 	model: string;
 }
 
-/** Explicit seams for isolated usecase tests; production always uses the real modules below. */
+/** Shared boundary for the real repositories and algorithms, replaceable in isolated tests. */
 export interface PlacesDependencies {
 	getPlaceById: (id: string) => Place | null;
 	lexicalScores: (query: string, places: readonly Place[]) => Map<string, number>;
@@ -44,6 +29,7 @@ export interface PlacesDependencies {
 	readVectors: () => PlaceVectors | null;
 }
 
+/** All default tools use the team's validated dataset; vectors remain optional. */
 export const placesDependencies: PlacesDependencies = {
 	getPlaceById,
 	lexicalScores,

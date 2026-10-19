@@ -1,22 +1,33 @@
-import { ChatBubbleLeftRightIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import { ChatScreen } from '@pages/chat';
-import { AppShell, type NavigationSection } from '@widgets/appShell';
+import { readEnv } from '@server/kernel/env';
+import { ThemeToggle } from '@shared/ui/ThemeToggle';
+import { ToastProvider } from '@shared/ui/Toast';
 
-/**
- * The one screen the starter ships with. Replace the copy, then the tools, then this page.
- *
- * Sections are passed in rather than read from anywhere, because a widget may not import from
- * `src/server/`. Whoever renders the shell decides what this visitor sees.
- */
-const SECTIONS: readonly NavigationSection[] = [
-	{ href: '/', Icon: ChatBubbleLeftRightIcon, label: 'Ассистент' },
-	{ href: '/design', Icon: SwatchIcon, label: 'Дизайн-система' },
-];
+// Resolve the running provider at request time, including after a provider switch.
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
 	return (
-		<AppShell sections={SECTIONS} title="Прогулки по Астане">
-			<ChatScreen />
-		</AppShell>
+		<ToastProvider>
+			<div className="bg-canvas text-fg min-h-screen">
+				<header className="border-border bg-surface border-b">
+					<div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-3 md:px-6">
+						<p className="text-fg font-semibold">
+							Прогулки по Астане{' '}
+							<span className="text-fg-muted hidden text-xs font-normal sm:inline">
+								· Город ближе, чем кажется
+							</span>
+						</p>
+						<ThemeToggle />
+					</div>
+				</header>
+				<main className="mx-auto max-w-[1600px] p-3 md:p-6">
+					<ChatScreen demoMode={readEnv().LLM_PROVIDER === 'mock'} />
+				</main>
+				<footer className="text-fg-muted mx-auto max-w-[1600px] px-3 pb-6 text-xs md:px-6">
+					© участники OpenStreetMap · Wikidata · Расстояния приблизительные. Проверяйте часы работы перед выходом.
+				</footer>
+			</div>
+		</ToastProvider>
 	);
 }
