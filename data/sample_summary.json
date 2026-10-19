@@ -1,5 +1,5 @@
 {
-  "collectedAt": "2026-10-19T12:44:19.085Z",
+  "collectedAt": "2026-10-19T13:22:24.814Z",
   "count": 15,
   "missingLandmarkPatterns": [
     "^(Нұр Әлем|Нур Алем|Nur Alem)$",
@@ -8,5 +8,5 @@
   ],
   "selection": "Named landmarks first, then category diversity; exact copies from poi.json.",
   "source": "data/poi.json",
-  "sourceSha256": "5931deb164dfc71f872f19d272d979a28952cc9db37610ed1b78e284bce9980e"
+  "sourceSha256": "94e8276ca7939673f3bd0efa0b916598be0b61b8e8d7b8805e84d0eff417f847"
 }

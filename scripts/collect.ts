@@ -2,13 +2,18 @@
 /* eslint-disable no-console -- This offline CLI reports collection progress and failures to its operator. */
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { setTimeout as pause } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { CATEGORIES, type Category, type Place, placeSchema } from '../src/server/places/model/places.schema';
 import { publishCollection } from '../src/server/places/repo/publication';
 
 const bbox = [51.03, 71.25, 51.25, 71.65] as const;
-const headers = { 'User-Agent': 'AstanaWalks/1.0 (https://github.com/outerplanet/arqa-build-with-ai)' };
+// Wikimedia's User-Agent policy asks for a way to reach the operator; the repository is that contact.
+const headers = {
+	'User-Agent': 'AstanaWalks/1.0 (https://github.com/outerplanet/arqa-build-with-ai; data collection script)',
+};
 const elementSchema = z.object({
 	center: z.object({ lat: z.number(), lon: z.number() }).optional(),
 	id: z.number().int().positive(),
@@ -102,6 +107,21 @@ async function request(url: string, options: RequestInit = {}): Promise<unknown>
 		}
 	}
 	throw new Error('Request failed');
+}
+
+const CYRILLIC = /\p{Script=Cyrillic}/gu;
+const LATIN = /\p{Script=Latin}/gu;
+/** Letters that exist in Kazakh Cyrillic but not in Russian. */
+const KAZAKH_ONLY = /[әғқңөұүһіӘҒҚҢӨҰҮҺІ]/u;
+
+/** The UI is Russian: a text is kept only when it is Russian, otherwise the field stays empty. */
+export function russianText(value: string | undefined): string | null {
+	// Direction marks occasionally leak into Wikidata strings; they are invisible noise, not content.
+	const text = value?.replaceAll(/[‎‏]/gu, '').trim();
+	if (text === undefined || text === '' || KAZAKH_ONLY.test(text)) return null;
+	const cyrillic = text.match(CYRILLIC)?.length ?? 0;
+	const latin = text.match(LATIN)?.length ?? 0;
+	return cyrillic > 0 && cyrillic >= latin ? text : null;
 }
 
 function category(tags: Record<string, string>): Category {
@@ -228,13 +248,14 @@ function normalize(
 			streetWayId: nearest?.street.id ?? null,
 		});
 	}
-	const osmDescription = tags['description:ru'] ?? tags.description ?? null;
+	const osmDescription = russianText(tags['description:ru']) ?? russianText(tags.description);
 	return placeSchema.parse({
 		address: [tags['addr:street'], tags['addr:housenumber']].filter(Boolean).join(' ') || null,
 		category: category(tags),
 		description: osmDescription,
 		descriptionSource: osmDescription === null ? null : 'osm',
 		id,
+		image: null,
 		lat: location.lat,
 		lon: location.lon,
 		name,
@@ -411,12 +432,212 @@ async function overpass<S extends z.ZodType<{ remark?: string | undefined }>>(
 	return null;
 }
 
+const textSchema = z.object({ value: z.string() });
+const claimSchema = z.object({
+	mainsnak: z.object({ datavalue: z.object({ value: z.unknown() }).optional() }),
+	rank: z.string().optional(),
+});
 const entitySchema = z.object({
-	descriptions: z.record(z.string(), z.object({ value: z.string() })).optional(),
-	labels: z.record(z.string(), z.object({ value: z.string() })).optional(),
+	aliases: z.record(z.string(), z.array(textSchema)).optional(),
+	claims: z.record(z.string(), z.array(claimSchema)).optional(),
+	descriptions: z.record(z.string(), textSchema).optional(),
+	labels: z.record(z.string(), textSchema).optional(),
 	sitelinks: z.record(z.string(), z.object({ site: z.string(), title: z.string() })).optional(),
 });
-type Entity = z.infer<typeof entitySchema>;
+export type Entity = z.infer<typeof entitySchema>;
+/** Only the claims the collector reads are kept: image (P18) and coordinates (P625). */
+const KEPT_CLAIMS = ['P18', 'P625'] as const;
+
+/** Wikidata descriptions are lower-case by convention; a stored description starts a sentence. */
+export function capitalize(text: string): string {
+	return text.charAt(0).toLocaleUpperCase('ru') + text.slice(1);
+}
+
+/** Words that name the city or country identify nothing when matching a place to a Wikidata item. */
+const MATCH_STOPWORDS = new Set([
+	'astana',
+	'kazakhstan',
+	'republic',
+	'астана',
+	'астане',
+	'астаны',
+	'казахстан',
+	'казахстана',
+	'қазақстан',
+	'республика',
+	'республики',
+]);
+
+/** Comparable words of a name: lower case, ё→е, ≥4 letters, city and country names dropped. */
+export function nameWords(name: string): Set<string> {
+	return new Set(
+		name
+			.toLocaleLowerCase('ru')
+			.replaceAll('ё', 'е')
+			.split(/[^\p{L}\p{N}]+/u)
+			.filter((word) => word.length >= 4 && !MATCH_STOPWORDS.has(word)),
+	);
+}
+
+function entityCoordinates(entity: Entity): { lat: number; lon: number }[] {
+	return (entity.claims?.P625 ?? []).flatMap((claim) => {
+		const parsed = z
+			.object({ latitude: z.number(), longitude: z.number() })
+			.safeParse(claim.mainsnak.datavalue?.value);
+		return parsed.success ? [{ lat: parsed.data.latitude, lon: parsed.data.longitude }] : [];
+	});
+}
+
+/** Distance, metres, from the object to the nearest P625 of the item; null when the item has none. */
+export function entityDistance(entity: Entity, location: { lat: number; lon: number }): number | null {
+	const distances = entityCoordinates(entity).map((coordinate) => distance(coordinate, location));
+	return distances.length === 0 ? null : Math.round(Math.min(...distances));
+}
+
+/**
+ * A Wikidata link in OSM is sometimes simply wrong (an МГУ branch pointed at a ministry). The item
+ * enriches the place only if its label or an alias shares a word with an OSM name, or the whole
+ * label equals a name (short brands such as KFC).
+ *
+ * Coordinates are deliberately not enough: the ministry's P625 lies 30 m from the МГУ node (same
+ * block), so a "within 2 km" rule accepts exactly the defect it is meant to catch. The distance is
+ * still logged with every rejected match.
+ */
+export function matchEntity(entity: Entity, names: readonly string[]): boolean {
+	const labels = ['ru', 'en', 'kk'].flatMap((lang) => [
+		...(entity.labels?.[lang] === undefined ? [] : [entity.labels[lang].value]),
+		...(entity.aliases?.[lang] ?? []).map((alias) => alias.value),
+	]);
+	const nameKeys = new Set(names.map((name) => nameKey(name)).filter((key) => key !== ''));
+	const osmWords = new Set(names.flatMap((name) => [...nameWords(name)]));
+	return labels.some(
+		(label) => nameKeys.has(nameKey(label)) || [...nameWords(label)].some((word) => osmWords.has(word)),
+	);
+}
+
+/** The image file of an item: a preferred-rank P18 first, otherwise the first one listed. */
+export function entityImage(entity: Entity | undefined): string | null {
+	const claims = entity?.claims?.P18 ?? [];
+	const chosen =
+		claims.find((claim) => claim.rank === 'preferred') ?? claims.find((claim) => claim.rank !== 'deprecated');
+	const value = chosen?.mainsnak.datavalue?.value;
+	return typeof value === 'string' && value.trim() !== '' ? `File:${value.trim()}` : null;
+}
+
+/** OSM `wikimedia_commons` may name a file or a category; only a file is a photo. */
+export function osmImage(value: string | undefined): string | null {
+	const match = /^\s*(?:File|Image):(.+\S)\s*$/i.exec(value ?? '');
+	return match?.[1] === undefined ? null : `File:${match[1].replaceAll('_', ' ')}`;
+}
+
+/** Free licences only: CC0, CC BY, CC BY-SA (any version or port) and public domain. */
+export function freeLicense(license: string | null): boolean {
+	if (license === null) return false;
+	return /^(?:cc0(?:\s+1\.0)?|cc[\s-]by(?:[\s-]sa)?(?:[\s-]\d.*)?|public\s+domain|pd(?:[\s-].*)?)$/i.test(
+		license.trim(),
+	);
+}
+
+/** Commons extmetadata is HTML; the author is stored as plain text. */
+export function plainText(html: string | undefined): string | null {
+	if (html === undefined) return null;
+	const entities: Record<string, string> = { amp: '&', apos: "'", gt: '>', lt: '<', nbsp: ' ', quot: '"' };
+	const text = html
+		.replaceAll(/<[^>]*>/g, ' ')
+		.replaceAll(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (whole, code: string) => {
+			if (code.startsWith('#x') || code.startsWith('#X'))
+				return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
+			if (code.startsWith('#')) return String.fromCodePoint(Number(code.slice(1)));
+			return entities[code.toLowerCase()] ?? whole;
+		})
+		.replaceAll(/\s+/g, ' ')
+		.trim();
+	return text === '' ? null : text;
+}
+
+const commonsSchema = z.object({
+	query: z
+		.object({
+			normalized: z.array(z.object({ from: z.string(), to: z.string() })).optional(),
+			pages: z.array(
+				z.object({
+					imageinfo: z
+						.array(
+							z.object({
+								descriptionurl: z.string(),
+								extmetadata: z.record(z.string(), z.object({ value: z.unknown() })).optional(),
+								thumburl: z.string().optional(),
+								url: z.string(),
+							}),
+						)
+						.optional(),
+					missing: z.boolean().optional(),
+					title: z.string(),
+				}),
+			),
+			redirects: z.array(z.object({ from: z.string(), to: z.string() })).optional(),
+		})
+		.optional(),
+});
+type PlaceImage = NonNullable<Place['image']>;
+interface SkippedImage {
+	file: string;
+	license: string | null;
+	reason: 'missing' | 'not_free';
+}
+
+/** Commons files (≤50 per request) resolved to an 800 px thumbnail, page, author and free licence. */
+async function commons(files: readonly string[]) {
+	const images = new Map<string, PlaceImage>();
+	const skipped: SkippedImage[] = [];
+	let failedBatches = 0;
+	for (let offset = 0; offset < files.length; offset += 50) {
+		const batch = files.slice(offset, offset + 50);
+		const parameters = new URLSearchParams({
+			action: 'query',
+			format: 'json',
+			formatversion: '2',
+			iiprop: 'url|extmetadata',
+			iiurlwidth: '800',
+			prop: 'imageinfo',
+			redirects: '1',
+			titles: batch.join('|'),
+		});
+		try {
+			const { query } = commonsSchema.parse(
+				await request(`https://commons.wikimedia.org/w/api.php?${parameters.toString()}`),
+			);
+			const rename = new Map(
+				[...(query?.normalized ?? []), ...(query?.redirects ?? [])].map((pair) => [pair.from, pair.to]),
+			);
+			const pages = new Map((query?.pages ?? []).map((page) => [page.title, page]));
+			for (const file of batch) {
+				let title = file;
+				for (let step = 0; step < 3 && rename.has(title); step += 1) title = rename.get(title)!;
+				const info = pages.get(title)?.imageinfo?.[0];
+				const meta = (key: string) => {
+					const value = info?.extmetadata?.[key]?.value;
+					return typeof value === 'string' ? value : undefined;
+				};
+				const license = plainText(meta('LicenseShortName'));
+				if (info === undefined) skipped.push({ file, license: null, reason: 'missing' });
+				else if (freeLicense(license))
+					images.set(file, {
+						author: plainText(meta('Artist')),
+						license,
+						pageUrl: info.descriptionurl,
+						url: info.thumburl ?? info.url,
+					});
+				else skipped.push({ file, license, reason: 'not_free' });
+			}
+		} catch {
+			failedBatches += 1;
+			console.error('Часть Wikimedia Commons недоступна, фотографии для неё будут пустыми.');
+		}
+		await pause(200);
+	}
+	return { failedBatches, images, skipped };
+}
 
 /** Wikidata only: entities by Q-id, plus Wikipedia titles resolved to their Wikidata item (≤50 per request). */
 async function wikidata(ids: readonly string[], titles: readonly string[]) {
@@ -439,8 +660,8 @@ async function wikidata(ids: readonly string[], titles: readonly string[]) {
 		const parameters = new URLSearchParams({
 			action: 'wbgetentities',
 			format: 'json',
-			languages: 'ru|en',
-			props: 'descriptions|labels|sitelinks',
+			languages: 'ru|en|kk',
+			props: 'aliases|claims|descriptions|labels|sitelinks',
 			...batch,
 		});
 		try {
@@ -449,7 +670,13 @@ async function wikidata(ids: readonly string[], titles: readonly string[]) {
 				.parse(await request(`https://www.wikidata.org/w/api.php?${parameters.toString()}`));
 			// Unresolved titles come back under negative keys; only real Q-ids are kept.
 			for (const [id, entity] of Object.entries(result.entities).filter(([key]) => /^Q[1-9]\d*$/.test(key))) {
-				entities.set(id, entity);
+				const claims = Object.fromEntries(
+					KEPT_CLAIMS.flatMap((property) => {
+						const values = entity.claims?.[property];
+						return values === undefined ? [] : [[property, values]];
+					}),
+				);
+				entities.set(id, { ...entity, claims });
 				const site = batch.sites;
 				const title = site === undefined ? undefined : entity.sitelinks?.[site]?.title;
 				if (site !== undefined && title !== undefined) titleToId.set(`${site.slice(0, -4)}:${title}`, id);
@@ -463,11 +690,23 @@ async function wikidata(ids: readonly string[], titles: readonly string[]) {
 	return { entities, failedBatches, titleToId };
 }
 
+/** Russian description only: an English or Kazakh one would surface untranslated in the Russian UI. */
 function description(entity: Entity | undefined): string | null {
-	// Direction marks occasionally leak into Wikidata strings; they are invisible noise, not content.
-	const value = (entity?.descriptions?.ru?.value ?? entity?.descriptions?.en?.value)?.replaceAll(/[‎‏]/gu, '').trim();
-	return value === undefined || value === '' ? null : value;
+	return russianText(entity?.descriptions?.ru?.value);
 }
+
+/** Every OSM name variant a Wikidata label may legitimately match. */
+const NAME_KEYS = [
+	'name',
+	'name:ru',
+	'name:en',
+	'name:kk',
+	'int_name',
+	'official_name',
+	'alt_name',
+	'old_name',
+	'short_name',
+];
 
 async function main() {
 	if (process.argv.includes('--sample-only')) {
@@ -539,16 +778,42 @@ async function main() {
 	];
 	const { entities, failedBatches, titleToId } = await wikidata(ids, titles);
 	let brandDescriptions = 0;
+	const rejectedMatches: {
+		distanceM: number | null;
+		id: string;
+		kind: 'brand' | 'own';
+		label: string | null;
+		name: string;
+		wikidata: string;
+	}[] = [];
+	const imageFiles = new Map<string, string>();
 	for (const row of unique) {
 		const { tags } = row.element;
+		const names = NAME_KEYS.map((key) => tags[key]).filter((value): value is string => value !== undefined);
+		const brandNames = [tags.brand, tags['brand:ru'], tags['brand:en']].filter((value) => value !== undefined);
+		const accept = (id: string | undefined, kind: 'brand' | 'own') => {
+			const candidate = id === undefined ? undefined : entities.get(id);
+			if (id === undefined || candidate === undefined) return undefined;
+			if (matchEntity(candidate, kind === 'brand' ? [...names, ...brandNames] : names)) return candidate;
+			rejectedMatches.push({
+				distanceM: entityDistance(candidate, row.place),
+				id: row.place.id,
+				kind,
+				label: candidate.labels?.ru?.value ?? candidate.labels?.en?.value ?? null,
+				name: row.place.name,
+				wikidata: id,
+			});
+			return undefined;
+		};
 		const own = valid(tags.wikidata) ? tags.wikidata : titleToId.get((tags.wikipedia ?? '').replaceAll('_', ' '));
-		const entity = own === undefined ? undefined : entities.get(own);
+		const entity = accept(own, 'own');
 		const ownDescription = description(entity);
 		if (row.place.description === null && ownDescription !== null) {
-			row.place.description = ownDescription;
+			row.place.description = capitalize(ownDescription);
 			row.place.descriptionSource = 'wikidata';
 		}
-		const brand = valid(tags['brand:wikidata']) ? entities.get(tags['brand:wikidata']) : undefined;
+		const brandId = valid(tags['brand:wikidata']) ? tags['brand:wikidata'] : undefined;
+		const brand = brandId === own ? undefined : accept(brandId, 'brand');
 		const brandDescription = description(brand);
 		const brandLabel = brand?.labels?.ru?.value ?? brand?.labels?.en?.value ?? tags.brand;
 		// A brand describes the chain, not this branch: it is labelled as such and never feeds popularity.
@@ -559,6 +824,14 @@ async function main() {
 		}
 		if (entity?.sitelinks !== undefined)
 			row.place.popularity = Math.min(1, Math.log1p(Object.keys(entity.sitelinks).length) / Math.log(301));
+		// A brand logo is not a photo of this place, so only the place's own item or OSM tag gives an image.
+		const file = entityImage(entity) ?? osmImage(tags.wikimedia_commons);
+		if (file !== null) imageFiles.set(row.place.id, file);
+	}
+	const photos = await commons([...new Set(imageFiles.values())]);
+	for (const row of unique) {
+		const file = imageFiles.get(row.place.id);
+		row.place.image = (file === undefined ? undefined : photos.images.get(file)) ?? null;
 	}
 	const places = z.array(placeSchema).parse(unique.map((row) => row.place).sort((a, b) => a.id.localeCompare(b.id)));
 	const coverage = (count: number) => ({
@@ -571,6 +844,7 @@ async function main() {
 		attribution: [
 			'© участники OpenStreetMap, ODbL https://www.openstreetmap.org/copyright',
 			'Wikidata, CC0 https://www.wikidata.org/wiki/Wikidata:Licensing',
+			'Фотографии: Wikimedia Commons, автор и свободная лицензия указаны у каждого места (image.author, image.license, image.pageUrl)',
 		],
 		bbox,
 		brandDescriptions: coverage(brandDescriptions),
@@ -591,13 +865,22 @@ async function main() {
 		duplicatesRemoved: merges.length,
 		endpoint,
 		excluded: exclusions,
+		failedCommonsBatches: photos.failedBatches,
 		failedWikidataBatches: failedBatches,
 		generatedNames: generated.filter((item) => places.some((place) => place.id === item.id)).length,
+		images: coverage(places.filter((place) => place.image !== null && place.image !== undefined).length),
+		imagesSkipped: {
+			missing: photos.skipped.filter((item) => item.reason === 'missing').length,
+			notFree: photos.skipped.filter((item) => item.reason === 'not_free').length,
+		},
 		limitations: [
 			'Выборка POI в bbox, не полный реестр Астаны. Гостиницы и посуточная аренда исключены.',
 			'Безымянные детские и смотровые площадки названы шаблоном «Детская/Смотровая площадка, <ближайшая улица OSM ≤150 м>».',
 			'Наличие opening_hours не означает проверенную актуальность или статус «открыто»; тег night не ставится статически.',
 			'Описания могут быть краткими; «Сеть …» — описание бренда из Wikidata, не филиала. Популярность из числа sitelinks.',
+			'Описания только на русском: английские и казахские описания Wikidata не используются, поле остаётся пустым.',
+			'Связь OSM→Wikidata принимается, только если название или синоним элемента (ru/en/kk) делит с названием OSM слово от 4 букв или совпадает целиком; отклонённые связи — в collect_raw.json.',
+			'Фото — только файл P18 своего элемента Wikidata или тег OSM wikimedia_commons=File:…, и только при лицензии CC0, CC BY, CC BY-SA или public domain.',
 		],
 		openingHours: coverage(places.filter((place) => place.openingHours !== null).length),
 		osmBaseTimestamp: collected.osm3s.timestamp_osm_base,
@@ -605,7 +888,7 @@ async function main() {
 		query,
 		rawElements: collected.elements.length,
 		startedAt,
-		status: failedBatches === 0 && streetResponse !== null ? 'complete' : 'partial',
+		status: failedBatches === 0 && photos.failedBatches === 0 && streetResponse !== null ? 'complete' : 'partial',
 		streetQuery,
 		streets: streets.length,
 		total: places.length,
@@ -618,17 +901,21 @@ async function main() {
 			).length,
 		),
 		wikidataPopularity: coverage(places.filter((place) => place.popularity !== null).length),
+		wikidataRejected: rejectedMatches.length,
 	};
 	const sourceText = `${JSON.stringify(places, null, 2)}\n`;
 	await publishCollection('data', {
 		'collect_raw.json': `${JSON.stringify(
 			{
 				collectedAt: summary.collectedAt,
+				commonsFiles: Object.fromEntries(imageFiles),
+				commonsSkipped: photos.skipped,
 				endpoint,
 				generatedNames: generated,
 				merges,
 				overpass: collected,
 				query,
+				rejectedWikidataMatches: rejectedMatches,
 				streetEndpoint: streetResponse?.endpoint ?? null,
 				streetQuery,
 				wikidata: Object.fromEntries(entities),
@@ -644,7 +931,9 @@ async function main() {
 	console.log(JSON.stringify(summary, null, 2));
 }
 
-main().catch((error: unknown) => {
-	console.error('Сбор завершился ошибкой. Проверьте подключение и повторите pnpm collect.', error);
-	process.exitCode = 1;
-});
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+	main().catch((error: unknown) => {
+		console.error('Сбор завершился ошибкой. Проверьте подключение и повторите pnpm collect.', error);
+		process.exitCode = 1;
+	});
+}
