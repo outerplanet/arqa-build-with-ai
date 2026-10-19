@@ -15,7 +15,23 @@ describe('commonsImage', () => {
 		expect(commonsImage(withImage(image))).toEqual(image);
 	});
 
+	it('accepts a Commons thumbnail and drops its tracking query for the optimiser', () => {
+		const thumb = {
+			...image,
+			url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/A%2C_B.jpg/960px-A%2C_B.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo',
+		};
+		expect(commonsImage(withImage(thumb))).toEqual({
+			...image,
+			url: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/A%2C_B.jpg/960px-A%2C_B.jpg',
+		});
+	});
+
 	it('falls back to the tile for a missing image or any other host', () => {
+		expect(
+			commonsImage(withImage({ ...image, url: 'https://thumb.wikimedia.org.evil.example/wikipedia/commons/x.jpg' })),
+		).toBeNull();
+		expect(commonsImage(withImage({ ...image, url: 'https://thumb.wikimedia.org/other/x.jpg' }))).toBeNull();
+		expect(commonsImage(withImage({ ...image, url: 'not a url' }))).toBeNull();
 		expect(commonsImage(withImage(null))).toBeNull();
 		expect(commonsImage(withImage(undefined))).toBeNull();
 		expect(commonsImage(withImage({ ...image, url: 'https://evil.example/wikipedia/commons/x.jpg' }))).toBeNull();

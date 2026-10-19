@@ -1,7 +1,7 @@
 import { type ChatMessage, type ToolCall } from '@server/agent/model/agent.schema';
 import { type Candidate } from '@server/places/model/places.schema';
 import { describe, expect, it } from 'vitest';
-import { buildChatRequest, readPlacesResults } from './results';
+import { buildChatRequest, readPlacesResults, readResolvedLocation } from './results';
 
 const call = (name: string, result: unknown): ToolCall => ({
 	arguments: {},
@@ -10,6 +10,23 @@ const call = (name: string, result: unknown): ToolCall => ({
 	name,
 	result,
 	status: 'ok',
+});
+
+describe('readResolvedLocation', () => {
+	const resolved = {
+		confidence: 'high',
+		found: true,
+		label: 'Байтерек',
+		matchedPlaceId: null,
+		point: { lat: 51.128, lon: 71.43 },
+	};
+
+	it('returns the last valid resolve_location result and ignores errors and junk', () => {
+		expect(readResolvedLocation([call('resolve_location', resolved)])).toEqual(resolved);
+		expect(readResolvedLocation([{ ...call('resolve_location', resolved), status: 'error' }])).toBeNull();
+		expect(readResolvedLocation([call('resolve_location', { found: 'yes' })])).toBeNull();
+		expect(readResolvedLocation([call('find_places', resolved)])).toBeNull();
+	});
 });
 
 describe('map result boundary', () => {

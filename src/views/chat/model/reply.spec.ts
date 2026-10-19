@@ -127,8 +127,47 @@ describe('summariseReply', () => {
 		expect(summariseReply({ count: 2, plan: null, reply: REPLY, search })).toEqual({
 			filters: ['Пешком до 15 мин', 'Часы проверены на 18:20 по Астане'],
 			headline: 'Нашёл 2 места рядом с Alem.ai',
+			location: 'Alem.ai',
 			notes: ['Время дороги в аэропорт неизвестно — проверьте его.'],
 			source: 'из ваших слов',
+		});
+	});
+
+	const ROUTE = [
+		'Локация: Байтерек (из ваших слов).\nФильтры: Вся прогулка — до 90 мин, включая переходы и посещения; Мест в маршруте: 3.',
+		'Пеший маршрут: 3 остановки.',
+		'1. Кофейня Утро — прибытие через 10 мин.\nПочему: рядом.',
+	].join('\n\n');
+
+	it('reads a route answer whose «Фильтры» line directly follows «Локация»', () => {
+		expect(summariseReply({ count: 3, plan: null, reply: ROUTE, search: null })).toMatchObject({
+			filters: ['Вся прогулка — до 90 мин, включая переходы и посещения', 'Мест в маршруте: 3'],
+			location: 'Байтерек',
+			notes: [],
+			source: 'из ваших слов',
+		});
+	});
+
+	it('prefers the validated resolve_location result over the reply line', () => {
+		const resolved = {
+			confidence: 'high' as const,
+			found: true,
+			label: 'Монумент Байтерек',
+			matchedPlaceId: null,
+			point: { lat: 51.128, lon: 71.43 },
+		};
+		expect(summariseReply({ count: 3, plan: null, reply: ROUTE, resolved, search: null })).toMatchObject({
+			headline: 'Нашёл 3 места рядом с Монумент Байтерек',
+			location: 'Монумент Байтерек',
+		});
+	});
+
+	it('calls a browser location «ваши координаты», not its raw numbers', () => {
+		const reply = 'Локация: 51.128, 71.43 (геолокация браузера).\nФильтры: дополнительные не заданы.';
+		expect(summariseReply({ count: 1, plan: null, reply, search: null })).toMatchObject({
+			filters: [],
+			location: 'ваши координаты',
+			source: 'геолокация браузера',
 		});
 	});
 

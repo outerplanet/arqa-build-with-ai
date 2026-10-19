@@ -1,5 +1,10 @@
 import { type ChatResponse } from '@server/agent/model/agent.schema';
-import { type Candidate, type FindPlacesResult, type WalkPlan } from '@server/places/model/places.schema';
+import {
+	type Candidate,
+	type FindPlacesResult,
+	type ResolvedLocation,
+	type WalkPlan,
+} from '@server/places/model/places.schema';
 import { type WalkingRoute } from '@server/places/model/walkingRoute.schema';
 
 /**
@@ -34,6 +39,8 @@ export interface PlaceCardModel {
 export interface ReplySummary {
 	filters: string[];
 	headline: string;
+	/** The start point's name for the «Точка» chip; null when no tool or reply line named one. */
+	location: string | null;
 	/** Caveats the server wrote outside the place blocks: flight time, night hours, empty search. */
 	notes: string[];
 	source: string | null;
@@ -60,10 +67,27 @@ function line(block: string, label: string): string | null {
 				.trim() || null;
 }
 
-function parseReply(reply: string): { blocks: ReplyBlock[]; filters: string[] | null; notes: string[] } {
+/** «Локация: Alem.ai (из ваших слов).» — the label and where it came from. */
+const LOCATION_LINE = /^Локация: (.+) \((геолокация браузера|из ваших слов)\)\.?$/u;
+const COORDINATES = /^-?\d+(?:\.\d+)?, -?\d+(?:\.\d+)?$/u;
+
+interface ParsedReply {
+	blocks: ReplyBlock[];
+	filters: string[] | null;
+	/** A bare «lat, lon» label is not a name: it becomes null and the chip says «ваши координаты». */
+	location: { label: string | null; source: 'browser' | 'text' } | null;
+	notes: string[];
+}
+
+/**
+ * Reads the reply line by line outside the place blocks: a route answer writes «Локация:» and
+ * «Фильтры:» on adjacent lines of one paragraph, a search answer in separate paragraphs.
+ */
+function parseReply(reply: string): ParsedReply {
 	const blocks: ReplyBlock[] = [];
 	const notes: string[] = [];
 	let filters: string[] | null = null;
+	let location: ParsedReply['location'] = null;
 	const paragraphs = reply
 		.split(/\n{2,}/u)
 		.map((part) => part.trim())
@@ -77,18 +101,31 @@ function parseReply(reply: string): { blocks: ReplyBlock[]; filters: string[] | 
 				name: head[1]!,
 				why: line(paragraph, 'Почему'),
 			});
-		} else if (paragraph.startsWith('Фильтры: ')) {
-			const value = line(paragraph, 'Фильтры');
-			filters = value === null || value === 'дополнительные не заданы' ? [] : value.split('; ');
-		} else if (
-			!paragraph.startsWith('Локация: ') &&
-			!paragraph.startsWith('Пеший маршрут: ') &&
-			!paragraph.startsWith('Предложена одна остановка')
-		) {
-			notes.push(paragraph);
 		}
+		const rest: string[] = [];
+		for (const row of head ? [] : paragraph.split('\n').map((item) => item.trim())) {
+			const where = LOCATION_LINE.exec(row);
+			if (where) {
+				const label = where[1]!;
+				location = {
+					label: COORDINATES.test(label) ? null : label,
+					source: where[2] === 'геолокация браузера' ? 'browser' : 'text',
+				};
+			} else if (row.startsWith('Фильтры: ')) {
+				const value = line(row, 'Фильтры');
+				filters = value === null || value === 'дополнительные не заданы' ? [] : value.split('; ');
+			} else if (
+				row !== '' &&
+				!row.startsWith('Локация: ') &&
+				!row.startsWith('Пеший маршрут: ') &&
+				!row.startsWith('Предложена одна остановка')
+			) {
+				rest.push(row);
+			}
+		}
+		if (rest.length > 0) notes.push(rest.join('\n'));
 	}
-	return { blocks, filters, notes };
+	return { blocks, filters, location, notes };
 }
 
 function hoursFor(candidate: Candidate): string {
@@ -162,7 +199,7 @@ export function buildPlaceCards({
 	});
 }
 
-function places(count: number): string {
+export function places(count: number): string {
 	const tens = count % 100;
 	const ones = count % 10;
 	if (tens >= 11 && tens <= 14) return 'мест';
@@ -171,7 +208,7 @@ function places(count: number): string {
 	return 'мест';
 }
 
-function stops(count: number): string {
+export function stops(count: number): string {
 	return count === 1 ? 'остановка' : count >= 2 && count <= 4 ? 'остановки' : 'остановок';
 }
 
@@ -179,14 +216,29 @@ export interface SummaryInput {
 	count: number;
 	plan: WalkPlan | null;
 	reply: string;
+	/** The validated resolve_location result: a route answer has no find_places origin. */
+	resolved?: ResolvedLocation | null;
 	search: FindPlacesResult | null;
 	walkingRoute?: WalkingRoute | null;
 }
 
-export function summariseReply({ count, plan, reply, search, walkingRoute = null }: SummaryInput): ReplySummary {
+export function summariseReply({
+	count,
+	plan,
+	reply,
+	resolved = null,
+	search,
+	walkingRoute = null,
+}: SummaryInput): ReplySummary {
 	const parsed = parseReply(reply);
-	const label = search?.origin.label ?? null;
-	const where = label !== null ? ` рядом с ${label}` : search?.origin.source === 'browser' ? ' рядом с вами' : '';
+	// Structured data first: the search's origin, then the resolved landmark, then the reply's own line.
+	const origin: { label: string | null; source: 'browser' | 'text' } | null = search
+		? { label: search.origin.label, source: search.origin.source }
+		: resolved?.found === true && resolved.label !== null
+			? { label: resolved.label, source: 'text' }
+			: parsed.location;
+	const label = origin?.label ?? null;
+	const where = label !== null ? ` рядом с ${label}` : origin?.source === 'browser' ? ' рядом с вами' : '';
 	const minutes = Math.ceil(
 		walkingRoute?.status === 'available' ? walkingRoute.totalMinutes : (plan?.totalMinutes ?? 0),
 	);
@@ -196,6 +248,12 @@ export function summariseReply({ count, plan, reply, search, walkingRoute = null
 			: count > 0
 				? `Нашёл ${String(count)} ${places(count)}${where}`
 				: 'Подходящих мест не нашлось';
-	const source = search ? (search.origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов') : null;
-	return { filters: parsed.filters ?? [], headline, notes: parsed.notes, source };
+	const source = origin ? (origin.source === 'browser' ? 'геолокация браузера' : 'из ваших слов') : null;
+	return {
+		filters: parsed.filters ?? [],
+		headline,
+		location: origin === null ? null : (label ?? 'ваши координаты'),
+		notes: parsed.notes,
+		source,
+	};
 }

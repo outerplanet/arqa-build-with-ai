@@ -159,9 +159,12 @@
 	color: var(--color-fg-muted);
 }
 
+/* The shadow lifts the pill off the base map's labels; the city's own name is hidden at walking
+   zoom (CITY_LABEL_MAX_ZOOM) because it sat right on the start near Baiterek. */
 .places-map-start {
 	display: inline-flex;
 	align-items: center;
+	box-shadow: var(--shadow-md);
 	padding: 4px 8px 4px 6px;
 	gap: 4px;
 	border: 2px solid var(--color-surface);

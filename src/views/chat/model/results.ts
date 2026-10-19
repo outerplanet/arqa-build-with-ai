@@ -4,6 +4,8 @@ import {
 	type FindPlacesResult,
 	findPlacesResultSchema,
 	type GeoPoint,
+	type ResolvedLocation,
+	resolvedLocationSchema,
 	type WalkPlan,
 	walkPlanSchema,
 } from '@server/places/model/places.schema';
@@ -75,6 +77,15 @@ export function readPlacesResults(
 		}
 	}
 	return { candidates, plan, search, walkingRoute };
+}
+
+/** The last validated resolve_location result of the turn, or null. */
+export function readResolvedLocation(calls: readonly ToolCall[]): ResolvedLocation | null {
+	const found = calls
+		.filter((call) => call.status === 'ok' && call.name === 'resolve_location')
+		.map((call) => resolvedLocationSchema.safeParse(call.result))
+		.findLast((parsed) => parsed.success);
+	return found?.data ?? null;
 }
 
 export function buildChatRequest(messages: readonly ChatMessage[], location?: GeoPoint): ChatRequest {

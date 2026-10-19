@@ -2,6 +2,7 @@ import { CheckCircleIcon, CpuChipIcon, XCircleIcon } from '@heroicons/react/24/o
 import { type ToolCall } from '@server/agent/model/agent.schema';
 import { Badge } from '@shared/ui/Badge';
 import { Card } from '@shared/ui/Card';
+import { summariseToolCall } from '../model/activity';
 
 /**
  * The panel that turns "chatbot" into "agent" for whoever is watching.
@@ -12,21 +13,6 @@ import { Card } from '@shared/ui/Card';
  *
  * Each row carries its own label from the tool registry, so adding a tool needs no change here.
  */
-
-/** A compact one-line rendering of whatever the tool returned. */
-function summarise(result: unknown): string {
-	if (result === null || result === undefined) return '—';
-	if (typeof result === 'string') return result;
-	if (typeof result === 'number' || typeof result === 'boolean') return String(result);
-
-	if (Array.isArray(result)) {
-		return result.length === 0 ? 'нет результатов' : `результатов: ${String(result.length)}`;
-	}
-
-	if (typeof result === 'object') return 'Ответ инструмента получен. Подробности ниже.';
-
-	return JSON.stringify(result);
-}
 
 /** The full value, indented, for the details block. `undefined` has no JSON form of its own. */
 function pretty(value: unknown): string {
@@ -44,7 +30,7 @@ function Detail({ title, value }: { title: string; value: unknown }) {
 	);
 }
 
-function ActivityRow({ call }: { call: ToolCall }) {
+function ActivityRow({ call, shownIds }: { call: ToolCall; shownIds: readonly string[] }) {
 	const ok = call.status === 'ok';
 	const Icon = ok ? CheckCircleIcon : XCircleIcon;
 
@@ -63,7 +49,7 @@ function ActivityRow({ call }: { call: ToolCall }) {
 					<span className="text-fg-subtle ml-auto text-xs tabular-nums">{call.durationMs} мс</span>
 				</div>
 
-				<p className="text-fg-subtle mt-1 truncate text-xs">{summarise(call.result)}</p>
+				<p className="text-fg-muted mt-1 text-sm wrap-anywhere">{summariseToolCall(call, shownIds)}</p>
 
 				<details className="mt-1">
 					<summary className="text-fg-muted hover:text-fg cursor-pointer text-xs">Подробнее</summary>
@@ -93,10 +79,14 @@ function ActivitySkeleton() {
 
 export interface AgentActivityProps {
 	pending: boolean;
+	/** Ids of the places the answer shows, for «найдено N, показано K». */
+	shownIds?: readonly string[];
 	toolCalls: readonly ToolCall[];
 }
 
-export function AgentActivity({ pending, toolCalls }: AgentActivityProps) {
+const NO_IDS: readonly string[] = [];
+
+export function AgentActivity({ pending, shownIds = NO_IDS, toolCalls }: AgentActivityProps) {
 	return (
 		<Card
 			action={<CpuChipIcon aria-hidden className="text-fg-subtle size-5" />}
@@ -113,7 +103,7 @@ export function AgentActivity({ pending, toolCalls }: AgentActivityProps) {
 			) : (
 				<ul aria-busy={pending} aria-live="polite" className="flex flex-col">
 					{toolCalls.map((call, index) => (
-						<ActivityRow call={call} key={`${call.name}-${String(index)}`} />
+						<ActivityRow call={call} key={`${call.name}-${String(index)}`} shownIds={shownIds} />
 					))}
 
 					{pending && <ActivitySkeleton />}

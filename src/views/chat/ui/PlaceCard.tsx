@@ -19,7 +19,7 @@ import { safeHref } from '../model/links';
 import { twoGisUrl, yandexMapsUrl } from '../model/mapLinks';
 import { CATEGORY_LABELS, commonsImage, formatDistance } from '../model/placeLabels';
 import { type PlaceCardModel } from '../model/reply';
-import { CATEGORY_TEXT, CATEGORY_TILE } from './categoryClasses';
+import { CATEGORY_MEDIA, CATEGORY_RING, CATEGORY_TEXT } from './categoryClasses';
 
 function sentence(text: string): string {
 	return text.charAt(0).toLocaleUpperCase('ru') + text.slice(1);
@@ -33,15 +33,27 @@ function Media({ card }: { card: PlaceCardModel }) {
 	const [failed, setFailed] = useState(false);
 
 	if (image === null || failed) {
+		// An icon tile on purpose: tinted by category, a large icon in a disc and the category's name,
+		// so a place without a photo does not look like a photo that failed to load.
 		return (
 			<div
 				aria-hidden
 				className={clsx(
-					'flex h-24 shrink-0 items-center justify-center sm:h-auto sm:min-h-40 sm:w-28',
-					CATEGORY_TILE[group],
+					'flex h-32 shrink-0 flex-col items-center justify-center gap-2 bg-linear-to-br sm:h-auto sm:min-h-40 sm:w-48',
+					CATEGORY_MEDIA[group],
 				)}
 			>
-				<Icon className="size-12 opacity-90" />
+				<span
+					className={clsx(
+						'bg-surface/80 flex size-16 items-center justify-center rounded-full ring-2',
+						CATEGORY_RING[group],
+					)}
+				>
+					<Icon className="size-9" />
+				</span>
+				<span className="max-w-full px-2 text-center text-xs font-semibold wrap-anywhere">
+					{CATEGORY_GROUP_LABEL[group]}
+				</span>
 			</div>
 		);
 	}
@@ -142,10 +154,14 @@ export function PlaceCard({ card, disabled, onShow, selected }: PlaceCardProps) 
 						<h3 className="text-fg text-md leading-snug font-semibold wrap-anywhere" id={titleId}>
 							{place.name}
 						</h3>
-						<p className={clsx('mt-0.5 flex items-center gap-1 text-sm font-medium', CATEGORY_TEXT[group])}>
-							<Icon aria-hidden className="size-4 shrink-0" />
-							{CATEGORY_LABELS[place.category]}
-							<span className="text-fg-subtle font-normal">· {CATEGORY_GROUP_LABEL[group]}</span>
+						<p
+							className={clsx(
+								'mt-0.5 flex items-start gap-1 text-sm font-medium wrap-anywhere',
+								CATEGORY_TEXT[group],
+							)}
+						>
+							<Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
+							<span className="min-w-0">{CATEGORY_LABELS[place.category]}</span>
 						</p>
 					</div>
 				</div>
@@ -202,24 +218,19 @@ export function PlaceCard({ card, disabled, onShow, selected }: PlaceCardProps) 
 					)}
 				</dl>
 
-				<p className="text-fg-subtle text-xs">
-					{card.onFootways
-						? 'Расстояние по пешеходным дорожкам OpenStreetMap; подход ко входу не проверен.'
-						: 'Расстояние и время — оценка, пешеходный путь не проверен.'}
-					{sourceUrl !== null && (
-						<>
-							{' '}
-							<a
-								className="text-accent-fg font-medium underline underline-offset-2 hover:no-underline"
-								href={sourceUrl}
-								rel="noopener noreferrer"
-								target="_blank"
-							>
-								Источник: OpenStreetMap
-							</a>
-						</>
-					)}
-				</p>
+				{/* How the distance was measured is said once, under the cards (AssistantReply). */}
+				{sourceUrl !== null && (
+					<p className="text-fg-subtle text-xs">
+						<a
+							className="text-accent-fg font-medium underline underline-offset-2 hover:no-underline"
+							href={sourceUrl}
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							Источник: OpenStreetMap
+						</a>
+					</p>
+				)}
 
 				<div className="border-border -mx-1 flex flex-wrap items-center gap-1 border-t pt-3">
 					<Button

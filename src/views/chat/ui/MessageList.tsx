@@ -35,11 +35,16 @@ export interface MessageListProps {
 
 export function MessageList({ emptyHint, messages, pending, reply, replyIndex }: MessageListProps) {
 	const endRef = useRef<HTMLLIElement>(null);
+	const lastRef = useRef<HTMLLIElement>(null);
+	const answered = !pending && messages.at(-1)?.role === 'assistant';
 
-	// Follow the conversation: a new message or the thinking bubble brings the end into view.
+	// Follow the conversation. While the user writes or the agent thinks, the end comes into view.
+	// A finished answer is brought in from its top instead: the summary and the first card are what
+	// the reader needs, and jumping to the bottom of three tall cards on a phone hid both.
 	useEffect(() => {
-		endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-	}, [messages, pending]);
+		if (answered) lastRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		else endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}, [answered, messages, pending]);
 
 	if (messages.length === 0 && !pending) {
 		return (
@@ -58,8 +63,9 @@ export function MessageList({ emptyHint, messages, pending, reply, replyIndex }:
 
 				return (
 					<li
-						className={clsx('flex items-start gap-2', mine && 'flex-row-reverse')}
+						className={clsx('flex scroll-mt-4 items-start gap-2', mine && 'flex-row-reverse')}
 						key={`${message.role}-${String(index)}`}
+						ref={index === messages.length - 1 ? lastRef : undefined}
 					>
 						{/* A phone needs the avatar's width for the place cards more than it needs the avatar. */}
 						<span className={clsx('shrink-0', rich && 'hidden sm:block')}>
