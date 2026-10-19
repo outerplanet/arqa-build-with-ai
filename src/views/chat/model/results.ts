@@ -9,7 +9,10 @@ import {
 } from '@server/places/model/places.schema';
 
 /** Only the validated result of a successful places tool may reach a marker or card. */
-export function readPlacesResults(calls: readonly ToolCall[], recommendedPlaceIds: readonly string[] = []) {
+export function readPlacesResults(
+	calls: readonly ToolCall[],
+	recommendedPlaceIds: readonly string[] = [],
+): { candidates: Candidate[]; plan: WalkPlan | null; search: FindPlacesResult | null } {
 	let search: FindPlacesResult | null = null;
 	let plan: WalkPlan | null = null;
 	for (const call of calls.filter((item) => item.status === 'ok')) {
@@ -26,6 +29,11 @@ export function readPlacesResults(calls: readonly ToolCall[], recommendedPlaceId
 		}
 	}
 	const candidates: Candidate[] = [];
+	if (
+		plan !== null &&
+		(plan.stops.length === 0 || !plan.stops.every((stop) => recommendedPlaceIds.includes(stop.candidate.place.id)))
+	)
+		plan = null;
 	const seen = new Set<string>();
 	for (const candidate of plan?.stops.map((stop) => stop.candidate) ??
 		search?.candidates.filter((item) => recommendedPlaceIds.includes(item.place.id)) ??

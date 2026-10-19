@@ -56,8 +56,12 @@ describe('map result boundary', () => {
 		expect(readPlacesResults([call('find_places', search)], [other.place.id]).candidates).toEqual([other]);
 		expect(readPlacesResults([call('find_places', search)]).candidates).toEqual([]);
 		expect(
-			readPlacesResults([call('find_places', search), call('plan_walk', plan)], [other.place.id]).candidates,
+			readPlacesResults([call('find_places', search), call('plan_walk', plan)], [candidate.place.id, other.place.id])
+				.candidates,
 		).toEqual([candidate]);
+		expect(
+			readPlacesResults([call('find_places', search), call('plan_walk', plan)], [other.place.id]).plan,
+		).toBeNull();
 		expect(
 			readPlacesResults([call('plan_walk', plan), call('find_places', search)], [other.place.id]).plan,
 		).toBeNull();
@@ -75,7 +79,9 @@ describe('map result boundary', () => {
 			stops: [{ arriveAtMinute: 2, candidate, order: 1 }],
 			totalMinutes: 22,
 		};
-		expect(readPlacesResults([call('find_places', search), call('plan_walk', plan)]).candidates).toEqual([candidate]);
+		expect(
+			readPlacesResults([call('find_places', search), call('plan_walk', plan)], [candidate.place.id]).candidates,
+		).toEqual([candidate]);
 		expect(readPlacesResults([{ ...call('find_places', search), status: 'error' }]).candidates).toEqual([]);
 	});
 	it('rejects malformed or failed results instead of inventing coordinates', () => {
