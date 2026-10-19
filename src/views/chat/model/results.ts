@@ -51,6 +51,17 @@ export function buildChatRequest(messages: readonly ChatMessage[], location?: Ge
 		...(location === undefined
 			? {}
 			: { location: { lat: Math.round(location.lat * 1000) / 1000, lon: Math.round(location.lon * 1000) / 1000 } }),
-		messages: [...messages],
+		messages: messages.map((message) =>
+			location === undefined && message.role === 'assistant'
+				? {
+						...message,
+						// Removing consent must also stop resending the origin echoed in an earlier reply.
+						content: message.content.replace(
+							/^Локация: -?\d+(?:\.\d+)?, -?\d+(?:\.\d+)? \(геолокация браузера\)\./u,
+							'Локация: геолокация браузера больше не передаётся.',
+						),
+					}
+				: message,
+		),
 	};
 }

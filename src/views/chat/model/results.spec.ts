@@ -1,4 +1,4 @@
-import { type ToolCall } from '@server/agent/model/agent.schema';
+import { type ChatMessage, type ToolCall } from '@server/agent/model/agent.schema';
 import { type Candidate } from '@server/places/model/places.schema';
 import { describe, expect, it } from 'vitest';
 import { buildChatRequest, readPlacesResults } from './results';
@@ -117,5 +117,22 @@ describe('browser request privacy', () => {
 	});
 	it('omits location until the user shares it', () => {
 		expect(buildChatRequest([{ content: 'Прогулка', role: 'user' }])).not.toHaveProperty('location');
+	});
+	it('removes browser-origin coordinates from assistant history after consent is removed', () => {
+		const messages: ChatMessage[] = [
+			{ content: 'Я у 51.123, 71.456 — хочу прогулку', role: 'user' },
+			{ content: 'Локация: 51.123, 71.456 (геолокация браузера).\n\n1. Парк — 100 м.', role: 'assistant' },
+			{ content: 'Локация: Mega Silk Way (из ваших слов).\nМеста рядом.', role: 'assistant' },
+		];
+		const snapshot = structuredClone(messages);
+		const request = buildChatRequest(messages);
+		expect(request).not.toHaveProperty('location');
+		expect(request.messages[1]?.content).toBe(
+			'Локация: геолокация браузера больше не передаётся.\n\n1. Парк — 100 м.',
+		);
+		expect(request.messages[0]).toEqual(messages[0]);
+		expect(request.messages[2]).toEqual(messages[2]);
+		expect(messages).toEqual(snapshot);
+		expect(buildChatRequest(messages, { lat: 51.123, lon: 71.456 }).messages).toEqual(snapshot);
 	});
 });
