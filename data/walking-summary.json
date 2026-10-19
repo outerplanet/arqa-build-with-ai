@@ -1,0 +1,24 @@
+{
+  "components": 862,
+  "largestComponentNodes": 115272,
+  "bbox": [
+    51.03,
+    71.25,
+    51.25,
+    71.65
+  ],
+  "collectedAt": "2026-10-19T12:27:20.080Z",
+  "directedEdges": 309938,
+  "endpoint": "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  "graphBytes": 12436977,
+  "graphSha256": "0296c8c5f48dcb8bafde638ad347a93684b455fe677e3446a6e570b1040a875a",
+  "license": "ODbL-1.0",
+  "nodes": 134017,
+  "osmTimestamp": "2026-10-19T12:25:21Z",
+  "policy": "Conservative public pedestrian access; unknown/conditional access, gates, indoor paths, motorways and motorroads excluded. Shared OSM nodes only; no inferred connections or endpoint connectors. Steps allowed; wheelchair routing unsupported.",
+  "query": "[out:json][timeout:40][bbox:51.03,71.25,51.25,71.65];way[\"highway\"~\"^(footway|pedestrian|path|steps|living_street|residential|service|unclassified|tertiary|tertiary_link|primary|primary_link|secondary|secondary_link|cycleway|track)$\"][\"area\"!=\"yes\"][\"motorroad\"!=\"yes\"][\"indoor\"!=\"yes\"]->.walking;.walking out body;node(w.walking);out body qt;",
+  "querySha256": "bb9ae4fda8154a05186e52c5fb4e9b7989a3a8aa77ad5bc753381fbad308a526",
+  "source": "OpenStreetMap",
+  "sourceUrl": "https://www.openstreetmap.org/copyright",
+  "ways": 32726
+}
