@@ -33,6 +33,24 @@ export const WALK_CATEGORIES: Category[] = [
 	'garden',
 	'cafe',
 ];
+/**
+ * «Что-то необычное», «интересное», «что посмотреть»: anything worth seeing for an adult, broad
+ * enough that a sparse district (EXPO) still yields two or three different places. Playgrounds and
+ * food are not sights; they are asked for in their own words.
+ */
+export const SIGHT_CATEGORIES: Category[] = [
+	'attraction',
+	'artwork',
+	'monument',
+	'museum',
+	'gallery',
+	'theatre',
+	'viewpoint',
+	'park',
+	'garden',
+	'place_of_worship',
+	'theme_park',
+];
 /** A planned route cannot cap cafes after the fact, so it leaves them out. */
 const ROUTE_CATEGORIES: Category[] = WALK_CATEGORIES.filter((category) => category !== 'cafe');
 
@@ -88,6 +106,7 @@ const INTEREST_LABELS: [RegExp, string][] = [
 	[/галере|выставк/u, 'выставки'],
 	[/ноч/u, 'ночью'],
 	[/необыч/u, 'необычное'],
+	[/интересн/u, 'интересное'],
 	[/достопримеч|турист/u, 'достопримечательности'],
 	[/поесть|ресторан|обед|ужин/u, 'поесть'],
 	[/парк|набережн|свеж[а-я]*\s+воздух/u, 'парк и свежий воздух'],
@@ -118,8 +137,7 @@ function parseTurn(text: string): Turn {
 	else if (/кофе|кафе|кофейн|розетк|библиотек/u.test(lower)) categories = ['cafe', 'library'];
 	else if (/музе|галере|выставк/u.test(lower)) categories = ['museum', 'gallery'];
 	else if (night) categories = ['bar', 'nightclub', 'viewpoint', 'artwork', 'attraction'];
-	else if (/достопримеч|турист|необыч|экспо|expo/u.test(lower))
-		categories = ['attraction', 'museum', 'gallery', 'viewpoint', 'artwork', 'monument'];
+	else if (/достопримеч|турист|необыч|интересн|посмотреть|экспо|expo/u.test(lower)) categories = SIGHT_CATEGORIES;
 	else if (/поесть|ресторан|обед|ужин/u.test(lower)) categories = ['restaurant', 'cafe', 'fast_food'];
 	else if (/парк|набережн|свеж[а-я]*\s+воздух/u.test(lower)) categories = ['park', 'garden', 'viewpoint', 'artwork'];
 	else if (walkWords) categories = WALK_CATEGORIES;

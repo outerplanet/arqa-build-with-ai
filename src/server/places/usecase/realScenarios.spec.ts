@@ -151,6 +151,51 @@ describe('real scenarios through the mock agent and the committed dataset', () =
 		expect(items.length).toBeGreaterThan(0);
 	});
 
+	it('offers two or three different sights for «необычное» at EXPO, never a playground', async () => {
+		const answer = await ask('Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.');
+		const { items, search } = expectRecommendations(answer, 'text');
+		const chosen = answer.recommendedPlaceIds.map(
+			(id) => search.candidates.find((candidate) => candidate.place.id === id)!.place,
+		);
+
+		expect(items.length).toBeGreaterThanOrEqual(2);
+		expect(chosen.map((place) => place.category)).not.toContain('playground');
+		expect(new Set(chosen.map((place) => place.category)).size).toBeGreaterThanOrEqual(2);
+	});
+
+	// Within 15 minutes of Baiterek there are only a square and two galleries (no monuments or
+	// artworks in the dataset), so an honest 60-minute plan has one stop; 90 and 120 have two or more.
+	it.each([
+		[60, 1],
+		[90, 2],
+		[120, 2],
+	])('plans a %i-minute route from Baiterek with at least %i stop(s)', async (minutes, minStops) => {
+		const answer = await ask(`Я у Байтерека, составь маршрут из трёх мест на ${minutes} минут.`);
+		const plan = walkPlanSchema.parse(answer.toolCalls.find((call) => call.name === 'plan_walk')?.result);
+		const ids = plan.stops.map((stop) => stop.candidate.place.id);
+
+		expect(resolved(answer)).toMatchObject({ found: true, matchedPlaceId: BAYTEREK });
+		expect(plan.stops.length).toBeGreaterThanOrEqual(minStops);
+		expect(plan.stops.length).toBeLessThanOrEqual(3);
+		expect(plan.totalMinutes).toBeLessThanOrEqual(minutes);
+		expect(ids).not.toContain(BAYTEREK);
+		expect(answer.recommendedPlaceIds).toEqual(ids);
+	});
+
+	it('answers the child request near Baiterek with a kids-tagged place', async () => {
+		const answer = await ask(
+			'Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?',
+			NEAR_BAYTEREK,
+		);
+		const { search } = expectRecommendations(answer, 'browser');
+		const chosen = answer.recommendedPlaceIds.map(
+			(id) => search.candidates.find((candidate) => candidate.place.id === id)!.place,
+		);
+
+		expect(chosen.some((place) => place.tags.includes('kids') || place.category === 'museum')).toBe(true);
+		expect(chosen.some((place) => place.name !== 'Gymboree')).toBe(true);
+	});
+
 	it('builds the mini route with a sourced location line', async () => {
 		const answer = await ask('Составь маршрут из двух-трёх мест на 90 минут.', NEAR_BAYTEREK);
 		const plan = walkPlanSchema.parse(answer.toolCalls.find((call) => call.name === 'plan_walk')?.result);

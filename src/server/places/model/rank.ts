@@ -27,15 +27,17 @@ const VISIT_MINUTES: Record<Category, number> = {
 	cafe: 30,
 	cinema: 120,
 	fast_food: 20,
-	gallery: 45,
-	garden: 40,
+	// A city walk passes through a park or a small gallery; 40–45 minutes each left a 90-minute
+	// route from Baiterek with one stop.
+	gallery: 40,
+	garden: 30,
 	library: 40,
 	mall: 60,
 	monument: 15,
 	museum: 60,
 	nightclub: 90,
 	other: 30,
-	park: 40,
+	park: 30,
 	place_of_worship: 30,
 	playground: 40,
 	restaurant: 60,
@@ -49,6 +51,8 @@ const VISIT_MINUTES: Record<Category, number> = {
 // Subtracted from the weighted score when a name is only a category word ("Кафе", "Сквер"):
 // such a place is still real, but a named one with equal signals is the better suggestion.
 const GENERIC_NAME_PENALTY = 0.05;
+// Charged per already chosen place of the same category while filling the result list.
+const DIVERSITY_PENALTY = 0.1;
 // Compared after nameKey(): lower case, ё→е, letters and digits only.
 const GENERIC_NAMES = new Set([
 	'cafe',
@@ -85,6 +89,39 @@ function nameKey(name: string): string {
 		.toLowerCase()
 		.replaceAll('ё', 'е')
 		.replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function byId(left: Candidate, right: Candidate): number {
+	return left.place.id < right.place.id ? -1 : left.place.id > right.place.id ? 1 : 0;
+}
+
+/**
+ * Greedy selection that charges a candidate for each already chosen place of its category, so
+ * four cafes 60 m apart do not push the only park out of a five-item list. Scores are unchanged;
+ * closed places still come last.
+ */
+function diversified(ranked: readonly Candidate[], limit: number): Candidate[] {
+	const remaining = [...ranked];
+	const chosen: Candidate[] = [];
+	const perCategory = new Map<Category, number>();
+	const value = (candidate: Candidate) =>
+		candidate.score - DIVERSITY_PENALTY * (perCategory.get(candidate.place.category) ?? 0);
+	while (chosen.length < limit && remaining.length > 0) {
+		let best = 0;
+		for (let index = 1; index < remaining.length; index += 1) {
+			const left = remaining[index]!;
+			const right = remaining[best]!;
+			const order =
+				Number(left.open.status === 'closed') - Number(right.open.status === 'closed') ||
+				value(right) - value(left) ||
+				byId(left, right);
+			if (order < 0) best = index;
+		}
+		const [next] = remaining.splice(best, 1);
+		chosen.push(next!);
+		perCategory.set(next!.place.category, (perCategory.get(next!.place.category) ?? 0) + 1);
+	}
+	return chosen;
 }
 
 export function rankPlaces(input: RankInput): Candidate[] {
@@ -149,18 +186,18 @@ export function rankPlaces(input: RankInput): Candidate[] {
 	// One branch per chain: after sorting, the first occurrence of a name is its best branch.
 	// Deduplicating before the limit keeps a list from filling up with twenty "Шашлычок".
 	const seenNames = new Set<string>();
-	return candidates
+	const ranked = candidates
 		.sort(
 			(left, right) =>
 				Number(left.open.status === 'closed') - Number(right.open.status === 'closed') ||
 				right.score - left.score ||
-				(left.place.id < right.place.id ? -1 : left.place.id > right.place.id ? 1 : 0),
+				byId(left, right),
 		)
 		.filter((candidate) => {
 			const key = nameKey(candidate.place.name) || candidate.place.id;
 			if (seenNames.has(key)) return false;
 			seenNames.add(key);
 			return true;
-		})
-		.slice(0, Math.floor(input.limit));
+		});
+	return diversified(ranked, Math.floor(input.limit));
 }
