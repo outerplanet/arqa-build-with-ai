@@ -1,5 +1,5 @@
-import clsx from 'clsx';
 import { type ReactNode } from 'react';
+import { cn } from '../classes';
 
 /**
  * A state, said in a word.
@@ -32,7 +32,7 @@ export interface BadgeProps {
 export function Badge({ children, className, tone = 'neutral' }: BadgeProps) {
 	return (
 		<span
-			className={clsx(
+			className={cn(
 				'inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium whitespace-nowrap',
 				TONES[tone],
 				className,

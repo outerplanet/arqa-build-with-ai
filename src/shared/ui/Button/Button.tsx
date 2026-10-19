@@ -1,6 +1,6 @@
-import clsx from 'clsx';
 import { Slot } from 'radix-ui';
 import { type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '../classes';
 
 /**
  * The one button.
@@ -50,7 +50,8 @@ export function Button({ asChild = false, className, size = 'md', variant = 'pri
 
 	return (
 		<Component
-			className={clsx(BASE, VARIANTS[variant], SIZES[size], className)}
+			// `cn`, not `clsx`: a caller's `h-auto` or `whitespace-normal` must beat the size's defaults.
+			className={cn(BASE, VARIANTS[variant], SIZES[size], className)}
 			// An explicit default: a button inside a form submits it unless told otherwise, and
 			// that has surprised everyone at least once.
 			type={asChild ? undefined : (props.type ?? 'button')}

@@ -1,6 +1,8 @@
 'use client';
 
+import { CheckCircleIcon, MapPinIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { type GeoPoint } from '@server/places/model/places.schema';
+import { Badge } from '@shared/ui/Badge';
 import { Button } from '@shared/ui/Button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -65,28 +67,41 @@ export function LocationControl({ disabled = false, location, onChange }: Locati
 		<div className="flex flex-col gap-2">
 			<div className="flex flex-wrap items-center gap-2">
 				<Button
-					className="h-auto! min-h-10 whitespace-normal!"
+					className="h-auto min-h-10 whitespace-normal"
 					disabled={disabled || pending}
 					onClick={locate}
+					size="lg"
 					variant="secondary"
 				>
-					{pending ? 'Определяем местоположение…' : 'Использовать мою геолокацию'}
+					<MapPinIcon aria-hidden className="size-4 shrink-0" />
+					{pending
+						? 'Определяем местоположение…'
+						: location === null
+							? 'Использовать мою геолокацию'
+							: 'Обновить геолокацию'}
 				</Button>
 				{(location !== null || pending) && (
 					<Button onClick={clearLocation} size="lg" variant="ghost">
 						Убрать геолокацию
 					</Button>
 				)}
+				{location !== null && (
+					<Badge className="max-w-full shrink whitespace-normal" tone="success">
+						<CheckCircleIcon aria-hidden className="size-3.5 shrink-0" />
+						<span role="status">
+							Точка браузера: {location.lat.toFixed(3)}, {location.lon.toFixed(3)} — используем в следующем
+							сообщении
+						</span>
+					</Badge>
+				)}
 			</div>
-			<p className="text-fg-muted text-xs">
-				Координаты округляются до ~100 м. Приложение не записывает их в хранилище или логи; в живом режиме они
-				передаются провайдеру модели. Можно просто назвать ориентир в чате.
+			<p className="text-fg-subtle flex items-start gap-1.5 text-xs">
+				<ShieldCheckIcon aria-hidden className="size-3.5 shrink-0" />
+				<span>
+					Координаты округляются до ~100 м. Приложение не записывает их в хранилище или логи; в живом режиме они
+					передаются провайдеру модели. Можно просто назвать ориентир в чате.
+				</span>
 			</p>
-			{location !== null && (
-				<p className="text-fg-muted text-xs" role="status">
-					Точка браузера: {location.lat.toFixed(3)}, {location.lon.toFixed(3)}. Используем в следующем сообщении.
-				</p>
-			)}
 			{error !== null && (
 				<p className="text-danger text-sm" role="alert">
 					{error}

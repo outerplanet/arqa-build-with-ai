@@ -7,16 +7,52 @@
  * The mock adapter classifies these texts by keyword (src/server/agent/usecase/scenario.ts), so
  * keep the keywords when editing.
  */
+import { type CategoryGroup } from '@entities/place/model/category';
+
 export interface Scenario {
+	/** Picks the card's icon and colour from the place category groups; decoration only. */
+	group: CategoryGroup;
 	needsLocation: boolean;
 	query: string;
+	/** A short heading above the query; the query itself is still shown in full. */
+	title: string;
 }
 
 export const SCENARIOS: readonly Scenario[] = [
-	{ needsLocation: false, query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.' },
-	{ needsLocation: false, query: 'Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.' },
-	{ needsLocation: true, query: 'Хочу тихое место с кофе и розеткой недалеко от меня.' },
-	{ needsLocation: true, query: 'Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?' },
-	{ needsLocation: true, query: 'Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?' },
-	{ needsLocation: true, query: 'Ищу необычную ночную активность на последние пару часов.' },
+	{
+		group: 'sights',
+		needsLocation: false,
+		query: 'Я у здания Экспо 2017, хочу что-то необычное на 1–2 часа, пешком.',
+		title: 'Необычное у Экспо',
+	},
+	{
+		group: 'nature',
+		needsLocation: false,
+		query: 'Я сейчас возле Mega Silk Way, хочу прогуляться 30–60 минут.',
+		title: 'Прогулка от Mega',
+	},
+	{
+		group: 'food',
+		needsLocation: true,
+		query: 'Хочу тихое место с кофе и розеткой недалеко от меня.',
+		title: 'Кофе и розетка',
+	},
+	{
+		group: 'kids',
+		needsLocation: true,
+		query: 'Еду с ребёнком — где рядом есть детские площадки или музей с интерактивами?',
+		title: 'С ребёнком',
+	},
+	{
+		group: 'culture',
+		needsLocation: true,
+		query: 'Я — турист, у меня 2 часа перед вылетом: что можно посмотреть поблизости?',
+		title: '2 часа до вылета',
+	},
+	{
+		group: 'night',
+		needsLocation: true,
+		query: 'Ищу необычную ночную активность на последние пару часов.',
+		title: 'Ночью',
+	},
 ];
