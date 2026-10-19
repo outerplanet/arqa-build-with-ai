@@ -1,6 +1,6 @@
 import { chatToolDefinitions, executeTool, responsesToolDefinitions, TOOLS } from '@server/agent/usecase/tools';
 import { type Ctx } from '@server/kernel/ctx';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const ctx: Ctx = { now: new Date('2026-01-15T09:30:00.000Z') };
 
@@ -31,30 +31,57 @@ describe('the tool registry', () => {
 });
 
 describe('executeTool', () => {
-	it('runs a tool and reports success', () => {
-		const call = executeTool(ctx, { args: {}, name: 'get_current_time' });
+	it('waits for an asynchronous handler before reporting its result', async () => {
+		const handler = vi.spyOn(TOOLS[0]!, 'handler').mockResolvedValue({ completed: true });
+
+		try {
+			expect(await executeTool(ctx, { args: {}, name: 'get_current_time' })).toMatchObject({
+				result: { completed: true },
+				status: 'ok',
+			});
+		} finally {
+			handler.mockRestore();
+		}
+	});
+
+	it('reports an asynchronous rejection as a failed activity row', async () => {
+		const handler = vi
+			.spyOn(TOOLS[0]!, 'handler')
+			.mockImplementation(() => Promise.reject(new Error('Service unavailable')));
+
+		try {
+			expect(await executeTool(ctx, { args: {}, name: 'get_current_time' })).toMatchObject({
+				status: 'error',
+			});
+		} finally {
+			handler.mockRestore();
+		}
+	});
+
+	it('runs a tool and reports success', async () => {
+		const call = await executeTool(ctx, { args: {}, name: 'get_current_time' });
 
 		expect(call.status).toBe('ok');
-		expect(call.label).toBe('Check the clock');
+		expect(call.label).toBe('Проверка времени');
 		expect(call.result).toMatchObject({ iso: '2026-01-15T09:30:00.000Z', timeZone: 'UTC' });
 	});
 
-	it('reads the clock from ctx and applies the requested zone', () => {
-		const call = executeTool(ctx, { args: { timeZone: 'Asia/Almaty' }, name: 'get_current_time' });
+	it('reads the clock from ctx and applies the requested zone', async () => {
+		const call = await executeTool(ctx, { args: { timeZone: 'Asia/Almaty' }, name: 'get_current_time' });
 
 		expect(call.result).toMatchObject({ timeZone: 'Asia/Almaty' });
 		expect((call.result as { local: string }).local).toContain('14:30');
 	});
 
-	it('reports a hallucinated tool name instead of throwing', () => {
-		const call = executeTool(ctx, { args: {}, name: 'summon_dragon' });
+	it('reports a hallucinated tool name instead of throwing', async () => {
+		const call = await executeTool(ctx, { args: {}, name: 'summon_dragon' });
 
 		expect(call.status).toBe('error');
 		expect(call.result).toContain('summon_dragon');
 	});
 
-	it('rejects arguments that do not match the schema, rather than passing them through', () => {
-		const call = executeTool(ctx, { args: { timeZone: 42 }, name: 'get_current_time' });
+	it('rejects arguments that do not match the schema, rather than passing them through', async () => {
+		const call = await executeTool(ctx, { args: { timeZone: 42 }, name: 'get_current_time' });
 
 		expect(call.status).toBe('error');
 	});
@@ -63,14 +90,13 @@ describe('executeTool', () => {
 	 * The whole turn dies if this throws, and the activity panel — the one thing an audience is
 	 * looking at — goes blank. A failing tool must be a row that says "failed".
 	 */
-	it('never throws, even when the handler itself does', () => {
+	it('never rejects, even when the handler itself throws', async () => {
 		const args = { timeZone: 'Not/A_Zone' };
 
-		expect(() => executeTool(ctx, { args, name: 'get_current_time' })).not.toThrow();
-		expect(executeTool(ctx, { args, name: 'get_current_time' }).status).toBe('error');
+		await expect(executeTool(ctx, { args, name: 'get_current_time' })).resolves.toMatchObject({ status: 'error' });
 	});
 
-	it('measures how long the handler took, because the panel shows it', () => {
-		expect(executeTool(ctx, { args: {}, name: 'get_current_time' }).durationMs).toBeGreaterThanOrEqual(0);
+	it('measures how long the handler took, because the panel shows it', async () => {
+		expect((await executeTool(ctx, { args: {}, name: 'get_current_time' })).durationMs).toBeGreaterThanOrEqual(0);
 	});
 });

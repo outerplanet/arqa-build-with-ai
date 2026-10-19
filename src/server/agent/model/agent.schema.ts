@@ -29,6 +29,14 @@ export const chatMessageSchema = z.object({
 });
 
 export const chatRequestSchema = z.object({
+	/** Browser coordinates are rounded at the validation boundary, before any provider sees them. */
+	location: z
+		.object({
+			lat: z.number().min(-90).max(90),
+			lon: z.number().min(-180).max(180),
+		})
+		.transform(({ lat, lon }) => ({ lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 }))
+		.optional(),
 	messages: z.array(chatMessageSchema).min(1),
 });
 

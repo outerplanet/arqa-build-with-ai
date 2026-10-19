@@ -12,8 +12,8 @@ import { createCtx } from '@server/kernel/ctx';
  *
  * Errors come back as a written sentence, not a status code. The interface shows what this says.
  */
-const INVALID_REQUEST_MESSAGE = 'That message could not be read. Please try again.';
-const SERVER_ERROR_MESSAGE = 'The agent could not be reached. Please try again.';
+const INVALID_REQUEST_MESSAGE = 'Не удалось прочитать сообщение или геолокацию. Проверьте данные и попробуйте снова.';
+const SERVER_ERROR_MESSAGE = 'Не удалось связаться с ассистентом. Попробуйте ещё раз.';
 
 export async function POST(request: Request): Promise<Response> {
 	let body: unknown;
@@ -37,7 +37,8 @@ export async function POST(request: Request): Promise<Response> {
 	} catch (error) {
 		// The detail goes to the server log, never to the browser: a provider error message can
 		// carry an endpoint, a model name or part of a key.
-		process.stderr.write(`Chat request failed: ${error instanceof Error ? error.message : String(error)}\n`);
+		// Provider errors can echo input coordinates. Log only the error category.
+		process.stderr.write(`Chat request failed: ${error instanceof Error ? error.name : 'UnknownError'}\n`);
 
 		return Response.json({ message: SERVER_ERROR_MESSAGE }, { status: 500 });
 	}

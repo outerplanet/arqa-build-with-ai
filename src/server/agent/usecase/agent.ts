@@ -1,4 +1,10 @@
-import { type ChatMessage, type ChatResponse, type ToolCall } from '@server/agent/model/agent.schema';
+import {
+	type ChatMessage,
+	type ChatRequest,
+	chatRequestSchema,
+	type ChatResponse,
+	type ToolCall,
+} from '@server/agent/model/agent.schema';
 import { type Ctx } from '@server/kernel/ctx';
 import { readEnv } from '@server/kernel/env';
 import 'server-only';
@@ -25,6 +31,7 @@ import { chatToolDefinitions, type CurrentTime, executeTool, responsesToolDefini
 const MAX_TURNS = 10;
 
 export interface AgentInput {
+	location?: ChatRequest['location'];
 	messages: readonly ChatMessage[];
 }
 
@@ -40,11 +47,16 @@ function parseArgs(raw: string): Record<string, unknown> {
 	}
 }
 
-function contextMessage(ctx: Ctx): string {
-	return `Today is ${ctx.now.toISOString().slice(0, 10)}.`;
+function contextMessage(ctx: Ctx, input: AgentInput): string {
+	const location =
+		input.location === undefined
+			? 'Геолокация браузера не передана. Определите место из слов пользователя или спросите, где он находится.'
+			: `Источник локации: браузер. Округлённые координаты: ${JSON.stringify(input.location)}.`;
+
+	return `Текущее время: ${ctx.now.toISOString()}. Часовой пояс Астаны: Asia/Almaty. ${location}`;
 }
 
-const EXHAUSTED = 'I could not finish this request. Please rephrase it, or ask a person who can help directly.';
+const EXHAUSTED = 'Не удалось завершить запрос. Уточните пожелания и попробуйте ещё раз.';
 
 // --- the Responses adapter ----------------------------------------------------------------------
 
@@ -69,7 +81,7 @@ async function runResponses(ctx: Ctx, input: AgentInput): Promise<ChatResponse> 
 
 	const conversation: ResponseItem[] = [
 		{ content: SYSTEM_PROMPT, role: 'system' },
-		{ content: contextMessage(ctx), role: 'system' },
+		{ content: contextMessage(ctx, input), role: 'system' },
 		...input.messages.map((message) => ({ content: message.content, role: message.role })),
 	];
 
@@ -97,7 +109,8 @@ async function runResponses(ctx: Ctx, input: AgentInput): Promise<ChatResponse> 
 		}
 
 		for (const call of requested) {
-			const executed = executeTool(ctx, { args: parseArgs(call.arguments), name: call.name });
+			// eslint-disable-next-line no-await-in-loop -- preserve tool execution order
+			const executed = await executeTool(ctx, { args: parseArgs(call.arguments), name: call.name });
 
 			toolCalls.push(executed);
 			conversation.push({
@@ -126,7 +139,7 @@ async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
 
 	const conversation: ChatMessageParam[] = [
 		{ content: SYSTEM_PROMPT, role: 'system' },
-		{ content: contextMessage(ctx), role: 'system' },
+		{ content: contextMessage(ctx, input), role: 'system' },
 		...input.messages.map((message) => ({ content: message.content, role: message.role })),
 	];
 
@@ -151,7 +164,8 @@ async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
 		conversation.push(choice);
 
 		for (const requested of choice.tool_calls.filter((candidate) => candidate.type === 'function')) {
-			const executed = executeTool(ctx, {
+			// eslint-disable-next-line no-await-in-loop -- preserve tool execution order
+			const executed = await executeTool(ctx, {
 				args: parseArgs(requested.function.arguments),
 				name: requested.function.name,
 			});
@@ -183,17 +197,17 @@ async function runChat(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
  * arrive, script the main scenario here — and for a tool that writes, propose first and act only
  * on an explicit confirmation in a later message, as prompt rule 2 demands of a model.
  */
-function runMock(ctx: Ctx, _input: AgentInput): ChatResponse {
-	const call = executeTool(ctx, { args: {}, name: 'get_current_time' });
+async function runMock(ctx: Ctx, _input: AgentInput): Promise<ChatResponse> {
+	const call = await executeTool(ctx, { args: { timeZone: 'Asia/Almaty' }, name: 'get_current_time' });
 
 	if (call.status === 'error') {
-		return { reply: `The clock tool failed: ${String(call.result)}`, toolCalls: [call] };
+		return { reply: 'Не удалось проверить время. Попробуйте ещё раз.', toolCalls: [call] };
 	}
 
 	const time = call.result as CurrentTime;
 
 	return {
-		reply: `Mock mode — no model is connected. The server clock reads ${time.local} (${time.timeZone}).`,
+		reply: `Демонстрационный режим. По серверным часам: ${time.local} (${time.timeZone}). Поиск мест ещё не подключён.`,
 		toolCalls: [call],
 	};
 }
@@ -201,15 +215,18 @@ function runMock(ctx: Ctx, _input: AgentInput): ChatResponse {
 // --- the entry point ----------------------------------------------------------------------------
 
 export async function runAgent(ctx: Ctx, input: AgentInput): Promise<ChatResponse> {
+	// Direct callers must cross the same privacy boundary as POST /api/chat.
+	const parsed = chatRequestSchema.parse(input);
+
 	switch (readEnv().LLM_PROVIDER) {
 		case 'chat':
-			return runChat(ctx, input);
+			return runChat(ctx, parsed);
 
 		case 'mock':
-			return Promise.resolve(runMock(ctx, input));
+			return runMock(ctx, parsed);
 
 		case 'responses':
 		default:
-			return runResponses(ctx, input);
+			return runResponses(ctx, parsed);
 	}
 }

@@ -55,7 +55,7 @@ export interface CurrentTime {
 /** Reads the clock through `ctx`, so a test pins it. An unknown zone throws a RangeError. */
 function currentTime(ctx: Ctx, input: { timeZone?: string | undefined }): CurrentTime {
 	const timeZone = input.timeZone ?? 'UTC';
-	const local = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone }).format(ctx.now);
+	const local = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'full', timeStyle: 'short', timeZone }).format(ctx.now);
 
 	return { iso: ctx.now.toISOString(), local, timeZone };
 }
@@ -72,7 +72,7 @@ export const TOOLS: readonly ToolSpec[] = [
 		description:
 			"Returns the current date and time. Call this whenever an answer depends on today's date or the time of day — never assume it.",
 		handler: (ctx, args) => currentTime(ctx, args),
-		label: 'Check the clock',
+		label: 'Проверка времени',
 		name: 'get_current_time',
 		parameters: z.object({
 			timeZone: z.string().min(1).optional().describe('IANA time zone, for example Asia/Almaty. Defaults to UTC.'),
@@ -128,7 +128,7 @@ export function responsesToolDefinitions(): {
  * at all — the one moment somebody is looking straight at it. A tool that fails is a row that says
  * so, which is information; a blank panel is not.
  */
-export function executeTool(ctx: Ctx, input: { args: Record<string, unknown>; name: string }): ToolCall {
+export async function executeTool(ctx: Ctx, input: { args: Record<string, unknown>; name: string }): Promise<ToolCall> {
 	// `performance.now` rather than `ctx.now`: this measures elapsed time, it does not ask what
 	// time it is. Business rules still read the clock only through `ctx`.
 	const started = performance.now();
@@ -140,9 +140,9 @@ export function executeTool(ctx: Ctx, input: { args: Record<string, unknown>; na
 		return {
 			arguments: input.args,
 			durationMs: elapsed(),
-			label: 'Unknown tool',
+			label: 'Неизвестный инструмент',
 			name: input.name,
-			result: `There is no tool named ${input.name}.`,
+			result: `Инструмент ${input.name} не найден.`,
 			status: 'error',
 		};
 	}
@@ -150,12 +150,14 @@ export function executeTool(ctx: Ctx, input: { args: Record<string, unknown>; na
 	const base = { arguments: input.args, label: spec.label, name: spec.name };
 
 	try {
-		return { ...base, durationMs: elapsed(), result: spec.handler(ctx, input.args), status: 'ok' };
-	} catch (cause) {
+		const result = await spec.handler(ctx, input.args);
+
+		return { ...base, durationMs: elapsed(), result, status: 'ok' };
+	} catch {
 		return {
 			...base,
 			durationMs: elapsed(),
-			result: cause instanceof Error ? cause.message : 'The tool failed to run.',
+			result: 'Не удалось выполнить инструмент. Проверьте параметры и попробуйте ещё раз.',
 			status: 'error',
 		};
 	}
