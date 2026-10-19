@@ -227,6 +227,79 @@ describe('rankPlaces', () => {
 		const { walkMinutes } = rankPlaces(input([edge]))[0]!;
 		expect(rankPlaces(input([edge], { maxWalkMinutes: walkMinutes }))[0]!.score).toBe(0);
 	});
+	it('lists one generic playground and treats «Детская площадка, улица …» as generic', () => {
+		const streets = ['бульвар Нуржол', 'улица Достык', 'улица Акмешит'].map((street, index) =>
+			place(`p${index}`, {
+				category: 'playground',
+				lat: 51.128 + index * 0.001,
+				name: `Детская площадка, ${street}`,
+			}),
+		);
+		const named = place('gym', { category: 'playground', lat: 51.1315, name: 'Gymboree' });
+		const ranked = rankPlaces(input([...streets, named], { semantic: new Map([['gym', 0.06]]) }));
+
+		expect(isGenericName('Детская площадка, улица Достык')).toBe(true);
+		expect(isGenericName('Gymboree')).toBe(false);
+		expect(ranked.map((candidate) => candidate.place.id)).toEqual(['p0', 'gym']);
+	});
+
+	it('lets a sightseer reach a vouched-for place a little further, and gives a bare gallery no category bonus', () => {
+		const gallery = place('gallery', {
+			category: 'gallery',
+			lat: 51.1315,
+			name: 'Корме',
+			openingHours: null,
+			tags: [],
+		});
+		const mosque = place('mosque', {
+			category: 'place_of_worship',
+			descriptionSource: 'wikidata',
+			image: {
+				author: null,
+				license: null,
+				pageUrl: 'https://commons.wikimedia.org/wiki/File:X.jpg',
+				url: 'https://upload.wikimedia.org/x.jpg',
+			},
+			lat: 51.1375,
+			name: 'Мечеть',
+			openingHours: null,
+			popularity: 0.6,
+			tags: [],
+		});
+		const plain = place('plain', {
+			category: 'monument',
+			lat: 51.1375,
+			name: 'Памятник X',
+			openingHours: null,
+			tags: [],
+		});
+		const base = { maxWalkMinutes: 15, preferNotable: true } as const;
+
+		expect(rankPlaces(input([gallery, mosque, plain], base)).map((candidate) => candidate.place.id)).toEqual([
+			'gallery',
+		]);
+		const reach = rankPlaces(input([gallery, mosque, plain], { ...base, notableReachMinutes: 20 }));
+		expect(reach.map((candidate) => candidate.place.id)).toEqual(['mosque', 'gallery']);
+		// Without preferNotable the reach is ignored.
+		expect(
+			rankPlaces(input([mosque], { maxWalkMinutes: 15, notableReachMinutes: 20 })).map((entry) => entry.place.id),
+		).toEqual([]);
+		const vouched = { ...gallery, id: 'vouched', image: null, name: 'Галерея Х', popularity: 0.2 };
+		const [withSignal, bare] = rankPlaces(input([gallery, vouched], base));
+		expect(withSignal!.place.id).toBe('vouched');
+		expect(withSignal!.score - bare!.score).toBeGreaterThan(0.1);
+	});
+
+	it('lists scores a few hundredths apart nearest first', () => {
+		const far = place('far', { lat: 51.1315, name: 'Далёкое' });
+		const near = place('near', { lat: 51.1295, name: 'Ближнее' });
+		// far: higher relevance, but its score lands within 0.03 of the nearer place.
+		const ranked = rankPlaces(input([far, near], { semantic: new Map([['far', 0.15]]) }));
+
+		expect(Math.abs(ranked[0]!.score - ranked[1]!.score)).toBeLessThanOrEqual(0.03);
+		expect(ranked.map((candidate) => candidate.place.id)).toEqual(['near', 'far']);
+	});
+
 	it('clamps nonfinite and out-of-range signals and preserves full Place fields', () => {
 		for (const value of [NaN, Infinity, -2, 2]) {
 			const original = place('a', { popularity: value });

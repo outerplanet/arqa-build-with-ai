@@ -1,6 +1,7 @@
 import { DomainError } from '@server/kernel/errors';
 import {
 	type Candidate,
+	type Category,
 	type GeoPoint,
 	planWalkInputSchema,
 	type WalkPlan,
@@ -14,6 +15,16 @@ import { dependencies, type PlacesContext } from './context';
 import { searchPlaces } from './findPlaces';
 import { assertOrigin, origin, roundLocation } from './origin';
 import { walkingCalculator } from './walking';
+
+const ROUTE_SIGHTS = new Set<Category>([
+	'artwork',
+	'attraction',
+	'gallery',
+	'monument',
+	'museum',
+	'theatre',
+	'viewpoint',
+]);
 
 /** A stop matches the search result exactly, except that its visit may be shortened, never below the short estimate. */
 function sameCandidate(stop: Candidate, known: Candidate | undefined): boolean {
@@ -84,6 +95,8 @@ export async function planWalk(
 			),
 			query: parsed.query ?? 'прогулка',
 		},
+		// A route of sights should pass places the data vouches for, not «Сквер» and a shop gallery.
+		preferNotable: parsed.categories?.some((category) => ROUTE_SIGHTS.has(category)) ?? true,
 	});
 	const walking = walkingCalculator(ctx);
 	const result = walkPlanSchema.parse(

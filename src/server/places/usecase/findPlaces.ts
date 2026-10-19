@@ -45,6 +45,27 @@ function astanaTime(at: Date): string {
 	return `${pad(local.getUTCDate())}.${pad(local.getUTCMonth() + 1)}, ${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())} по Астане`;
 }
 
+// «До 10 минут пешком», «не больше 15 мин ходьбы»: a limit the user named is never stretched.
+const STATED_WALK_LIMIT = /(?:до|в пределах|не больше|не более)\s*\d{1,2}\s*мин[а-я]*\s*(?:пешком|ходьбы)/iu;
+// With an hour or more, a sightseer may walk a little further to a place the data vouches for
+// (Wikidata, a photo, popularity): half again the radius, never more than a third of the budget.
+const NOTABLE_REACH_MIN_BUDGET = 60;
+const NOTABLE_REACH_FACTOR = 1.5;
+const NOTABLE_REACH_BUDGET_SHARE = 1 / 3;
+
+function notableReach(
+	ctx: PlacesContext,
+	input: { budget: number | undefined; maxWalkMinutes: number; preferNotable: boolean },
+): number | undefined {
+	if (!input.preferNotable || input.budget === undefined || input.budget < NOTABLE_REACH_MIN_BUDGET) return undefined;
+	if (ctx.userMessages?.some((message) => STATED_WALK_LIMIT.test(message))) return undefined;
+	const reach = Math.min(
+		Math.round(input.maxWalkMinutes * NOTABLE_REACH_FACTOR),
+		Math.floor(input.budget * NOTABLE_REACH_BUDGET_SHARE),
+	);
+	return reach > input.maxWalkMinutes ? reach : undefined;
+}
+
 /** A walk's validated budget must filter the whole dataset before ranking's result limit. */
 export async function searchPlaces(
 	ctx: PlacesContext,
@@ -64,6 +85,12 @@ export async function searchPlaces(
 	const places = withoutStartingPoint(ctx, z.array(placeSchema).parse(dependencies(ctx).readPlaces()));
 	const semantic = await semanticScores(ctx, { places, query: parsed.query });
 	const at = parsed.at === undefined ? ctx.now : z.coerce.date().parse(parsed.at);
+	const budget = input.budgetMinutes ?? durationMinutes;
+	const reach = notableReach(ctx, {
+		budget,
+		maxWalkMinutes: parsed.maxWalkMinutes,
+		preferNotable: input.preferNotable === true,
+	});
 	const candidates = dependencies(ctx).rankPlaces({
 		accessibleOnly: parsed.accessibleOnly,
 		at,
@@ -71,13 +98,13 @@ export async function searchPlaces(
 		durationMinutes,
 		limit: parsed.limit,
 		maxWalkMinutes: parsed.maxWalkMinutes,
+		...(reach === undefined ? {} : { notableReachMinutes: reach }),
 		origin: location.point,
 		places,
 		...(input.preferNotable ? { preferNotable: true } : {}),
 		query: parsed.query,
 		semantic: semantic.scores,
 	});
-	const budget = input.budgetMinutes ?? durationMinutes;
 
 	const result = findPlacesResultSchema.parse({
 		candidates,
@@ -86,6 +113,9 @@ export async function searchPlaces(
 		usedFilters: [
 			// Two different limits, named so that nobody reads one as the other.
 			`До ${parsed.maxWalkMinutes} мин пешком до каждого места`,
+			...(reach === undefined
+				? []
+				: [`До ${reach} мин пешком — для мест с описанием в Wikidata, фото или оценкой популярности`]),
 			...(budget === undefined ? [] : [`Вся прогулка — до ${budget} мин`]),
 			`Время проверки: ${astanaTime(at)}`,
 			...(parsed.categories === undefined
