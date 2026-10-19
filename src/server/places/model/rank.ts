@@ -18,6 +18,7 @@ export interface RankInput {
 }
 
 // Relevance leads; proximity and hours come next, popularity and tags are smaller signals.
+// Weights sum to 1; the score is clamped to 0..1 after the generic-name penalty below.
 const WEIGHTS = { distance: 0.25, open: 0.15, popularity: 0.1, semantic: 0.4, tags: 0.1 };
 const VISIT_MINUTES: Record<Category, number> = {
 	artwork: 15,
@@ -45,8 +46,45 @@ const VISIT_MINUTES: Record<Category, number> = {
 	zoo: 90,
 };
 
+// Subtracted from the weighted score when a name is only a category word ("Кафе", "Сквер"):
+// such a place is still real, but a named one with equal signals is the better suggestion.
+const GENERIC_NAME_PENALTY = 0.05;
+// Compared after nameKey(): lower case, ё→е, letters and digits only.
+const GENERIC_NAMES = new Set([
+	'cafe',
+	'coffee',
+	'park',
+	'restaurant',
+	'аллея',
+	'бар',
+	'бистро',
+	'бульвар',
+	'детскаяплощадка',
+	'кафе',
+	'кофе',
+	'кофейня',
+	'памятник',
+	'парк',
+	'пекарня',
+	'площадка',
+	'ресторан',
+	'сад',
+	'сквер',
+	'скульптура',
+	'столовая',
+	'фонтан',
+]);
+
 function unit(value: number): number {
 	return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+}
+
+/** Chain branches share a key: "Coffee Boom", "COFFEE  BOOM" and "coffee-boom" are one name. */
+function nameKey(name: string): string {
+	return name
+		.toLowerCase()
+		.replaceAll('ё', 'е')
+		.replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
 export function rankPlaces(input: RankInput): Candidate[] {
@@ -88,7 +126,8 @@ export function rankPlaces(input: RankInput): Candidate[] {
 					WEIGHTS.distance * why.distance +
 					WEIGHTS.open * why.open +
 					WEIGHTS.popularity * why.popularity +
-					WEIGHTS.tags * Number(why.tags.length > 0),
+					WEIGHTS.tags * Number(why.tags.length > 0) -
+					GENERIC_NAME_PENALTY * Number(GENERIC_NAMES.has(nameKey(place.name))),
 			);
 			return {
 				distanceM: meters,
@@ -107,6 +146,9 @@ export function rankPlaces(input: RankInput): Candidate[] {
 					candidate.walkMinutes + candidate.visitMinutes <= input.durationMinutes) &&
 				(!night || candidate.open.status === 'open'),
 		);
+	// One branch per chain: after sorting, the first occurrence of a name is its best branch.
+	// Deduplicating before the limit keeps a list from filling up with twenty "Шашлычок".
+	const seenNames = new Set<string>();
 	return candidates
 		.sort(
 			(left, right) =>
@@ -114,5 +156,11 @@ export function rankPlaces(input: RankInput): Candidate[] {
 				right.score - left.score ||
 				(left.place.id < right.place.id ? -1 : left.place.id > right.place.id ? 1 : 0),
 		)
+		.filter((candidate) => {
+			const key = nameKey(candidate.place.name) || candidate.place.id;
+			if (seenNames.has(key)) return false;
+			seenNames.add(key);
+			return true;
+		})
 		.slice(0, Math.floor(input.limit));
 }

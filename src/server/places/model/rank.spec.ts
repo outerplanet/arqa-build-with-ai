@@ -157,6 +157,39 @@ describe('rankPlaces', () => {
 		expect(boundary).toBe(0);
 	});
 
+	it('keeps only the best branch of a chain by normalised name, before the limit', () => {
+		const places = [
+			place('kfc-near', { name: 'KFC' }),
+			place('kfc-far', { lon: 71.433, name: 'kfc ' }),
+			place('kfc-closed', { name: 'K.F.C', openingHours: 'off' }),
+			place('boom-1', { name: 'Coffee Boom', popularity: 0.5 }),
+			place('boom-2', { name: 'COFFEE  BOOM' }),
+			place('yolka', { name: 'Ёлка' }),
+			place('elka', { lon: 71.432, name: 'Елка' }),
+			place('other', { lon: 71.434, name: 'Другое место' }),
+		];
+		const result = rankPlaces(input(places, { limit: 4 }));
+		expect(result.map((entry) => entry.place.id)).toEqual(['boom-1', 'kfc-near', 'yolka', 'other']);
+		expect(rankPlaces(input(places, { semantic: new Map([['kfc-far', 1]]) }))[0]!.place.id).toBe('kfc-far');
+	});
+	it('demotes generic category names slightly without removing them', () => {
+		const generic = ['Кофейня', 'Столовая', 'Сквер', 'Кафе', 'Парк', ' кафе! '];
+		for (const name of generic) {
+			const result = rankPlaces(input([place('generic', { name }), place('named', { name: 'Ракушка' })]));
+			expect(result.map((entry) => entry.place.id)).toEqual(['named', 'generic']);
+			expect(result[0]!.score - result[1]!.score).toBeGreaterThan(0);
+			expect(result[0]!.score - result[1]!.score).toBeLessThanOrEqual(0.1);
+		}
+		const relevant = rankPlaces(
+			input([place('generic', { name: 'Сквер' }), place('named', { name: 'Ракушка' })], {
+				semantic: new Map([['generic', 0.5]]),
+			}),
+		);
+		expect(relevant[0]!.place.id).toBe('generic');
+		const edge = place('edge', { lon: 71.435, name: 'Кафе', openingHours: 'off' });
+		const { walkMinutes } = rankPlaces(input([edge]))[0]!;
+		expect(rankPlaces(input([edge], { maxWalkMinutes: walkMinutes }))[0]!.score).toBe(0);
+	});
 	it('clamps nonfinite and out-of-range signals and preserves full Place fields', () => {
 		for (const value of [NaN, Infinity, -2, 2]) {
 			const original = place('a', { popularity: value });
